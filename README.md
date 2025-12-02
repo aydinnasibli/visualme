@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Universal Visualization Engine
+
+An AI-powered platform that transforms any text, data, or concept into beautiful interactive visualizations.
+
+## Features Implemented
+
+### 1. Network Graph (Feature 1)
+- Interactive node-based visualizations for concepts and relationships
+- Uses React Flow with Framer Motion animations
+- Best for: concepts, org structures, dependencies, knowledge graphs
+
+### 2. Mind Map (Feature 2)
+- Hierarchical mind map visualizations
+- Uses Markmap for beautiful, interactive mind maps
+- Best for: brainstorming, note hierarchies, idea organization
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Visualizations**: React Flow, Markmap
+- **Animations**: Framer Motion
+- **AI**: OpenAI GPT-4
+- **Validation**: Zod
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 20+
+- OpenAI API key
+
+### Installation
+
+1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd visualme
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables
+```bash
+cp .env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Edit `.env` and add your OpenAI API key:
+```
+OPENAI_API_KEY=your_openai_api_key_here
+```
 
-## Learn More
+4. Run the development server
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How It Works
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **User Input**: Enter any text, concept, or question you want to visualize
+2. **AI Analysis**: GPT-4 analyzes the content and determines:
+   - Is it visualizable?
+   - Which format is best suited? (Network Graph or Mind Map)
+3. **Data Generation**: AI generates structured data for the chosen visualization
+4. **Interactive Visualization**: Beautiful, interactive visualization is rendered with animations
 
-## Deploy on Vercel
+## Usage Examples
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Try these sample prompts:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- "Explain machine learning and its main branches"
+- "Show me the structure of a modern web application"
+- "Visualize the process of photosynthesis"
+- "Create a mind map of project management concepts"
+
+## Project Structure
+
+```
+visualme/
+├── app/
+│   ├── api/
+│   │   └── visualize/          # API endpoint for visualization generation
+│   ├── components/             # React components
+│   │   ├── NetworkGraph.tsx    # Network graph visualization
+│   │   └── MindMap.tsx         # Mind map visualization
+│   ├── layout.tsx              # Root layout
+│   └── page.tsx                # Main page
+├── lib/
+│   ├── services/
+│   │   └── openai.ts           # OpenAI service layer
+│   └── types/
+│       └── visualization.ts    # TypeScript types
+└── ...
+```
+
+## Good Practices Implemented
+
+- **Type Safety**: Full TypeScript implementation with proper types
+- **Validation**: Zod schemas for runtime validation of AI responses
+- **Error Handling**: Comprehensive error handling throughout the application
+- **Separation of Concerns**: Clear separation between API, services, and UI
+- **Component Reusability**: Modular component structure
+- **Loading States**: Proper loading indicators for async operations
+- **User Feedback**: Clear error messages and success states
+
+## Future Enhancements
+
+The project documentation includes 17 more visualization formats that can be added:
+- Timelines, Gantt charts, Flowcharts, Sankey diagrams
+- Various statistical charts (Line, Bar, Scatter, etc.)
+- And more...
+
+## License
+
+MIT
