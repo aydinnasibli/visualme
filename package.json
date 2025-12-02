@@ -11,6 +11,7 @@
   "dependencies": {
     "@xyflow/react": "^12.9.3",
     "framer-motion": "^12.23.25",
+    "html2canvas": "^1.4.1",
     "markmap-lib": "^0.18.12",
     "markmap-view": "^0.18.12",
     "next": "16.0.5",
