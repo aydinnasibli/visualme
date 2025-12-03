@@ -610,7 +610,7 @@ export const FORMAT_INFO: Record<VisualizationType, FormatInfo> = {
     name: 'Word Cloud',
     description: 'Text frequency visualization',
     category: 'text_content',
-    library: 'react-wordcloud',
+    library: 'd3-cloud + D3.js',
     bestFor: ['text frequency', 'topic extraction', 'keyword visualization'],
     icon: '☁️',
     estimatedCost: 0.10,
