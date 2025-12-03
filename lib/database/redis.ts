@@ -37,7 +37,12 @@ export async function cacheGet<T = any>(key: string): Promise<T | null> {
 
   try {
     const value = await redis.get(key);
-    return value ? (typeof value === 'string' ? JSON.parse(value) : value) : null;
+    if (!value) return null;
+
+    if (typeof value === 'string') {
+      return JSON.parse(value) as T;
+    }
+    return value as T;
   } catch (error) {
     console.error('Redis cache get error:', error);
     return null;
