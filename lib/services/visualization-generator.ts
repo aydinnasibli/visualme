@@ -454,6 +454,8 @@ JSON format:
   ]
 }`;
 
+  // Note: react-wordcloud removed due to React 19 incompatibility
+  // Use alternative: react-tagcloud or wordcloud2.js when implementing component
   return await callOpenAI<WordCloudData>(systemPrompt, userInput, 'gpt-4o-mini');
 }
 

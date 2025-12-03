@@ -35,7 +35,6 @@
     "react-d3-tree": "^3.6.6",
     "react-dom": "19.2.0",
     "react-force-graph": "^1.48.1",
-    "react-wordcloud": "^1.2.7",
     "recharts": "^3.5.1",
     "vis-timeline": "^8.4.0",
     "zod": "^4.1.13"
