@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { ClerkProvider } from '@clerk/nextjs';
 import "./globals.css";
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: "Universal Visualization Engine - AI-Powered Visualizations",
   description: "Transform any text, data, or concept into beautiful interactive visualizations using AI. Supports 19 visualization formats.",
