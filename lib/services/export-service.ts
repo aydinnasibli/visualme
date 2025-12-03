@@ -3,7 +3,18 @@
  * Handles exporting visualizations in various formats (PNG, SVG, PDF, JSON, CSV, HTML)
  */
 
-import type { SavedVisualization, ExportFormat, ExportOptions } from '../types/visualization';
+import type {
+  SavedVisualization,
+  ExportFormat,
+  ExportOptions,
+  LineChartData,
+  BarChartData,
+  RadarChartData,
+  ScatterPlotData,
+  PieChartData,
+  ComparisonTableData,
+  HeatmapData,
+} from '../types/visualization';
 import { generateShareId } from '../utils/helpers';
 
 /**
@@ -80,7 +91,7 @@ export function exportAsCSV(visualization: SavedVisualization): string {
       type === 'bar_chart' ||
       type === 'radar_chart'
     ) {
-      const chartData = data as any;
+      const chartData = data as LineChartData | BarChartData | RadarChartData;
       if (chartData.data && Array.isArray(chartData.data)) {
         // Get headers from first data point
         const headers = Object.keys(chartData.data[0] || {});
@@ -93,41 +104,41 @@ export function exportAsCSV(visualization: SavedVisualization): string {
         });
       }
     } else if (type === 'scatter_plot') {
-      const scatterData = data as any;
+      const scatterData = data as ScatterPlotData;
       if (scatterData.data && Array.isArray(scatterData.data)) {
         rows.push('x,y,z,name,category');
-        scatterData.data.forEach((point: any) => {
+        scatterData.data.forEach((point) => {
           rows.push(
             `${point.x || ''},${point.y || ''},${point.z || ''},${point.name || ''},${point.category || ''}`
           );
         });
       }
     } else if (type === 'pie_chart') {
-      const pieData = data as any;
+      const pieData = data as PieChartData;
       if (pieData.data && Array.isArray(pieData.data)) {
         rows.push('name,value');
-        pieData.data.forEach((slice: any) => {
+        pieData.data.forEach((slice) => {
           rows.push(`${slice.name},${slice.value}`);
         });
       }
     } else if (type === 'comparison_table') {
-      const tableData = data as any;
+      const tableData = data as ComparisonTableData;
       if (tableData.columns && tableData.data) {
-        const headers = tableData.columns.map((col: any) => col.header);
+        const headers = tableData.columns.map((col) => col.header);
         rows.push(headers.join(','));
 
-        tableData.data.forEach((row: Record<string, any>) => {
-          const values = tableData.columns.map((col: any) =>
+        tableData.data.forEach((row) => {
+          const values = tableData.columns.map((col) =>
             String(row[col.accessorKey] || '')
           );
           rows.push(values.join(','));
         });
       }
     } else if (type === 'heatmap') {
-      const heatmapData = data as any;
+      const heatmapData = data as HeatmapData;
       if (heatmapData.data && Array.isArray(heatmapData.data)) {
         rows.push('x,y,value');
-        heatmapData.data.forEach((cell: any) => {
+        heatmapData.data.forEach((cell) => {
           rows.push(`${cell.x},${cell.y},${cell.value}`);
         });
       }

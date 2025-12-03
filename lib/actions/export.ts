@@ -9,7 +9,7 @@ import {
   exportAsCSV,
   exportAsHTML,
 } from '@/lib/services/export-service';
-import type { ExportFormat } from '@/lib/types/visualization';
+import type { ExportFormat, SavedVisualization } from '@/lib/types/visualization';
 
 /**
  * Export a visualization in the specified format
@@ -31,31 +31,39 @@ export async function exportVisualization(
 
     await connectToDatabase();
 
-    const visualization = await VisualizationModel.findOne({
+    const vizDoc = await VisualizationModel.findOne({
       _id: visualizationId,
       userId,
     }).lean();
 
-    if (!visualization) {
+    if (!vizDoc) {
       return { success: false, error: 'Visualization not found' };
     }
+
+    // Convert MongoDB document to SavedVisualization type
+    const visualization: SavedVisualization = {
+      ...vizDoc,
+      _id: vizDoc._id.toString(),
+      createdAt: vizDoc.createdAt,
+      updatedAt: vizDoc.updatedAt,
+    };
 
     let content: string;
     let mimeType: string;
 
     switch (format) {
       case 'json':
-        content = exportAsJSON(visualization as any, options);
+        content = exportAsJSON(visualization, options);
         mimeType = 'application/json';
         break;
 
       case 'csv':
-        content = exportAsCSV(visualization as any);
+        content = exportAsCSV(visualization);
         mimeType = 'text/csv';
         break;
 
       case 'html':
-        content = exportAsHTML(visualization as any);
+        content = exportAsHTML(visualization);
         mimeType = 'text/html';
         break;
 
