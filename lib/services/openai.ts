@@ -65,7 +65,7 @@ If not visualizable, use format "none".`;
   try {
     const client = getOpenAIClient();
     const completion = await client.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userInput },
@@ -113,7 +113,7 @@ Respond in JSON format matching this structure:
   try {
     const client = getOpenAIClient();
     const completion = await client.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userInput },
@@ -164,7 +164,7 @@ Respond with ONLY the markdown content, no additional text.`;
   try {
     const client = getOpenAIClient();
     const completion = await client.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userInput },
