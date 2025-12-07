@@ -3,17 +3,20 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
+import { useAuth } from '@clerk/nextjs';
 import NetworkGraph from './components/NetworkGraph';
 import MindMapVisualization from './components/MindMap';
-import { generateVisualization, regenerateVisualization } from '@/lib/actions/visualize';
+import { generateVisualization, regenerateVisualization, saveVisualization } from '@/lib/actions/visualize';
 import type { VisualizationResponse, NetworkGraphData } from '@/lib/types/visualization';
 
 export default function Home() {
+  const { isSignedIn } = useAuth();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VisualizationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const visualizationRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +45,34 @@ export default function Home() {
       console.error('Error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!result || !isSignedIn) {
+      setError('Please sign in to save visualizations');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const title = input.substring(0, 100);
+      const saveResult = await saveVisualization(title, result.type, result.data);
+
+      if (!saveResult.success) {
+        setError(saveResult.error || 'Failed to save visualization');
+        return;
+      }
+
+      // Show success message (you can add a toast notification here)
+      alert('Visualization saved successfully!');
+    } catch (err) {
+      setError('Failed to save visualization');
+      console.error('Save error:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -107,22 +138,22 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
+        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8 md:mb-12"
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-3 md:mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-3 md:mb-4">
             Universal Visualization Engine
           </h1>
-          <p className="text-gray-400 text-base md:text-lg">
+          <p className="text-gray-300 text-lg md:text-xl mb-2">
             AI-powered platform for visualizing anything
           </p>
-          <p className="text-gray-500 text-sm mt-2">
-            Features 1 & 2: Network Graphs • Mind Maps
+          <p className="text-gray-500 text-sm">
+            Currently supporting 2 formats • Network Graphs & Mind Maps
           </p>
         </motion.div>
 
@@ -131,11 +162,11 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gray-800 rounded-xl p-4 md:p-6 shadow-2xl border border-gray-700 mb-6 md:mb-8"
+          className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-2xl border border-gray-700/50 mb-8"
         >
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label htmlFor="input" className="block text-sm font-medium text-gray-300 mb-2">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="input" className="block text-sm font-semibold text-gray-200 mb-3">
                 What would you like to visualize?
               </label>
               <textarea
@@ -143,33 +174,37 @@ export default function Home() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="e.g., Explain machine learning, Show me the solar system, Visualize a hiring process..."
-                rows={4}
-                className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                rows={5}
+                className="w-full px-4 py-4 bg-gray-900/50 border border-gray-600/50 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all resize-none text-base"
+                disabled={loading}
               />
             </div>
 
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="text-sm text-gray-400 self-center">Try:</span>
+            {/* Sample Prompts */}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-sm text-gray-400 self-center font-medium">Quick start:</span>
               {samplePrompts.map((prompt, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => setInput(prompt)}
-                  className="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-full transition-colors"
+                  disabled={loading}
+                  className="text-xs px-3 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-lg transition-all border border-gray-600/30 hover:border-gray-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {prompt}
+                  {prompt.length > 40 ? prompt.substring(0, 40) + '...' : prompt}
                 </button>
               ))}
             </div>
 
+            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg"
+                className="flex-1 px-8 py-4 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-purple-500/25 text-base"
               >
                 {loading ? (
-                  <span className="flex items-center justify-center gap-2">
+                  <span className="flex items-center justify-center gap-3">
                     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                       <circle
                         className="opacity-25"
@@ -189,7 +224,7 @@ export default function Home() {
                     Generating...
                   </span>
                 ) : (
-                  'Generate Visualization'
+                  'Generate Visualization ✨'
                 )}
               </button>
 
@@ -197,7 +232,8 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all shadow-lg"
+                  disabled={loading}
+                  className="px-8 py-4 bg-gray-700/50 hover:bg-gray-600/50 text-white font-semibold rounded-xl transition-all border border-gray-600/30 hover:border-gray-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Clear
                 </button>
@@ -210,14 +246,14 @@ export default function Home() {
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-red-900/30 border border-red-500 text-red-200 px-6 py-4 rounded-lg mb-6 md:mb-8"
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              className="bg-red-900/20 backdrop-blur-sm border border-red-500/50 text-red-200 px-6 py-5 rounded-xl mb-8 shadow-lg"
             >
               <div className="flex items-start gap-3">
                 <svg
-                  className="w-5 h-5 mt-0.5 flex-shrink-0"
+                  className="w-6 h-6 mt-0.5 flex-shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -230,8 +266,8 @@ export default function Home() {
                   />
                 </svg>
                 <div>
-                  <p className="font-semibold">Error</p>
-                  <p className="text-sm">{error}</p>
+                  <p className="font-bold text-base">Error</p>
+                  <p className="text-sm mt-1">{error}</p>
                 </div>
               </div>
             </motion.div>
@@ -245,33 +281,34 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="space-y-4"
+              className="space-y-6"
             >
               {/* Controls Card */}
-              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-5 border border-gray-700/50 shadow-lg">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-block px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm font-medium">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 text-blue-300 rounded-lg text-sm font-bold">
                         {result.type === 'network_graph' ? '🕸️ Network Graph' : '🧠 Mind Map'}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        Interactive • Zoomable • Animated
+                      <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        Interactive
                       </span>
                     </div>
-                    <p className="text-gray-400 text-sm">{result.reason}</p>
+                    <p className="text-gray-300 text-sm leading-relaxed">{result.reason}</p>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    {/* Format Switch Buttons */}
-                    <div className="flex gap-2 p-1 bg-gray-900 rounded-lg">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Format Switcher */}
+                    <div className="flex gap-2 p-1.5 bg-gray-900/50 rounded-lg border border-gray-700/50">
                       <button
                         onClick={() => handleFormatSwitch('network_graph')}
                         disabled={result.type === 'network_graph' || loading}
-                        className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
                           result.type === 'network_graph'
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
                             : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                         title="Switch to Network Graph"
@@ -281,9 +318,9 @@ export default function Home() {
                       <button
                         onClick={() => handleFormatSwitch('mind_map')}
                         disabled={result.type === 'mind_map' || loading}
-                        className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
                           result.type === 'mind_map'
-                            ? 'bg-purple-500 text-white'
+                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/25'
                             : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                         title="Switch to Mind Map"
@@ -292,11 +329,50 @@ export default function Home() {
                       </button>
                     </div>
 
+                    {/* Save Button */}
+                    {isSignedIn && (
+                      <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-500/25"
+                        title="Save Visualization"
+                      >
+                        {saving ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                            Save
+                          </>
+                        )}
+                      </button>
+                    )}
+
                     {/* Export Button */}
                     <button
                       onClick={handleExportPNG}
                       disabled={exporting}
-                      className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-green-500/25"
                       title="Export as PNG"
                     >
                       {exporting ? (
@@ -357,11 +433,11 @@ export default function Home() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4"
+                className="bg-blue-900/10 backdrop-blur-sm border border-blue-500/30 rounded-xl p-6"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-4">
                   <svg
-                    className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5"
+                    className="w-6 h-6 text-blue-400 flex-shrink-0 mt-0.5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -373,13 +449,25 @@ export default function Home() {
                       d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <div className="text-sm text-blue-200">
-                    <p className="font-semibold mb-1">Interactive Tips:</p>
-                    <ul className="space-y-1 text-blue-300/80">
-                      <li>• Drag to pan around the visualization</li>
-                      <li>• Scroll or pinch to zoom in/out</li>
-                      <li>• Hover over elements to see details</li>
-                      <li>• Use the format switcher to try different views</li>
+                  <div className="text-sm text-blue-100">
+                    <p className="font-bold mb-2 text-base">💡 Interactive Tips</p>
+                    <ul className="space-y-1.5 text-blue-200/90">
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                        Drag to pan around the visualization
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                        Scroll or pinch to zoom in/out
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                        Hover over elements to see details
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                        Use the format switcher to try different views
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -388,45 +476,69 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        {/* Features Section */}
+        {/* Features Section - Only show when no visualization */}
         {!result && !loading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="grid md:grid-cols-2 gap-6 mt-8 md:mt-12"
+            className="grid md:grid-cols-2 gap-6 mt-12"
           >
-            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 hover:border-blue-500/50 transition-all">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">🕸️</span>
+            <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 hover:border-blue-500/50 transition-all group">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <span className="text-3xl">🕸️</span>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Network Graphs</h3>
-              <p className="text-gray-400 mb-3">
+              <h3 className="text-2xl font-bold text-white mb-3">Network Graphs</h3>
+              <p className="text-gray-400 mb-4 leading-relaxed">
                 Visualize concepts, relationships, dependencies, and knowledge structures with
                 interactive network graphs.
               </p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>✓ Interactive nodes with animations</li>
-                <li>✓ Pan, zoom, and drag functionality</li>
-                <li>✓ Color-coded by category</li>
-                <li>✓ Circular layout algorithm</li>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
+                  Interactive nodes with smooth animations
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
+                  Pan, zoom, and drag functionality
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
+                  Color-coded by category
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
+                  Circular layout algorithm
+                </li>
               </ul>
             </div>
 
-            <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 hover:border-purple-500/50 transition-all">
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <span className="text-2xl">🧠</span>
+            <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 hover:border-purple-500/50 transition-all group">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <span className="text-3xl">🧠</span>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Mind Maps</h3>
-              <p className="text-gray-400 mb-3">
+              <h3 className="text-2xl font-bold text-white mb-3">Mind Maps</h3>
+              <p className="text-gray-400 mb-4 leading-relaxed">
                 Organize ideas, brainstorm concepts, and create hierarchical structures with
                 beautiful mind maps.
               </p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>✓ Hierarchical tree structure</li>
-                <li>✓ Expand/collapse branches</li>
-                <li>✓ Depth-based color coding</li>
-                <li>✓ Smooth animations</li>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li className="flex items-center gap-2">
+                  <span className="text-purple-400">✓</span>
+                  Hierarchical tree structure
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-purple-400">✓</span>
+                  Expand/collapse branches
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-purple-400">✓</span>
+                  Depth-based color coding
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-purple-400">✓</span>
+                  Smooth animations
+                </li>
               </ul>
             </div>
           </motion.div>
