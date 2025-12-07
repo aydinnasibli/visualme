@@ -14,9 +14,8 @@ import {
   BackgroundVariant,
   Handle,
   Position,
-  ReactFlowInstance,
 } from '@xyflow/react';
-import { toPng, toSvg } from '@xyflow/react';
+import html2canvas from 'html2canvas';
 import type { NetworkGraphData } from '@/lib/types/visualization';
 import '@xyflow/react/dist/style.css';
 
@@ -25,8 +24,8 @@ interface NetworkGraphProps {
 }
 
 export interface NetworkGraphHandle {
-  exportPNG: () => Promise<void>;
-  exportSVG: () => Promise<void>;
+  exportPNG: (scale?: number) => Promise<void>;
+  getContainer: () => HTMLDivElement | null;
 }
 
 // Obsidian-style custom node component
@@ -187,38 +186,24 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(({ data }
 
   // Expose export methods via ref
   useImperativeHandle(ref, () => ({
-    exportPNG: async () => {
+    exportPNG: async (scale = 2) => {
       if (!reactFlowWrapper.current) {
         throw new Error('ReactFlow wrapper not found');
       }
 
-      const dataUrl = await toPng(reactFlowWrapper.current, {
+      const canvas = await html2canvas(reactFlowWrapper.current, {
         backgroundColor: '#0a0a0f',
-        width: 1920,
-        height: 1080,
+        scale: scale,
+        logging: false,
+        useCORS: true,
       });
 
       const link = document.createElement('a');
       link.download = `network-graph-${Date.now()}.png`;
-      link.href = dataUrl;
+      link.href = canvas.toDataURL('image/png');
       link.click();
     },
-    exportSVG: async () => {
-      if (!reactFlowWrapper.current) {
-        throw new Error('ReactFlow wrapper not found');
-      }
-
-      const dataUrl = await toSvg(reactFlowWrapper.current, {
-        backgroundColor: '#0a0a0f',
-        width: 1920,
-        height: 1080,
-      });
-
-      const link = document.createElement('a');
-      link.download = `network-graph-${Date.now()}.svg`;
-      link.href = dataUrl;
-      link.click();
-    },
+    getContainer: () => reactFlowWrapper.current,
   }), []);
 
   return (

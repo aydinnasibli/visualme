@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
 import { useAuth } from '@clerk/nextjs';
@@ -148,15 +149,15 @@ export default function Home() {
     }
   };
 
-  // Export Format 2: SVG Vector
+  // Export Format 2: SVG Vector (only for MindMap)
   const handleExportSVG = async () => {
     if (!result) return;
     setExporting(true);
     setShowExportMenu(false);
 
     try {
-      if (result.type === 'network_graph' && networkGraphRef.current) {
-        await networkGraphRef.current.exportSVG();
+      if (result.type === 'network_graph') {
+        setError('SVG export is only available for Mind Maps. Use PNG for Network Graphs.');
       } else if (result.type === 'mind_map' && mindMapRef.current) {
         await mindMapRef.current.exportSVG();
       }
@@ -186,14 +187,19 @@ export default function Home() {
 
       // Export visualization as image and add to PDF
       if (result.type === 'network_graph' && networkGraphRef.current) {
-        // For NetworkGraph, we'll need to convert to data URL first
-        const tempCanvas = document.createElement('canvas');
-        const ctx = tempCanvas.getContext('2d');
-        if (ctx) {
-          pdf.addImage(tempCanvas.toDataURL('image/png'), 'PNG', 40, 100, 1840, 900);
+        const container = networkGraphRef.current.getContainer();
+        if (container) {
+          const canvas = await html2canvas(container, {
+            backgroundColor: '#0a0a0f',
+            scale: 2,
+            logging: false,
+          });
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 40, 100, 1840, 900);
         }
       } else if (result.type === 'mind_map' && mindMapRef.current) {
-        // Similar for MindMap
+        // For MindMap, create image from SVG
+        setError('PDF export for Mind Maps coming soon!');
+        return;
       }
 
       pdf.save(`visualization-${Date.now()}.pdf`);
