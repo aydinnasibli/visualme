@@ -29,10 +29,6 @@ const UserUsageSchema = new Schema<UserUsage>(
   }
 );
 
-// Index for efficient lookups
-UserUsageSchema.index({ userId: 1 });
-UserUsageSchema.index({ tier: 1 });
-
 const UserUsageModel: Model<UserUsage> =
   mongoose.models.UserUsage || mongoose.model<UserUsage>('UserUsage', UserUsageSchema);
 
