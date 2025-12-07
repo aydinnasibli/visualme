@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import { motion } from 'framer-motion';
@@ -9,9 +9,71 @@ interface MindMapProps {
   markdown: string;
 }
 
-export default function MindMapVisualization({ markdown }: MindMapProps) {
+export interface MindMapHandle {
+  exportPNG: (scale?: number) => Promise<void>;
+  exportSVG: () => Promise<void>;
+  getMarkdown: () => string;
+}
+
+const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(({ markdown }, ref) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Expose export methods via ref
+  useImperativeHandle(ref, () => ({
+    exportPNG: async (scale = 2) => {
+      if (!svgRef.current) {
+        throw new Error('SVG element not found');
+      }
+
+      const svgElement = svgRef.current;
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgElement);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context not available');
+
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        ctx.scale(scale, scale);
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const link = document.createElement('a');
+          link.download = `mind-map-${Date.now()}.png`;
+          link.href = URL.createObjectURL(blob);
+          link.click();
+          URL.revokeObjectURL(url);
+        });
+      };
+      img.src = url;
+    },
+    exportSVG: async () => {
+      if (!svgRef.current) {
+        throw new Error('SVG element not found');
+      }
+
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgRef.current);
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+
+      const link = document.createElement('a');
+      link.download = `mind-map-${Date.now()}.svg`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+    },
+    getMarkdown: () => markdown,
+  }), [markdown]);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -97,6 +159,7 @@ export default function MindMapVisualization({ markdown }: MindMapProps) {
 
   return (
     <motion.div
+      ref={containerRef}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
@@ -111,4 +174,8 @@ export default function MindMapVisualization({ markdown }: MindMapProps) {
       />
     </motion.div>
   );
-}
+});
+
+MindMapVisualization.displayName = 'MindMapVisualization';
+
+export default MindMapVisualization;

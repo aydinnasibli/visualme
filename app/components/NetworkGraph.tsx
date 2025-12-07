@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, memo, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   ReactFlow,
   Node,
@@ -12,8 +12,11 @@ import {
   useEdgesState,
   MarkerType,
   BackgroundVariant,
+  Handle,
+  Position,
+  ReactFlowInstance,
 } from '@xyflow/react';
-import { motion } from 'framer-motion';
+import { toPng, toSvg } from '@xyflow/react';
 import type { NetworkGraphData } from '@/lib/types/visualization';
 import '@xyflow/react/dist/style.css';
 
@@ -21,71 +24,122 @@ interface NetworkGraphProps {
   data: NetworkGraphData;
 }
 
-// Custom node component with enhanced animations and styling
-const AnimatedNode = ({ data }: { data: any }) => {
-  const categoryColors: Record<string, string> = {
-    default: 'from-blue-500 to-purple-600',
-    primary: 'from-blue-500 to-cyan-500',
-    secondary: 'from-purple-500 to-pink-500',
-    tertiary: 'from-green-500 to-emerald-500',
-    quaternary: 'from-orange-500 to-red-500',
-  };
-
-  const gradientClass = categoryColors[data.category || 'default'] || categoryColors.default;
-
-  return (
-    <motion.div
-      initial={{ scale: 0, opacity: 0, rotateY: -180 }}
-      animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-      transition={{
-        duration: 0.5,
-        type: 'spring',
-        stiffness: 200,
-        delay: 0.1
-      }}
-      whileHover={{ scale: 1.05 }}
-      className={`px-5 py-3 rounded-xl bg-gradient-to-br ${gradientClass} text-white shadow-xl border-2 border-white/30 backdrop-blur-sm min-w-[120px] max-w-[250px]`}
-    >
-      <div className="font-bold text-sm mb-1">{data.label}</div>
-      {data.description && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          transition={{ delay: 0.3 }}
-          className="text-xs opacity-90 leading-tight"
-        >
-          {data.description}
-        </motion.div>
-      )}
-    </motion.div>
-  );
-};
-
-const nodeTypes = {
-  animated: AnimatedNode,
-};
-
-// Helper function for better circular layout
-function circularLayout(nodes: any[], centerX: number, centerY: number, radius: number) {
-  return nodes.map((node, index) => {
-    const angle = (index * 2 * Math.PI) / nodes.length;
-    return {
-      ...node,
-      position: {
-        x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius,
-      },
-    };
-  });
+export interface NetworkGraphHandle {
+  exportPNG: () => Promise<void>;
+  exportSVG: () => Promise<void>;
 }
 
-export default function NetworkGraph({ data }: NetworkGraphProps) {
-  // Convert our data to React Flow format with better layout
+// Obsidian-style custom node component
+const ObsidianNode = memo(({ data }: { data: any }) => {
+  const categoryColors: Record<string, { bg: string; border: string; text: string }> = {
+    default: { bg: 'bg-gray-800', border: 'border-blue-500', text: 'text-blue-100' },
+    primary: { bg: 'bg-blue-900/50', border: 'border-blue-400', text: 'text-blue-50' },
+    secondary: { bg: 'bg-purple-900/50', border: 'border-purple-400', text: 'text-purple-50' },
+    tertiary: { bg: 'bg-green-900/50', border: 'border-green-400', text: 'text-green-50' },
+    quaternary: { bg: 'bg-orange-900/50', border: 'border-orange-400', text: 'text-orange-50' },
+  };
+
+  const colors = categoryColors[data.category || 'default'] || categoryColors.default;
+
+  return (
+    <div className={`group relative`}>
+      <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-blue-400" />
+      <div
+        className={`
+          ${colors.bg} ${colors.border} ${colors.text}
+          border-2 rounded-lg px-4 py-3 min-w-[140px] max-w-[240px]
+          shadow-lg backdrop-blur-sm
+          transition-all duration-200
+          hover:shadow-xl hover:shadow-blue-500/20 hover:scale-105
+          hover:border-blue-400
+        `}
+      >
+        <div className="font-semibold text-sm mb-1 leading-tight">{data.label}</div>
+        {data.description && (
+          <div className="text-xs opacity-75 leading-snug mt-1">
+            {data.description}
+          </div>
+        )}
+      </div>
+      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-blue-400" />
+    </div>
+  );
+});
+
+ObsidianNode.displayName = 'ObsidianNode';
+
+const nodeTypes = {
+  obsidian: ObsidianNode,
+};
+
+// Force-directed layout simulation (simplified)
+function calculateLayout(nodes: any[], edges: any[]) {
+  const width = 1000;
+  const height = 700;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // If only one node, place it in center
+  if (nodes.length === 1) {
+    return nodes.map(node => ({
+      ...node,
+      position: { x: centerX, y: centerY }
+    }));
+  }
+
+  // Build adjacency list for connections
+  const connections = new Map<string, Set<string>>();
+  nodes.forEach(n => connections.set(n.id, new Set()));
+  edges.forEach(e => {
+    connections.get(e.source)?.add(e.target);
+    connections.get(e.target)?.add(e.source);
+  });
+
+  // Find central node (most connections)
+  let centralNode = nodes[0];
+  let maxConnections = 0;
+  nodes.forEach(node => {
+    const count = connections.get(node.id)?.size || 0;
+    if (count > maxConnections) {
+      maxConnections = count;
+      centralNode = node;
+    }
+  });
+
+  // Place central node in center
+  const positioned = new Map();
+  positioned.set(centralNode.id, { x: centerX, y: centerY });
+
+  // Place connected nodes in circles around center
+  const radius = 250;
+  let angle = 0;
+  const angleStep = (2 * Math.PI) / Math.max(nodes.length - 1, 1);
+
+  nodes.forEach(node => {
+    if (node.id !== centralNode.id) {
+      positioned.set(node.id, {
+        x: centerX + Math.cos(angle) * radius,
+        y: centerY + Math.sin(angle) * radius,
+      });
+      angle += angleStep;
+    }
+  });
+
+  return nodes.map(node => ({
+    ...node,
+    position: positioned.get(node.id) || { x: centerX, y: centerY },
+  }));
+}
+
+const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(({ data }, ref) => {
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
+  // Convert data to React Flow format
   const initialNodes: Node[] = useMemo(() => {
-    const baseNodes = data.nodes.map((node, index) => ({
+    const baseNodes = data.nodes.map((node) => ({
       id: node.id,
-      type: 'animated',
-      position: { x: 0, y: 0 }, // Will be set by layout
+      type: 'obsidian',
+      position: { x: 0, y: 0 },
       data: {
         label: node.label,
         description: node.description,
@@ -93,50 +147,84 @@ export default function NetworkGraph({ data }: NetworkGraphProps) {
       },
     }));
 
-    // Apply circular layout
-    return circularLayout(baseNodes, 500, 350, 280);
-  }, [data.nodes]);
+    return calculateLayout(baseNodes, data.edges);
+  }, [data.nodes, data.edges]);
 
   const initialEdges: Edge[] = useMemo(() => {
-    return data.edges.map((edge) => ({
-      id: edge.id,
+    return data.edges.map((edge, index) => ({
+      id: edge.id || `edge-${index}`,
       source: edge.source,
       target: edge.target,
       label: edge.label,
+      type: 'smoothstep',
       animated: true,
+      style: {
+        stroke: '#60a5fa',
+        strokeWidth: 2,
+      },
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color: '#60a5fa',
         width: 20,
         height: 20,
       },
-      style: {
-        stroke: '#60a5fa',
-        strokeWidth: 2.5,
-      },
       labelStyle: {
         fill: '#e5e7eb',
-        fontSize: 12,
-        fontWeight: 600,
+        fontSize: 11,
+        fontWeight: 500,
       },
       labelBgStyle: {
         fill: '#1f2937',
-        fillOpacity: 0.9,
+        fillOpacity: 0.85,
       },
-      labelBgPadding: [8, 4] as [number, number],
-      labelBgBorderRadius: 4,
+      labelBgPadding: [6, 3] as [number, number],
+      labelBgBorderRadius: 3,
     }));
   }, [data.edges]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  // Expose export methods via ref
+  useImperativeHandle(ref, () => ({
+    exportPNG: async () => {
+      if (!reactFlowWrapper.current) {
+        throw new Error('ReactFlow wrapper not found');
+      }
+
+      const dataUrl = await toPng(reactFlowWrapper.current, {
+        backgroundColor: '#0a0a0f',
+        width: 1920,
+        height: 1080,
+      });
+
+      const link = document.createElement('a');
+      link.download = `network-graph-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    },
+    exportSVG: async () => {
+      if (!reactFlowWrapper.current) {
+        throw new Error('ReactFlow wrapper not found');
+      }
+
+      const dataUrl = await toSvg(reactFlowWrapper.current, {
+        backgroundColor: '#0a0a0f',
+        width: 1920,
+        height: 1080,
+      });
+
+      const link = document.createElement('a');
+      link.download = `network-graph-${Date.now()}.svg`;
+      link.href = dataUrl;
+      link.click();
+    },
+  }), []);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
-      className="w-full h-[650px] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl overflow-hidden border-2 border-gray-700 shadow-2xl"
+    <div
+      ref={reactFlowWrapper}
+      className="w-full h-[700px] bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 rounded-xl overflow-hidden border border-gray-800 shadow-2xl"
     >
       <ReactFlow
         nodes={nodes}
@@ -145,40 +233,46 @@ export default function NetworkGraph({ data }: NetworkGraphProps) {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
-        attributionPosition="bottom-left"
-        minZoom={0.1}
+        fitViewOptions={{ padding: 0.2, minZoom: 0.5, maxZoom: 1.5 }}
+        minZoom={0.3}
         maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        defaultEdgeOptions={{
+          animated: true,
+          style: { stroke: '#60a5fa', strokeWidth: 2 },
+        }}
+        proOptions={{ hideAttribution: true }}
       >
         <Background
-          color="#4b5563"
-          gap={20}
-          size={1.5}
+          color="#374151"
+          gap={16}
+          size={1}
           variant={BackgroundVariant.Dots}
         />
         <Controls
-          className="bg-gray-800/90 border-gray-600 rounded-lg shadow-lg"
+          className="!bg-gray-800/90 !border-gray-700 !rounded-lg !shadow-lg"
           showInteractive={false}
         />
         <MiniMap
-          className="bg-gray-800/90 border-2 border-gray-600 rounded-lg shadow-lg"
+          className="!bg-gray-800/90 !border-2 !border-gray-700 !rounded-lg !shadow-lg"
           nodeColor={(node) => {
             const category = (node.data?.category as string) || 'default';
             const colors: Record<string, string> = {
               default: '#3b82f6',
-              primary: '#06b6d4',
+              primary: '#60a5fa',
               secondary: '#a855f7',
               tertiary: '#10b981',
               quaternary: '#f97316',
             };
             return colors[category] || colors.default;
           }}
-          maskColor="rgba(0, 0, 0, 0.7)"
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
+          maskColor="rgba(0, 0, 0, 0.6)"
+          nodeStrokeWidth={2}
         />
       </ReactFlow>
-    </motion.div>
+    </div>
   );
-}
+});
+
+NetworkGraph.displayName = 'NetworkGraph';
+
+export default NetworkGraph;

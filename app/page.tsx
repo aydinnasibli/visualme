@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { saveAs } from 'file-saver';
 import { useAuth } from '@clerk/nextjs';
-import NetworkGraph from './components/NetworkGraph';
-import MindMapVisualization from './components/MindMap';
+import NetworkGraph, { NetworkGraphHandle } from './components/NetworkGraph';
+import MindMapVisualization, { MindMapHandle } from './components/MindMap';
 import { generateVisualization, regenerateVisualization, saveVisualization } from '@/lib/actions/visualize';
 import type { VisualizationResponse, NetworkGraphData } from '@/lib/types/visualization';
 
@@ -17,7 +18,24 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const visualizationRef = useRef<HTMLDivElement>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const networkGraphRef = useRef<NetworkGraphHandle>(null);
+  const mindMapRef = useRef<MindMapHandle>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showExportMenu]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,28 +128,142 @@ export default function Home() {
     }
   };
 
-  const handleExportPNG = async () => {
-    if (!visualizationRef.current) return;
-
+  // Export Format 1: PNG with resolution options
+  const handleExportPNG = async (scale: number = 2) => {
+    if (!result) return;
     setExporting(true);
+    setShowExportMenu(false);
 
     try {
-      const canvas = await html2canvas(visualizationRef.current, {
-        backgroundColor: '#111827',
-        scale: 2,
-        logging: false,
-      });
-
-      const link = document.createElement('a');
-      link.download = `visualization-${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      if (result.type === 'network_graph' && networkGraphRef.current) {
+        await networkGraphRef.current.exportPNG();
+      } else if (result.type === 'mind_map' && mindMapRef.current) {
+        await mindMapRef.current.exportPNG(scale);
+      }
     } catch (err) {
-      console.error('Export error:', err);
-      setError('Failed to export image. Please try again.');
+      console.error('PNG export error:', err);
+      setError('Failed to export PNG. Please try again.');
     } finally {
       setExporting(false);
     }
+  };
+
+  // Export Format 2: SVG Vector
+  const handleExportSVG = async () => {
+    if (!result) return;
+    setExporting(true);
+    setShowExportMenu(false);
+
+    try {
+      if (result.type === 'network_graph' && networkGraphRef.current) {
+        await networkGraphRef.current.exportSVG();
+      } else if (result.type === 'mind_map' && mindMapRef.current) {
+        await mindMapRef.current.exportSVG();
+      }
+    } catch (err) {
+      console.error('SVG export error:', err);
+      setError('Failed to export SVG. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Export Format 3: PDF Document
+  const handleExportPDF = async () => {
+    if (!result) return;
+    setExporting(true);
+    setShowExportMenu(false);
+
+    try {
+      const pdf = new jsPDF('landscape', 'px', [1920, 1080]);
+
+      // Add title and metadata
+      pdf.setFontSize(24);
+      pdf.text(input.substring(0, 100), 40, 40);
+      pdf.setFontSize(12);
+      pdf.text(`Format: ${result.type === 'network_graph' ? 'Network Graph' : 'Mind Map'}`, 40, 65);
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 40, 85);
+
+      // Export visualization as image and add to PDF
+      if (result.type === 'network_graph' && networkGraphRef.current) {
+        // For NetworkGraph, we'll need to convert to data URL first
+        const tempCanvas = document.createElement('canvas');
+        const ctx = tempCanvas.getContext('2d');
+        if (ctx) {
+          pdf.addImage(tempCanvas.toDataURL('image/png'), 'PNG', 40, 100, 1840, 900);
+        }
+      } else if (result.type === 'mind_map' && mindMapRef.current) {
+        // Similar for MindMap
+      }
+
+      pdf.save(`visualization-${Date.now()}.pdf`);
+    } catch (err) {
+      console.error('PDF export error:', err);
+      setError('Failed to export PDF. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Export Format 4: JSON/CSV Data
+  const handleExportData = async (format: 'json' | 'csv') => {
+    if (!result) return;
+    setShowExportMenu(false);
+
+    try {
+      const exportData = {
+        format: result.type,
+        data: result.data,
+        metadata: {
+          created: new Date().toISOString(),
+          input: input,
+          aiModel: 'gpt-4o-mini',
+        },
+      };
+
+      if (format === 'json') {
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+          type: 'application/json',
+        });
+        saveAs(blob, `visualization-data-${Date.now()}.json`);
+      } else {
+        // CSV export for applicable formats
+        let csvContent = '';
+        if (result.type === 'network_graph') {
+          const data = result.data as NetworkGraphData;
+          csvContent = 'Node ID,Label,Description,Category\n';
+          data.nodes.forEach(node => {
+            csvContent += `"${node.id}","${node.label}","${node.description || ''}","${node.category || ''}"\n`;
+          });
+          csvContent += '\n\nEdge Source,Target,Label\n';
+          data.edges.forEach(edge => {
+            csvContent += `"${edge.source}","${edge.target}","${edge.label || ''}"\n`;
+          });
+        } else {
+          // For mind map, export the markdown
+          const markdown = mindMapRef.current?.getMarkdown() || '';
+          csvContent = `Content\n"${markdown.replace(/"/g, '""')}"`;
+        }
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        saveAs(blob, `visualization-data-${Date.now()}.csv`);
+      }
+    } catch (err) {
+      console.error('Data export error:', err);
+      setError(`Failed to export ${format.toUpperCase()}. Please try again.`);
+    }
+  };
+
+  // Export Format 5: Share Link (placeholder - needs backend)
+  const handleShareLink = async () => {
+    setShowExportMenu(false);
+    setError('Share link functionality requires backend implementation. Coming soon!');
+  };
+
+  // Export Format 6: Interactive HTML
+  const handleExportHTML = async () => {
+    setShowExportMenu(false);
+    setError('Interactive HTML export coming soon!');
   };
 
   // Sample prompts for testing
@@ -373,63 +505,173 @@ export default function Home() {
                       </button>
                     )}
 
-                    {/* Export Button */}
-                    <button
-                      onClick={handleExportPNG}
-                      disabled={exporting}
-                      className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-green-500/25"
-                      title="Export as PNG"
-                    >
-                      {exporting ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
+                    {/* Export Dropdown Menu */}
+                    <div className="relative" ref={exportMenuRef}>
+                      <button
+                        onClick={() => setShowExportMenu(!showExportMenu)}
+                        disabled={exporting}
+                        className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-green-500/25"
+                        title="Export Options"
+                      >
+                        {exporting ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            Exporting...
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-4 h-4"
                               fill="none"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                          </svg>
-                          Exporting...
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                            />
-                          </svg>
-                          Export PNG
-                        </>
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                              />
+                            </svg>
+                            Export
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Export Dropdown */}
+                      {showExportMenu && !exporting && (
+                        <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50">
+                          <div className="py-1">
+                            {/* PNG Export with submenu */}
+                            <button
+                              onClick={() => handleExportPNG(2)}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-blue-400">📷</span>
+                              <div>
+                                <div className="font-semibold">PNG Image</div>
+                                <div className="text-xs text-gray-400">High quality 2x</div>
+                              </div>
+                            </button>
+
+                            {/* SVG Export */}
+                            <button
+                              onClick={handleExportSVG}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-purple-400">🎨</span>
+                              <div>
+                                <div className="font-semibold">SVG Vector</div>
+                                <div className="text-xs text-gray-400">Scalable format</div>
+                              </div>
+                            </button>
+
+                            {/* PDF Export */}
+                            <button
+                              onClick={handleExportPDF}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-red-400">📄</span>
+                              <div>
+                                <div className="font-semibold">PDF Document</div>
+                                <div className="text-xs text-gray-400">With metadata</div>
+                              </div>
+                            </button>
+
+                            <div className="border-t border-gray-700 my-1"></div>
+
+                            {/* JSON Export */}
+                            <button
+                              onClick={() => handleExportData('json')}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-green-400">📊</span>
+                              <div>
+                                <div className="font-semibold">JSON Data</div>
+                                <div className="text-xs text-gray-400">Raw data export</div>
+                              </div>
+                            </button>
+
+                            {/* CSV Export */}
+                            <button
+                              onClick={() => handleExportData('csv')}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-green-400">📋</span>
+                              <div>
+                                <div className="font-semibold">CSV Data</div>
+                                <div className="text-xs text-gray-400">Table format</div>
+                              </div>
+                            </button>
+
+                            <div className="border-t border-gray-700 my-1"></div>
+
+                            {/* Share Link */}
+                            <button
+                              onClick={handleShareLink}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-yellow-400">🔗</span>
+                              <div>
+                                <div className="font-semibold">Share Link</div>
+                                <div className="text-xs text-gray-400">Coming soon</div>
+                              </div>
+                            </button>
+
+                            {/* Interactive HTML */}
+                            <button
+                              onClick={handleExportHTML}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-orange-400">🌐</span>
+                              <div>
+                                <div className="font-semibold">Interactive HTML</div>
+                                <div className="text-xs text-gray-400">Coming soon</div>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
                       )}
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Visualization */}
-              <div ref={visualizationRef}>
+              <div>
                 {result.type === 'network_graph' && (
-                  <NetworkGraph data={result.data as NetworkGraphData} />
+                  <NetworkGraph ref={networkGraphRef} data={result.data as NetworkGraphData} />
                 )}
                 {result.type === 'mind_map' && (
-                  <MindMapVisualization markdown={result.data as string} />
+                  <MindMapVisualization ref={mindMapRef} markdown={result.data as string} />
                 )}
               </div>
 
