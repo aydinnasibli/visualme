@@ -1,25 +1,75 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { saveAs } from 'file-saver';
-import { useAuth } from '@clerk/nextjs';
-import NetworkGraph, { NetworkGraphHandle } from './components/NetworkGraph';
-import MindMapVisualization, { MindMapHandle } from './components/MindMap';
-import { generateVisualization, regenerateVisualization, saveVisualization } from '@/lib/actions/visualize';
-import type { VisualizationResponse, NetworkGraphData } from '@/lib/types/visualization';
+import React, { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic"; // STEP 1: Import dynamic
+import { motion, AnimatePresence } from "framer-motion";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { saveAs } from "file-saver";
+import { useAuth } from "@clerk/nextjs";
+
+// STEP 2: Remove the static import
+// import NetworkGraph, { NetworkGraphHandle } from './components/NetworkGraph';
+
+// Import ONLY the types we need for TypeScript
+import { NetworkGraphHandle } from "./components/NetworkGraph";
+import MindMapVisualization, { MindMapHandle } from "./components/MindMap";
+import {
+  generateVisualization,
+  regenerateVisualization,
+  saveVisualization,
+} from "@/lib/actions/visualize";
+import type {
+  VisualizationResponse,
+  NetworkGraphData,
+} from "@/lib/types/visualization";
+
+// STEP 3: Create the Dynamic Component
+// This tells Next.js: "Only load this chunk of code in the browser, never on the server."
+const DynamicNetworkGraph = dynamic(() => import("./components/NetworkGraph"), {
+  ssr: false, // Critical: Disables server-side rendering for this component
+  loading: () => (
+    // Optional: A loading skeleton that matches the graph's dimensions
+    <div className="w-full h-[800px] bg-gray-900/50 rounded-2xl flex items-center justify-center border border-gray-800 animate-pulse">
+      <div className="flex flex-col items-center gap-3">
+        <svg
+          className="w-10 h-10 text-gray-600 animate-spin"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+        <span className="text-gray-500 font-medium text-sm">
+          Initializing Graph Engine...
+        </span>
+      </div>
+    </div>
+  ),
+});
 
 export default function Home() {
   const { isSignedIn } = useAuth();
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VisualizationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Refs remain the same
   const networkGraphRef = useRef<NetworkGraphHandle>(null);
   const mindMapRef = useRef<MindMapHandle>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -27,14 +77,18 @@ export default function Home() {
   // Close export menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(event.target as Node)
+      ) {
         setShowExportMenu(false);
       }
     };
 
     if (showExportMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showExportMenu]);
 
@@ -42,7 +96,7 @@ export default function Home() {
     e.preventDefault();
 
     if (!input.trim()) {
-      setError('Please enter some text to visualize');
+      setError("Please enter some text to visualize");
       return;
     }
 
@@ -54,14 +108,14 @@ export default function Home() {
       const data = await generateVisualization(input.trim());
 
       if (!data.success) {
-        setError(data.error || 'Failed to generate visualization');
+        setError(data.error || "Failed to generate visualization");
         return;
       }
 
       setResult(data);
     } catch (err) {
-      setError('An error occurred. Please try again.');
-      console.error('Error:', err);
+      setError("An error occurred. Please try again.");
+      console.error("Error:", err);
     } finally {
       setLoading(false);
     }
@@ -69,7 +123,7 @@ export default function Home() {
 
   const handleSave = async () => {
     if (!result || !isSignedIn) {
-      setError('Please sign in to save visualizations');
+      setError("Please sign in to save visualizations");
       return;
     }
 
@@ -80,33 +134,39 @@ export default function Home() {
       const title = input.substring(0, 100);
       const metadata = {
         generatedAt: new Date(),
-        aiModel: 'gpt-4o-mini',
+        aiModel: "gpt-4o-mini",
         originalInput: input,
       };
-      const saveResult = await saveVisualization(title, result.type, result.data, metadata);
+      const saveResult = await saveVisualization(
+        title,
+        result.type,
+        result.data,
+        metadata
+      );
 
       if (!saveResult.success) {
-        setError(saveResult.error || 'Failed to save visualization');
+        setError(saveResult.error || "Failed to save visualization");
         return;
       }
 
-      // Show success message (you can add a toast notification here)
-      alert('Visualization saved successfully!');
+      alert("Visualization saved successfully!");
     } catch (err) {
-      setError('Failed to save visualization');
-      console.error('Save error:', err);
+      setError("Failed to save visualization");
+      console.error("Save error:", err);
     } finally {
       setSaving(false);
     }
   };
 
   const handleClear = () => {
-    setInput('');
+    setInput("");
     setResult(null);
     setError(null);
   };
 
-  const handleFormatSwitch = async (newFormat: 'network_graph' | 'mind_map') => {
+  const handleFormatSwitch = async (
+    newFormat: "network_graph" | "mind_map"
+  ) => {
     if (!input || !result) return;
 
     setLoading(true);
@@ -116,14 +176,14 @@ export default function Home() {
       const data = await regenerateVisualization(input.trim(), newFormat);
 
       if (!data.success) {
-        setError(data.error || 'Failed to regenerate visualization');
+        setError(data.error || "Failed to regenerate visualization");
         return;
       }
 
       setResult(data);
     } catch (err) {
-      setError('An error occurred while switching format.');
-      console.error('Error:', err);
+      setError("An error occurred while switching format.");
+      console.error("Error:", err);
     } finally {
       setLoading(false);
     }
@@ -136,14 +196,14 @@ export default function Home() {
     setShowExportMenu(false);
 
     try {
-      if (result.type === 'network_graph' && networkGraphRef.current) {
+      if (result.type === "network_graph" && networkGraphRef.current) {
         await networkGraphRef.current.exportPNG();
-      } else if (result.type === 'mind_map' && mindMapRef.current) {
+      } else if (result.type === "mind_map" && mindMapRef.current) {
         await mindMapRef.current.exportPNG(scale);
       }
     } catch (err) {
-      console.error('PNG export error:', err);
-      setError('Failed to export PNG. Please try again.');
+      console.error("PNG export error:", err);
+      setError("Failed to export PNG. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -156,14 +216,16 @@ export default function Home() {
     setShowExportMenu(false);
 
     try {
-      if (result.type === 'network_graph') {
-        setError('SVG export is only available for Mind Maps. Use PNG for Network Graphs.');
-      } else if (result.type === 'mind_map' && mindMapRef.current) {
+      if (result.type === "network_graph") {
+        setError(
+          "SVG export is only available for Mind Maps. Use PNG for Network Graphs."
+        );
+      } else if (result.type === "mind_map" && mindMapRef.current) {
         await mindMapRef.current.exportSVG();
       }
     } catch (err) {
-      console.error('SVG export error:', err);
-      setError('Failed to export SVG. Please try again.');
+      console.error("SVG export error:", err);
+      setError("Failed to export SVG. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -176,43 +238,56 @@ export default function Home() {
     setShowExportMenu(false);
 
     try {
-      const pdf = new jsPDF('landscape', 'px', [1920, 1080]);
+      const pdf = new jsPDF("landscape", "px", [1920, 1080]);
 
       // Add title and metadata
       pdf.setFontSize(24);
       pdf.text(input.substring(0, 100), 40, 40);
       pdf.setFontSize(12);
-      pdf.text(`Format: ${result.type === 'network_graph' ? 'Network Graph' : 'Mind Map'}`, 40, 65);
+      pdf.text(
+        `Format: ${
+          result.type === "network_graph" ? "Network Graph" : "Mind Map"
+        }`,
+        40,
+        65
+      );
       pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 40, 85);
 
       // Export visualization as image and add to PDF
-      if (result.type === 'network_graph' && networkGraphRef.current) {
+      if (result.type === "network_graph" && networkGraphRef.current) {
         const container = networkGraphRef.current.getContainer();
         if (container) {
           const canvas = await html2canvas(container, {
-            backgroundColor: '#0a0a0f',
+            backgroundColor: "#0a0a0f",
             scale: 2,
             logging: false,
           });
-          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 40, 100, 1840, 900);
+          pdf.addImage(
+            canvas.toDataURL("image/png"),
+            "PNG",
+            40,
+            100,
+            1840,
+            900
+          );
         }
-      } else if (result.type === 'mind_map' && mindMapRef.current) {
+      } else if (result.type === "mind_map" && mindMapRef.current) {
         // For MindMap, create image from SVG
-        setError('PDF export for Mind Maps coming soon!');
+        setError("PDF export for Mind Maps coming soon!");
         return;
       }
 
       pdf.save(`visualization-${Date.now()}.pdf`);
     } catch (err) {
-      console.error('PDF export error:', err);
-      setError('Failed to export PDF. Please try again.');
+      console.error("PDF export error:", err);
+      setError("Failed to export PDF. Please try again.");
     } finally {
       setExporting(false);
     }
   };
 
   // Export Format 4: JSON/CSV Data
-  const handleExportData = async (format: 'json' | 'csv') => {
+  const handleExportData = async (format: "json" | "csv") => {
     if (!result) return;
     setShowExportMenu(false);
 
@@ -223,39 +298,43 @@ export default function Home() {
         metadata: {
           created: new Date().toISOString(),
           input: input,
-          aiModel: 'gpt-4o-mini',
+          aiModel: "gpt-4o-mini",
         },
       };
 
-      if (format === 'json') {
+      if (format === "json") {
         const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-          type: 'application/json',
+          type: "application/json",
         });
         saveAs(blob, `visualization-data-${Date.now()}.json`);
       } else {
         // CSV export for applicable formats
-        let csvContent = '';
-        if (result.type === 'network_graph') {
+        let csvContent = "";
+        if (result.type === "network_graph") {
           const data = result.data as NetworkGraphData;
-          csvContent = 'Node ID,Label,Description,Category\n';
-          data.nodes.forEach(node => {
-            csvContent += `"${node.id}","${node.label}","${node.description || ''}","${node.category || ''}"\n`;
+          csvContent = "Node ID,Label,Description,Category\n";
+          data.nodes.forEach((node) => {
+            csvContent += `"${node.id}","${node.label}","${
+              node.description || ""
+            }","${node.category || ""}"\n`;
           });
-          csvContent += '\n\nEdge Source,Target,Label\n';
-          data.edges.forEach(edge => {
-            csvContent += `"${edge.source}","${edge.target}","${edge.label || ''}"\n`;
+          csvContent += "\n\nEdge Source,Target,Label\n";
+          data.edges.forEach((edge) => {
+            csvContent += `"${edge.source}","${edge.target}","${
+              edge.label || ""
+            }"\n`;
           });
         } else {
           // For mind map, export the markdown
-          const markdown = mindMapRef.current?.getMarkdown() || '';
+          const markdown = mindMapRef.current?.getMarkdown() || "";
           csvContent = `Content\n"${markdown.replace(/"/g, '""')}"`;
         }
 
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const blob = new Blob([csvContent], { type: "text/csv" });
         saveAs(blob, `visualization-data-${Date.now()}.csv`);
       }
     } catch (err) {
-      console.error('Data export error:', err);
+      console.error("Data export error:", err);
       setError(`Failed to export ${format.toUpperCase()}. Please try again.`);
     }
   };
@@ -263,21 +342,22 @@ export default function Home() {
   // Export Format 5: Share Link (placeholder - needs backend)
   const handleShareLink = async () => {
     setShowExportMenu(false);
-    setError('Share link functionality requires backend implementation. Coming soon!');
+    setError(
+      "Share link functionality requires backend implementation. Coming soon!"
+    );
   };
 
   // Export Format 6: Interactive HTML
   const handleExportHTML = async () => {
     setShowExportMenu(false);
-    setError('Interactive HTML export coming soon!');
+    setError("Interactive HTML export coming soon!");
   };
 
-  // Sample prompts for testing
   const samplePrompts = [
-    'Explain machine learning and its main branches',
-    'Show me the structure of a modern web application',
-    'Visualize the process of photosynthesis',
-    'Create a knowledge map of project management methodologies',
+    "Explain machine learning and its main branches",
+    "Show me the structure of a modern web application",
+    "Visualize the process of photosynthesis",
+    "Create a knowledge map of project management methodologies",
   ];
 
   return (
@@ -309,7 +389,10 @@ export default function Home() {
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="input" className="block text-sm font-semibold text-gray-200 mb-3">
+              <label
+                htmlFor="input"
+                className="block text-sm font-semibold text-gray-200 mb-3"
+              >
                 What would you like to visualize?
               </label>
               <textarea
@@ -325,7 +408,9 @@ export default function Home() {
 
             {/* Sample Prompts */}
             <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-gray-400 self-center font-medium">Quick start:</span>
+              <span className="text-sm text-gray-400 self-center font-medium">
+                Quick start:
+              </span>
               {samplePrompts.map((prompt, index) => (
                 <button
                   key={index}
@@ -334,7 +419,9 @@ export default function Home() {
                   disabled={loading}
                   className="text-xs px-3 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-lg transition-all border border-gray-600/30 hover:border-gray-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {prompt.length > 40 ? prompt.substring(0, 40) + '...' : prompt}
+                  {prompt.length > 40
+                    ? prompt.substring(0, 40) + "..."
+                    : prompt}
                 </button>
               ))}
             </div>
@@ -367,7 +454,7 @@ export default function Home() {
                     Generating...
                   </span>
                 ) : (
-                  'Generate Visualization ✨'
+                  "Generate Visualization ✨"
                 )}
               </button>
 
@@ -432,14 +519,18 @@ export default function Home() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
                       <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 text-blue-300 rounded-lg text-sm font-bold">
-                        {result.type === 'network_graph' ? '🕸️ Network Graph' : '🧠 Mind Map'}
+                        {result.type === "network_graph"
+                          ? "🕸️ Network Graph"
+                          : "🧠 Mind Map"}
                       </span>
                       <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium">
                         <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                         Interactive
                       </span>
                     </div>
-                    <p className="text-gray-300 text-sm leading-relaxed">{result.reason}</p>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      {result.reason}
+                    </p>
                   </div>
 
                   {/* Action Buttons */}
@@ -447,24 +538,24 @@ export default function Home() {
                     {/* Format Switcher */}
                     <div className="flex gap-2 p-1.5 bg-gray-900/50 rounded-lg border border-gray-700/50">
                       <button
-                        onClick={() => handleFormatSwitch('network_graph')}
-                        disabled={result.type === 'network_graph' || loading}
+                        onClick={() => handleFormatSwitch("network_graph")}
+                        disabled={result.type === "network_graph" || loading}
                         className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
-                          result.type === 'network_graph'
-                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                          result.type === "network_graph"
+                            ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
+                            : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                         title="Switch to Network Graph"
                       >
                         🕸️ Network
                       </button>
                       <button
-                        onClick={() => handleFormatSwitch('mind_map')}
-                        disabled={result.type === 'mind_map' || loading}
+                        onClick={() => handleFormatSwitch("mind_map")}
+                        disabled={result.type === "mind_map" || loading}
                         className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
-                          result.type === 'mind_map'
-                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/25'
-                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                          result.type === "mind_map"
+                            ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
+                            : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                         title="Switch to Mind Map"
                       >
@@ -482,7 +573,10 @@ export default function Home() {
                       >
                         {saving ? (
                           <>
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                            <svg
+                              className="animate-spin h-4 w-4"
+                              viewBox="0 0 24 24"
+                            >
                               <circle
                                 className="opacity-25"
                                 cx="12"
@@ -502,8 +596,18 @@ export default function Home() {
                           </>
                         ) : (
                           <>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                              />
                             </svg>
                             Save
                           </>
@@ -521,7 +625,10 @@ export default function Home() {
                       >
                         {exporting ? (
                           <>
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                            <svg
+                              className="animate-spin h-4 w-4"
+                              viewBox="0 0 24 24"
+                            >
                               <circle
                                 className="opacity-25"
                                 cx="12"
@@ -584,7 +691,9 @@ export default function Home() {
                               <span className="text-blue-400">📷</span>
                               <div>
                                 <div className="font-semibold">PNG Image</div>
-                                <div className="text-xs text-gray-400">High quality 2x</div>
+                                <div className="text-xs text-gray-400">
+                                  High quality 2x
+                                </div>
                               </div>
                             </button>
 
@@ -596,7 +705,9 @@ export default function Home() {
                               <span className="text-purple-400">🎨</span>
                               <div>
                                 <div className="font-semibold">SVG Vector</div>
-                                <div className="text-xs text-gray-400">Scalable format</div>
+                                <div className="text-xs text-gray-400">
+                                  Scalable format
+                                </div>
                               </div>
                             </button>
 
@@ -607,8 +718,12 @@ export default function Home() {
                             >
                               <span className="text-red-400">📄</span>
                               <div>
-                                <div className="font-semibold">PDF Document</div>
-                                <div className="text-xs text-gray-400">With metadata</div>
+                                <div className="font-semibold">
+                                  PDF Document
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  With metadata
+                                </div>
                               </div>
                             </button>
 
@@ -616,25 +731,29 @@ export default function Home() {
 
                             {/* JSON Export */}
                             <button
-                              onClick={() => handleExportData('json')}
+                              onClick={() => handleExportData("json")}
                               className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
                             >
                               <span className="text-green-400">📊</span>
                               <div>
                                 <div className="font-semibold">JSON Data</div>
-                                <div className="text-xs text-gray-400">Raw data export</div>
+                                <div className="text-xs text-gray-400">
+                                  Raw data export
+                                </div>
                               </div>
                             </button>
 
                             {/* CSV Export */}
                             <button
-                              onClick={() => handleExportData('csv')}
+                              onClick={() => handleExportData("csv")}
                               className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
                             >
                               <span className="text-green-400">📋</span>
                               <div>
                                 <div className="font-semibold">CSV Data</div>
-                                <div className="text-xs text-gray-400">Table format</div>
+                                <div className="text-xs text-gray-400">
+                                  Table format
+                                </div>
                               </div>
                             </button>
 
@@ -648,7 +767,9 @@ export default function Home() {
                               <span className="text-yellow-400">🔗</span>
                               <div>
                                 <div className="font-semibold">Share Link</div>
-                                <div className="text-xs text-gray-400">Coming soon</div>
+                                <div className="text-xs text-gray-400">
+                                  Coming soon
+                                </div>
                               </div>
                             </button>
 
@@ -659,8 +780,12 @@ export default function Home() {
                             >
                               <span className="text-orange-400">🌐</span>
                               <div>
-                                <div className="font-semibold">Interactive HTML</div>
-                                <div className="text-xs text-gray-400">Coming soon</div>
+                                <div className="font-semibold">
+                                  Interactive HTML
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  Coming soon
+                                </div>
                               </div>
                             </button>
                           </div>
@@ -673,11 +798,18 @@ export default function Home() {
 
               {/* Visualization */}
               <div>
-                {result.type === 'network_graph' && (
-                  <NetworkGraph ref={networkGraphRef} data={result.data as NetworkGraphData} />
+                {result.type === "network_graph" && (
+                  // STEP 4: Use the Dynamic Component Here
+                  <DynamicNetworkGraph
+                    ref={networkGraphRef}
+                    data={result.data as NetworkGraphData}
+                  />
                 )}
-                {result.type === 'mind_map' && (
-                  <MindMapVisualization ref={mindMapRef} markdown={result.data as string} />
+                {result.type === "mind_map" && (
+                  <MindMapVisualization
+                    ref={mindMapRef}
+                    markdown={result.data as string}
+                  />
                 )}
               </div>
 
@@ -703,7 +835,9 @@ export default function Home() {
                     />
                   </svg>
                   <div className="text-sm text-blue-100">
-                    <p className="font-bold mb-2 text-base">💡 Interactive Tips</p>
+                    <p className="font-bold mb-2 text-base">
+                      💡 Interactive Tips
+                    </p>
                     <ul className="space-y-1.5 text-blue-200/90">
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
@@ -741,10 +875,12 @@ export default function Home() {
               <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <span className="text-3xl">🕸️</span>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Network Graphs</h3>
+              <h3 className="text-2xl font-bold text-white mb-3">
+                Network Graphs
+              </h3>
               <p className="text-gray-400 mb-4 leading-relaxed">
-                Visualize concepts, relationships, dependencies, and knowledge structures with
-                interactive network graphs.
+                Visualize concepts, relationships, dependencies, and knowledge
+                structures with interactive network graphs.
               </p>
               <ul className="space-y-2 text-sm text-gray-500">
                 <li className="flex items-center gap-2">
@@ -772,8 +908,8 @@ export default function Home() {
               </div>
               <h3 className="text-2xl font-bold text-white mb-3">Mind Maps</h3>
               <p className="text-gray-400 mb-4 leading-relaxed">
-                Organize ideas, brainstorm concepts, and create hierarchical structures with
-                beautiful mind maps.
+                Organize ideas, brainstorm concepts, and create hierarchical
+                structures with beautiful mind maps.
               </p>
               <ul className="space-y-2 text-sm text-gray-500">
                 <li className="flex items-center gap-2">
