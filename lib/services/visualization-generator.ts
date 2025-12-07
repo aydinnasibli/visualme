@@ -47,27 +47,46 @@ function getOpenAIClient() {
 // ============================================================================
 
 export async function generateNetworkGraph(userInput: string): Promise<NetworkGraphData> {
-  const systemPrompt = `You are an AI that converts text into network graph data.
+  const systemPrompt = `You are an expert knowledge graph generator. Convert the user's text into a detailed network graph.
 
-Create a network graph with nodes and edges representing concepts and their relationships.
+CRITICAL RULES:
+- Nodes: Generate 10-20 key concepts.
+- Descriptions: For EVERY node, write a RICH, 2-3 sentence description explaining *why* it is important. Avoid generic definitions.
+- Edges: Connect related concepts with clear relationship labels (e.g., "enables", "is composed of").
+- Categories: Group nodes into 3-5 logical categories (e.g., "Core Concepts", "Tools", "History").
 
-Rules:
-- Each node: id (unique), label (short name), description (optional), category (optional)
-- Each edge: id (unique), source (node id), target (node id), label (optional)
-- Create meaningful relationships
-- Use clear, concise labels
-- Maximum 20 nodes for clarity
-- Ensure all edge source/target IDs exist in nodes
-
-JSON format:
+JSON Format:
 {
-  "nodes": [{"id": "node1", "label": "Label", "description": "...", "category": "..."}],
-  "edges": [{"id": "edge1", "source": "node1", "target": "node2", "label": "..."}]
+  "nodes": [{"id": "n1", "label": "Concept", "description": "Detailed explanation...", "category": "Category"}],
+  "edges": [{"id": "e1", "source": "n1", "target": "n2", "label": "connection type"}]
 }`;
 
   return await callOpenAI<NetworkGraphData>(systemPrompt, userInput, 'gpt-4o-mini');
 }
+export async function expandNetworkNode(
+  nodeLabel: string, 
+  context: string,
+  existingNodes: string[]
+): Promise<NetworkGraphData> {
+  const systemPrompt = `You are a knowledge graph expander. The user wants to explore the concept "${nodeLabel}" deeper.
+  
+Context: The user is visualizing "${context}".
+Existing Nodes: ${existingNodes.join(', ')}.
 
+Task:
+1. Generate 3-5 NEW sub-concepts or related terms specifically for "${nodeLabel}".
+2. Do NOT generate nodes that are already in the "Existing Nodes" list.
+3. Create edges linking the original node ("${nodeLabel}") to these new nodes.
+4. Descriptions should be detailed (2-3 sentences).
+
+JSON Format:
+{
+  "nodes": [{"id": "new_id", "label": "New Concept", "description": "...", "category": "Deep Dive"}],
+  "edges": [{"id": "new_edge", "source": "${nodeLabel}", "target": "new_id", "label": "..."}]
+}`;
+
+  return await callOpenAI<NetworkGraphData>(systemPrompt, `Expand on ${nodeLabel}`, 'gpt-4o-mini');
+}
 export async function generateMindMap(userInput: string): Promise<string> {
   const systemPrompt = `You are an AI that converts text into mind map markdown format.
 

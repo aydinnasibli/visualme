@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
-import { generateVisualizationData } from '@/lib/services/visualization-generator';
+import { expandNetworkNode, generateVisualizationData } from '@/lib/services/visualization-generator';
 import { checkRateLimit, cacheGet, cacheSet } from '@/lib/database/redis';
 import { generateCacheKey, calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
@@ -139,7 +139,25 @@ export async function generateVisualization(
     };
   }
 }
+export async function expandNodeAction(
+  nodeLabel: string,
+  originalInput: string,
+  existingNodeIds: string[]
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
 
+    // Call the AI service to get new nodes
+    // Note: Ensure expandNetworkNode is exported from your service
+    const newData = await expandNetworkNode(nodeLabel, originalInput, existingNodeIds);
+    
+    return { success: true, data: newData };
+  } catch (error) {
+    console.error('Error expanding node:', error);
+    return { success: false, error: 'Failed to expand node' };
+  }
+}
 /**
  * Regenerate visualization with different format
  */
