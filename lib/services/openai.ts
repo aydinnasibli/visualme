@@ -93,21 +93,30 @@ If not visualizable, use format "none".`;
  * Generates network graph data from user input
  */
 export async function generateNetworkGraph(userInput: string): Promise<NetworkGraphData> {
-  const systemPrompt = `You are an AI that converts text into network graph data.
+  const systemPrompt = `You are an AI that converts text into rich, detailed network graph data for professional visualization.
 
-Create a network graph with nodes and edges representing concepts and their relationships.
+Create a comprehensive network graph with nodes and edges representing concepts and their relationships.
 
-Rules:
-- Each node should have: id (unique), label (short name), description (optional), category (optional)
-- Each edge should have: id (unique), source (node id), target (node id), label (optional)
-- Create meaningful relationships that help understand the concept
-- Use clear, concise labels
-- Maximum 15 nodes for clarity
+CRITICAL REQUIREMENTS:
+- Generate 8-20 nodes (aim for the higher end for complex topics)
+- EVERY node MUST have: id (unique), label (short, clear name), description (detailed explanation 1-2 sentences), category (assign one of: primary, secondary, tertiary, quaternary, or default)
+- Generate 15-30+ edges to create rich connectivity and show meaningful relationships
+- Each edge MUST have: id (unique), source (node id), target (node id), label (clear relationship description)
+- Create hierarchical structure with central/important nodes having more connections
+- Use diverse categories to create visual variety and groupings
+- Ensure the graph is well-connected - avoid isolated nodes
+- Make relationships bidirectional where appropriate to show interdependencies
+
+QUALITY STANDARDS:
+- Node labels: 2-5 words, highly specific and descriptive
+- Node descriptions: 10-30 words explaining significance, purpose, or key details
+- Edge labels: 2-4 words describing the exact type of relationship (e.g., "depends on", "influences", "contains", "requires")
+- Categories should group related concepts logically
 
 Respond in JSON format matching this structure:
 {
-  "nodes": [{"id": "node1", "label": "Label", "description": "...", "category": "..."}],
-  "edges": [{"id": "edge1", "source": "node1", "target": "node2", "label": "..."}]
+  "nodes": [{"id": "node1", "label": "Specific Label", "description": "Detailed explanation of this concept and its significance...", "category": "primary"}],
+  "edges": [{"id": "edge1", "source": "node1", "target": "node2", "label": "relationship type"}]
 }`;
 
   try {
@@ -141,25 +150,45 @@ Respond in JSON format matching this structure:
  * Generates mind map markdown from user input
  */
 export async function generateMindMap(userInput: string): Promise<string> {
-  const systemPrompt = `You are an AI that converts text into mind map markdown format.
+  const systemPrompt = `You are an AI that converts text into comprehensive, detailed mind map markdown format for professional visualization.
 
-Create a hierarchical mind map structure using markdown format.
+Create a rich, hierarchical mind map structure using markdown format that fully explores the topic.
 
-Rules:
-- Use markdown headers (# for main topic, ## for subtopics, ### for sub-subtopics, etc.)
-- Create a clear hierarchy that represents the information structure
-- Keep it organized and logical
-- Maximum 4 levels deep for clarity
+CRITICAL REQUIREMENTS:
+- Generate 4-6 levels of depth (use #, ##, ###, ####, #####, ######)
+- Create 25-50+ total nodes across all branches for comprehensive coverage
+- EVERY node should have detailed, informative text (not just single words)
+- Balance branches evenly - don't create one giant branch and tiny others
+- Each major subtopic (##) should have at least 3-6 child nodes
+- Include specific examples, details, and concrete information at deeper levels
 
-Example format:
-# Main Topic
-## Subtopic 1
-### Detail 1.1
-### Detail 1.2
-## Subtopic 2
-### Detail 2.1
+QUALITY STANDARDS:
+- Level 1 (#): Main topic - clear, comprehensive title
+- Level 2 (##): Major categories/themes - 2-5 words, descriptive
+- Level 3 (###): Subtopics - detailed phrases with specifics
+- Level 4 (####): Supporting details - complete information, 3-8 words
+- Level 5 (#####): Examples or specifics - concrete details
+- Level 6 (######): Deep details - highly specific information when needed
+- Use descriptive phrases, not just single words
+- Include numbers, examples, and specific information where relevant
 
-Respond with ONLY the markdown content, no additional text.`;
+Example format for RICH content:
+# Main Topic: Comprehensive Overview
+## Category 1: First Major Area
+### Subtopic 1.1: Specific Aspect
+#### Detail: Concrete information and examples
+##### Example: Specific real-world case
+#### Detail: Additional supporting information
+### Subtopic 1.2: Another Aspect
+#### Detail: More specific information
+## Category 2: Second Major Area
+### Subtopic 2.1: Important Element
+#### Detail: Comprehensive explanation
+### Subtopic 2.2: Related Concept
+#### Detail: Specific implementation
+##### Example: Practical application
+
+Respond with ONLY the markdown content, no additional text or explanations.`;
 
   try {
     const client = getOpenAIClient();

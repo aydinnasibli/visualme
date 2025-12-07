@@ -82,64 +82,84 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(({ markdown
     const transformer = new Transformer();
     const { root } = transformer.transform(markdown);
 
-    // Enhanced color scheme based on depth
+    // Enhanced color scheme with better contrast - Obsidian inspired
     const colorScheme = [
-      '#3b82f6', // Blue
-      '#8b5cf6', // Purple
-      '#ec4899', // Pink
-      '#f59e0b', // Amber
-      '#10b981', // Emerald
-      '#06b6d4', // Cyan
+      '#60a5fa', // Bright Blue
+      '#a78bfa', // Bright Purple
+      '#f472b6', // Bright Pink
+      '#fbbf24', // Bright Amber
+      '#34d399', // Bright Emerald
+      '#22d3ee', // Bright Cyan
     ];
 
-    // Create or update markmap with enhanced options
+    // Create or update markmap with production-ready options
     if (!markmapRef.current) {
       markmapRef.current = Markmap.create(svgRef.current, {
         color: (node) => {
           return colorScheme[node.state.depth % colorScheme.length];
         },
-        duration: 600,
-        maxWidth: 350,
-        nodeMinHeight: 20,
-        spacingVertical: 12,
-        spacingHorizontal: 100,
-        paddingX: 12,
+        duration: 500,
+        maxWidth: 500, // Increased for better readability
+        nodeMinHeight: 30, // Increased for better spacing
+        spacingVertical: 20, // More vertical space
+        spacingHorizontal: 140, // More horizontal space
+        paddingX: 16, // More padding
         zoom: true,
         pan: true,
-        initialExpandLevel: 3,
+        initialExpandLevel: 4, // Show more levels by default
         autoFit: true,
         style: (id) => {
           return `
             #${id} {
-              font-family: system-ui, -apple-system, sans-serif;
-              font-size: 16px;
-              font-weight: 500;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+              font-size: 18px; /* Larger base font */
+              font-weight: 600; /* Bolder for readability */
+              line-height: 1.6;
             }
             #${id} a {
               color: inherit;
               text-decoration: none;
-              transition: all 0.2s;
+              transition: all 0.2s ease;
             }
             #${id} a:hover {
-              opacity: 0.8;
+              opacity: 0.9;
+              transform: scale(1.02);
             }
             #${id} .markmap-node > circle {
-              transition: all 0.3s;
-              stroke-width: 2px;
-              filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+              transition: all 0.3s ease;
+              stroke-width: 3px; /* Thicker circles */
+              filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
             }
             #${id} .markmap-node:hover > circle {
-              stroke-width: 3px;
-              filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+              stroke-width: 4px;
+              filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5));
+              transform: scale(1.15);
             }
             #${id} .markmap-link {
-              stroke-width: 2.5px;
-              opacity: 0.6;
-              transition: all 0.3s;
+              stroke-width: 3px; /* Thicker links */
+              opacity: 0.7;
+              transition: all 0.3s ease;
             }
             #${id} .markmap-link:hover {
               opacity: 1;
-              stroke-width: 3px;
+              stroke-width: 4px;
+            }
+            /* Depth-based font sizing for hierarchy */
+            #${id} g[data-depth="0"] text {
+              font-size: 24px; /* Root node - largest */
+              font-weight: 700;
+            }
+            #${id} g[data-depth="1"] text {
+              font-size: 20px; /* Level 1 */
+              font-weight: 600;
+            }
+            #${id} g[data-depth="2"] text {
+              font-size: 17px; /* Level 2 */
+              font-weight: 600;
+            }
+            #${id} g[data-depth="3"] text {
+              font-size: 15px; /* Level 3 */
+              font-weight: 500;
             }
           `;
         },
@@ -158,12 +178,9 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(({ markdown
   }, [markdown]);
 
   return (
-    <motion.div
+    <div
       ref={containerRef}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
-      className="w-full h-[650px] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl overflow-hidden border-2 border-gray-700 shadow-2xl"
+      className="w-full h-[750px] bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 rounded-2xl overflow-hidden border border-gray-700/50 shadow-2xl shadow-black/50 animate-in fade-in duration-500"
     >
       <svg
         ref={svgRef}
@@ -172,7 +189,7 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(({ markdown
           backgroundColor: 'transparent',
         }}
       />
-    </motion.div>
+    </div>
   );
 });
 
