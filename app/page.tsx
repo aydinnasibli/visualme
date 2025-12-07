@@ -59,7 +59,12 @@ export default function Home() {
 
     try {
       const title = input.substring(0, 100);
-      const saveResult = await saveVisualization(title, result.type, result.data);
+      const metadata = {
+        generatedAt: new Date(),
+        aiModel: 'gpt-4o-mini',
+        originalInput: input,
+      };
+      const saveResult = await saveVisualization(title, result.type, result.data, metadata);
 
       if (!saveResult.success) {
         setError(saveResult.error || 'Failed to save visualization');
