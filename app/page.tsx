@@ -886,7 +886,11 @@ export default function Home() {
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                        Hover over elements to see details
+                        Click any node to view detailed information
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                        Extendable nodes (double border) can be explored deeper with AI
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
@@ -926,15 +930,19 @@ export default function Home() {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="text-blue-400">✓</span>
+                  AI-powered node expansion for deeper exploration
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
+                  Detailed info panels with key insights
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
                   Pan, zoom, and drag functionality
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="text-blue-400">✓</span>
-                  Color-coded by category
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">✓</span>
-                  Circular layout algorithm
+                  Color-coded categories with glow effects
                 </li>
               </ul>
             </div>
