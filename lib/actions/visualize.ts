@@ -140,18 +140,18 @@ export async function generateVisualization(
   }
 }
 export async function expandNodeAction(
+  nodeId: string,
   nodeLabel: string,
   originalInput: string,
-  existingNodeIds: string[]
+  existingNodeLabels: string[]
 ) {
   try {
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
 
     // Call the AI service to get new nodes
-    // Note: Ensure expandNetworkNode is exported from your service
-    const newData = await expandNetworkNode(nodeLabel, originalInput, existingNodeIds);
-    
+    const newData = await expandNetworkNode(nodeLabel, nodeId, originalInput, existingNodeLabels);
+
     return { success: true, data: newData };
   } catch (error) {
     console.error('Error expanding node:', error);

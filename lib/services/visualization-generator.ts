@@ -47,45 +47,82 @@ function getOpenAIClient() {
 // ============================================================================
 
 export async function generateNetworkGraph(userInput: string): Promise<NetworkGraphData> {
-  const systemPrompt = `You are an expert knowledge graph generator. Convert the user's text into a detailed network graph.
+  const systemPrompt = `You are an expert knowledge graph generator. Convert the user's text into a detailed network graph with rich, explorable nodes.
 
 CRITICAL RULES:
 - Nodes: Generate 10-20 key concepts.
-- Descriptions: For EVERY node, write a RICH, 2-3 sentence description explaining *why* it is important. Avoid generic definitions.
-- Edges: Connect related concepts with clear relationship labels (e.g., "enables", "is composed of").
-- Categories: Group nodes into 3-5 logical categories (e.g., "Core Concepts", "Tools", "History").
+- Descriptions: For EVERY node, write a COMPREHENSIVE 3-5 sentence description that:
+  * Explains what the concept is in clear terms
+  * Describes why it's important or relevant
+  * Provides concrete examples or use cases
+  * Connects it to the broader context
+- Extendable: Mark nodes as "extendable: true" if they are complex topics that could be explored deeper with sub-concepts (e.g., broad concepts like "Machine Learning", "Cloud Computing", "Neural Networks"). Simple or specific concepts should be "extendable: false".
+- Metadata: For extendable nodes, add:
+  * keyPoints: Array of 3-5 key bullet points about the concept
+  * relatedConcepts: Array of 3-5 related topics that could be explored
+- Edges: Connect related concepts with clear relationship labels (e.g., "enables", "is composed of", "requires", "produces").
+- Categories: Group nodes into 3-5 logical categories (e.g., "Core Concepts", "Tools", "Applications").
 
 JSON Format:
 {
-  "nodes": [{"id": "n1", "label": "Concept", "description": "Detailed explanation...", "category": "Category"}],
+  "nodes": [
+    {
+      "id": "n1",
+      "label": "Concept Name",
+      "description": "Comprehensive 3-5 sentence description with context, importance, examples, and connections...",
+      "category": "Category Name",
+      "extendable": true,
+      "metadata": {
+        "keyPoints": ["Key insight 1", "Key insight 2", "Key insight 3"],
+        "relatedConcepts": ["Related Topic 1", "Related Topic 2", "Related Topic 3"]
+      }
+    }
+  ],
   "edges": [{"id": "e1", "source": "n1", "target": "n2", "label": "connection type"}]
 }`;
 
   return await callOpenAI<NetworkGraphData>(systemPrompt, userInput, 'gpt-4o-mini');
 }
 export async function expandNetworkNode(
-  nodeLabel: string, 
+  nodeLabel: string,
+  nodeId: string,
   context: string,
   existingNodes: string[]
 ): Promise<NetworkGraphData> {
   const systemPrompt = `You are a knowledge graph expander. The user wants to explore the concept "${nodeLabel}" deeper.
-  
+
 Context: The user is visualizing "${context}".
 Existing Nodes: ${existingNodes.join(', ')}.
 
 Task:
-1. Generate 3-5 NEW sub-concepts or related terms specifically for "${nodeLabel}".
+1. Generate 4-6 NEW sub-concepts, components, or related terms specifically for "${nodeLabel}".
 2. Do NOT generate nodes that are already in the "Existing Nodes" list.
-3. Create edges linking the original node ("${nodeLabel}") to these new nodes.
-4. Descriptions should be detailed (2-3 sentences).
+3. Create edges linking the original node ID ("${nodeId}") to these new node IDs.
+4. Each new node should have:
+   - A comprehensive 3-5 sentence description
+   - An "extendable" flag (true if it can be explored further)
+   - Metadata with keyPoints and relatedConcepts for extendable nodes
+5. Make descriptions detailed and informative, not generic.
 
 JSON Format:
 {
-  "nodes": [{"id": "new_id", "label": "New Concept", "description": "...", "category": "Deep Dive"}],
-  "edges": [{"id": "new_edge", "source": "${nodeLabel}", "target": "new_id", "label": "..."}]
+  "nodes": [
+    {
+      "id": "new_id_1",
+      "label": "New Concept",
+      "description": "Comprehensive 3-5 sentence description...",
+      "category": "Deep Dive: ${nodeLabel}",
+      "extendable": true,
+      "metadata": {
+        "keyPoints": ["Point 1", "Point 2", "Point 3"],
+        "relatedConcepts": ["Concept 1", "Concept 2"]
+      }
+    }
+  ],
+  "edges": [{"id": "new_edge_1", "source": "${nodeId}", "target": "new_id_1", "label": "consists of"}]
 }`;
 
-  return await callOpenAI<NetworkGraphData>(systemPrompt, `Expand on ${nodeLabel}`, 'gpt-4o-mini');
+  return await callOpenAI<NetworkGraphData>(systemPrompt, `Expand on ${nodeLabel} in the context of ${context}`, 'gpt-4o-mini');
 }
 export async function generateMindMap(userInput: string): Promise<string> {
   const systemPrompt = `You are an AI that converts text into mind map markdown format.
