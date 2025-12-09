@@ -49,6 +49,11 @@ export interface NetworkNode {
   category?: string;
   color?: string;
   size?: number;
+  extendable?: boolean; // Whether this node can be expanded with more related nodes
+  metadata?: {
+    keyPoints?: string[]; // Key points about this node
+    relatedConcepts?: string[]; // Related concepts for expansion
+  };
 }
 
 export interface NetworkEdge {

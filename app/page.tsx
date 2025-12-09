@@ -189,6 +189,42 @@ export default function Home() {
     }
   };
 
+  const handleExpandNode = async (nodeId: string, nodeLabel: string) => {
+    if (!result || result.type !== "network_graph") return;
+
+    const currentData = result.data as NetworkGraphData;
+    const existingLabels = currentData.nodes.map((n) => n.label);
+
+    try {
+      const { expandNodeAction } = await import("@/lib/actions/visualize");
+      const expandResult = await expandNodeAction(
+        nodeId,
+        nodeLabel,
+        input,
+        existingLabels
+      );
+
+      if (!expandResult.success || !expandResult.data) {
+        setError("Failed to expand node");
+        return;
+      }
+
+      // Merge new nodes and edges with existing data
+      const mergedData: NetworkGraphData = {
+        nodes: [...currentData.nodes, ...expandResult.data.nodes],
+        edges: [...currentData.edges, ...expandResult.data.edges],
+      };
+
+      setResult({
+        ...result,
+        data: mergedData,
+      });
+    } catch (err) {
+      setError("An error occurred while expanding the node.");
+      console.error("Error:", err);
+    }
+  };
+
   // Export Format 1: PNG with resolution options
   const handleExportPNG = async (scale: number = 2) => {
     if (!result) return;
@@ -803,6 +839,7 @@ export default function Home() {
                   <DynamicNetworkGraph
                     ref={networkGraphRef}
                     data={result.data as NetworkGraphData}
+                    onExpand={handleExpandNode}
                   />
                 )}
                 {result.type === "mind_map" && (
