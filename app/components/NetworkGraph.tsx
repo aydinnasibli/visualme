@@ -131,8 +131,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       // 3. Create Nodes with Initial Positions
       const nodes = data.nodes.map((node) => {
         const degree = degrees[node.id] || 0;
-        // Size: 20px base + degree factor (balanced sizing)
-        const size = Math.min(50, 20 + Math.sqrt(degree) * 6);
+        // Size: 16px base + degree factor (compact, modern sizing)
+        const size = Math.min(40, 16 + Math.sqrt(degree) * 4);
 
         // Seed positions to guarantee valid initial state
         const seedX = seededRandom(node.id + "x");
@@ -204,28 +204,29 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
             width: "data(size)",
             height: "data(size)",
             label: "data(label)",
+            shape: "ellipse",
 
-            // Glowing border
-            "border-width": 3,
+            // Softer border
+            "border-width": 2,
             "border-color": "data(color)",
-            "border-opacity": 1,
+            "border-opacity": 0.7,
 
-            // Typography
-            color: "#e4e4e7",
+            // Typography - smaller, softer
+            color: "#d4d4d8",
             "font-family": "Inter, ui-sans-serif, system-ui",
-            "font-size": 10,
-            "font-weight": 600,
+            "font-size": 9,
+            "font-weight": 500,
             "text-valign": "bottom",
-            "text-margin-y": 8,
+            "text-margin-y": 6,
             "text-wrap": "wrap",
-            "text-max-width": "90px",
-            "line-height": 1.3,
-            "min-zoomed-font-size": 6,
+            "text-max-width": "75px",
+            "line-height": 1.2,
+            "min-zoomed-font-size": 5,
 
-            // Subtle glow
-            "shadow-blur": 15,
+            // Subtle, soft glow
+            "shadow-blur": 10,
             "shadow-color": "data(color)",
-            "shadow-opacity": 0.5,
+            "shadow-opacity": 0.3,
 
             "transition-property":
               "background-color, border-width, border-color, opacity, shadow-opacity",
@@ -235,18 +236,18 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
         {
           selector: "edge",
           style: {
-            width: 2,
+            width: 1.5,
             "line-color": "#27272a",
             "curve-style": "bezier",
             "target-arrow-shape": "triangle",
             "target-arrow-color": "#3f3f46",
-            "arrow-scale": 0.8,
-            opacity: 0.4,
+            "arrow-scale": 0.6,
+            opacity: 0.3,
             label: "data(label)",
-            "font-size": 9,
+            "font-size": 8,
             color: "#71717a",
             "text-background-color": "#09090b",
-            "text-background-opacity": 0.8,
+            "text-background-opacity": 0.7,
             "text-background-padding": "2px",
             "text-background-shape": "roundrectangle",
           } as any,
@@ -266,37 +267,39 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
             opacity: 1,
             "z-index": 9999,
             "background-color": "data(color)",
-            "background-opacity": 0.15,
-            "border-width": 4,
+            "background-opacity": 0.12,
+            "border-width": 2.5,
+            "border-opacity": 0.9,
             "text-background-color": "#000000",
-            "text-background-opacity": 0.9,
-            "text-background-padding": "4px",
+            "text-background-opacity": 0.85,
+            "text-background-padding": "3px",
             "text-background-shape": "roundrectangle",
             color: "#ffffff",
-            "font-weight": 700,
-            "shadow-blur": 25,
+            "font-weight": 600,
+            "shadow-blur": 15,
             "shadow-color": "data(color)",
-            "shadow-opacity": 0.8,
+            "shadow-opacity": 0.5,
           } as any,
         },
         {
           selector: "edge.highlighted",
           style: {
-            opacity: 1,
-            width: 3,
+            opacity: 0.8,
+            width: 2,
             "line-color": "data(color)",
             "target-arrow-color": "data(color)",
             "z-index": 9998,
-            "shadow-blur": 10,
+            "shadow-blur": 8,
             "shadow-color": "data(color)",
-            "shadow-opacity": 0.6,
+            "shadow-opacity": 0.4,
           } as any,
         },
         {
           selector: "node[extendable = true]",
           style: {
-            "border-style": "double",
-            "border-width": 4,
+            "border-style": "dashed",
+            "border-width": 2,
+            "border-opacity": 0.5,
           } as any,
         },
       ],
@@ -485,7 +488,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
                 animate={{ opacity: 1, x: 0, y: 0 }}
                 exit={{ opacity: 0, x: -50, y: -20 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="absolute top-6 left-6 w-[360px] max-w-[calc(100%-3rem)] max-h-[calc(100%-3rem)] bg-zinc-900/95 border border-zinc-700/50 rounded-2xl shadow-2xl pointer-events-auto z-50 overflow-hidden backdrop-blur-xl"
+                className="absolute top-6 left-6 w-[340px] max-w-[calc(100%-3rem)] max-h-[calc(100%-3rem)] bg-zinc-900/95 border border-zinc-700/50 rounded-xl shadow-2xl pointer-events-auto z-50 overflow-hidden backdrop-blur-xl"
               >
                 {/* Header with gradient accent */}
                 <div
@@ -497,10 +500,10 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
                 </div>
 
-                <div className="p-5 overflow-y-auto max-h-[calc(100vh-120px)] custom-scrollbar">
+                <div className="p-4 overflow-y-auto max-h-[calc(100vh-120px)] custom-scrollbar">
                   {/* Title & Close */}
                   <div className="flex justify-between items-start mb-3">
-                    <h2 className="text-xl font-bold text-white leading-tight pr-4 flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-white leading-tight pr-4 flex items-center gap-2">
                       {selectedNode.label}
                       {selectedNode.extendable && (
                         <span
