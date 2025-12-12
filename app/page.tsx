@@ -22,6 +22,8 @@ import {
 import type {
   VisualizationResponse,
   NetworkGraphData,
+  MindMapData,
+  MindMapNode,
 } from "@/lib/types/visualization";
 
 // STEP 3: Create the Dynamic Component
@@ -225,6 +227,72 @@ export default function Home() {
     }
   };
 
+  const handleExpandMindMapNode = async (
+    nodeId: string,
+    nodeContent: string
+  ) => {
+    if (!result || result.type !== "mind_map") return;
+
+    const currentData = result.data as MindMapData;
+
+    // Collect all existing node IDs from the tree
+    const collectNodeIds = (node: MindMapNode): string[] => {
+      const ids = [node.id];
+      if (node.children) {
+        node.children.forEach((child) => {
+          ids.push(...collectNodeIds(child));
+        });
+      }
+      return ids;
+    };
+
+    const existingNodeIds = collectNodeIds(currentData.root);
+
+    try {
+      const { expandMindMapNodeAction } = await import(
+        "@/lib/actions/visualize"
+      );
+      const expandResult = await expandMindMapNodeAction(
+        nodeId,
+        nodeContent,
+        input,
+        existingNodeIds
+      );
+
+      if (!expandResult.success || !expandResult.data) {
+        setError("Failed to expand mind map node");
+        return;
+      }
+
+      // Find the parent node and add new children
+      const addChildrenToNode = (node: MindMapNode): MindMapNode => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            children: [...(node.children || []), ...expandResult.data],
+          };
+        }
+        if (node.children) {
+          return {
+            ...node,
+            children: node.children.map(addChildrenToNode),
+          };
+        }
+        return node;
+      };
+
+      const updatedRoot = addChildrenToNode(currentData.root);
+
+      setResult({
+        ...result,
+        data: { root: updatedRoot },
+      });
+    } catch (err) {
+      setError("An error occurred while expanding the mind map node.");
+      console.error("Error:", err);
+    }
+  };
+
   // Export Format 1: PNG with resolution options
   const handleExportPNG = async (scale: number = 2) => {
     if (!result) return;
@@ -361,9 +429,30 @@ export default function Home() {
             }"\n`;
           });
         } else {
-          // For mind map, export the markdown
-          const markdown = mindMapRef.current?.getMarkdown() || "";
-          csvContent = `Content\n"${markdown.replace(/"/g, '""')}"`;
+          // For mind map, export the tree structure
+          const mindMapData = mindMapRef.current?.getData();
+          if (mindMapData) {
+            const serializeNode = (
+              node: MindMapNode,
+              level: number = 0
+            ): string => {
+              const indent = "  ".repeat(level);
+              let text = `${indent}${node.content}\n`;
+              if (node.description) {
+                text += `${indent}  Description: ${node.description}\n`;
+              }
+              if (node.children) {
+                node.children.forEach((child) => {
+                  text += serializeNode(child, level + 1);
+                });
+              }
+              return text;
+            };
+            const textContent = serializeNode(mindMapData.root);
+            csvContent = `Content\n"${textContent.replace(/"/g, '""')}"`;
+          } else {
+            csvContent = `Content\n"No data available"`;
+          }
         }
 
         const blob = new Blob([csvContent], { type: "text/csv" });
@@ -845,7 +934,8 @@ export default function Home() {
                 {result.type === "mind_map" && (
                   <MindMapVisualization
                     ref={mindMapRef}
-                    markdown={result.data as string}
+                    data={result.data as MindMapData}
+                    onExpand={handleExpandMindMapNode}
                   />
                 )}
               </div>
@@ -886,7 +976,11 @@ export default function Home() {
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                        Hover over elements to see details
+                        Click any node to view detailed information
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                        Extendable nodes (double border) can be explored deeper with AI
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
@@ -926,15 +1020,19 @@ export default function Home() {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="text-blue-400">✓</span>
+                  AI-powered node expansion for deeper exploration
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
+                  Detailed info panels with key insights
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-blue-400">✓</span>
                   Pan, zoom, and drag functionality
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="text-blue-400">✓</span>
-                  Color-coded by category
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">✓</span>
-                  Circular layout algorithm
+                  Color-coded categories with glow effects
                 </li>
               </ul>
             </div>

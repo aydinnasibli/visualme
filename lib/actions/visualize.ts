@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
-import { expandNetworkNode, generateVisualizationData } from '@/lib/services/visualization-generator';
+import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
 import { checkRateLimit, cacheGet, cacheSet } from '@/lib/database/redis';
 import { generateCacheKey, calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
@@ -13,6 +13,7 @@ import type {
   VisualizationResponse,
   VisualizationData,
   VisualizationMetadata,
+  MindMapNode,
 } from '@/lib/types/visualization';
 
 const RATE_LIMITS = {
@@ -158,6 +159,30 @@ export async function expandNodeAction(
     return { success: false, error: 'Failed to expand node' };
   }
 }
+
+/**
+ * Expand a mind map node with AI-generated children
+ */
+export async function expandMindMapNodeAction(
+  nodeId: string,
+  nodeContent: string,
+  originalInput: string,
+  existingNodeIds: string[]
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    // Call the AI service to get new child nodes
+    const newNodes = await expandMindMapNode(nodeContent, nodeId, originalInput, existingNodeIds);
+
+    return { success: true, data: newNodes };
+  } catch (error) {
+    console.error('Error expanding mind map node:', error);
+    return { success: false, error: 'Failed to expand mind map node' };
+  }
+}
+
 /**
  * Regenerate visualization with different format
  */
