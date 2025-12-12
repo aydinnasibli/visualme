@@ -17,7 +17,6 @@ import {
   Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import dagre from "@dagrejs/dagre";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
@@ -156,7 +155,7 @@ const nodeTypes = {
   mindMapNode: CustomMindMapNode,
 };
 
-// Convert tree structure to nodes and edges with dagre layout
+// Radial Mind Map Layout - Traditional mind map style
 const getLayoutedElements = (
   root: MindMapNodeType | undefined,
   collapsedNodes: Set<string>
@@ -169,21 +168,21 @@ const getLayoutedElements = (
     return { nodes: [], edges: [] };
   }
 
-  const dagreGraph = new dagre.graphlib.Graph();
+  // Radial layout parameters
+  const centerX = 0;
+  const centerY = 0;
+  const levelRadius = 250; // Distance between levels
+  const minAngleSeparation = 20; // Minimum degrees between siblings
 
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({
-    rankdir: "LR", // Left to right - traditional mind map style
-    nodesep: 50,
-    ranksep: 120,
-    marginx: 40,
-    marginy: 40,
-  });
-
-  // Traverse tree and collect nodes/edges
+  // Calculate positions recursively with radial layout
   const traverse = (
     node: MindMapNodeType | undefined,
-    parentId: string | null = null
+    parentId: string | null = null,
+    parentX: number = centerX,
+    parentY: number = centerY,
+    startAngle: number = 0,
+    endAngle: number = 360,
+    depth: number = 0
   ) => {
     // Safety check
     if (!node || !node.id) return;
@@ -191,10 +190,22 @@ const getLayoutedElements = (
     const isCollapsed = collapsedNodes.has(node.id);
     const hasChildren = (node.children?.length || 0) > 0;
 
+    // Calculate position
+    let x = centerX;
+    let y = centerY;
+
+    if (depth > 0) {
+      // For non-root nodes, position radially around parent
+      const angle = (startAngle + endAngle) / 2;
+      const radius = depth * levelRadius;
+      x = centerX + radius * Math.cos((angle * Math.PI) / 180);
+      y = centerY + radius * Math.sin((angle * Math.PI) / 180);
+    }
+
     nodes.push({
       id: node.id,
       type: "mindMapNode",
-      position: { x: 0, y: 0 }, // Will be set by dagre
+      position: { x: x - 100, y: y - 30 }, // Center the node
       data: {
         label: node.content,
         description: node.description,
@@ -208,47 +219,66 @@ const getLayoutedElements = (
       },
     });
 
-    // Add node to dagre graph - larger sizes for better mind map appearance
-    const width = node.level === 0 ? 260 : 200;
-    const height = node.level === 0 ? 70 : 60;
-    dagreGraph.setNode(node.id, { width, height });
-
+    // Create edge to parent
     if (parentId) {
       const color = LEVEL_COLORS[(node.level || 0) % LEVEL_COLORS.length];
       edges.push({
         id: `${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: 'smoothstep',
+        type: 'default',
         style: {
           stroke: color,
-          strokeWidth: 3,
-          strokeOpacity: 0.6,
+          strokeWidth: Math.max(6 - depth, 2.5),
+          strokeOpacity: 0.8,
         },
         animated: false,
+        sourceHandle: null,
+        targetHandle: null,
       });
-      dagreGraph.setEdge(parentId, node.id);
     }
 
-    // Recursively process children if not collapsed
-    if (!isCollapsed && node.children) {
-      node.children.forEach((child) => traverse(child, node.id));
+    // Process children if not collapsed
+    if (!isCollapsed && node.children && node.children.length > 0) {
+      const childCount = node.children.length;
+
+      // For root node, distribute children in full circle
+      // For other nodes, use a sector based on their position
+      let childStartAngle = startAngle;
+      let childEndAngle = endAngle;
+
+      if (depth === 0) {
+        // Root node - distribute evenly in full circle
+        childStartAngle = 0;
+        childEndAngle = 360;
+      } else {
+        // Calculate sector size based on subtree size
+        const sectorSize = Math.min(120, (endAngle - startAngle) * 1.2);
+        const midAngle = (startAngle + endAngle) / 2;
+        childStartAngle = midAngle - sectorSize / 2;
+        childEndAngle = midAngle + sectorSize / 2;
+      }
+
+      const angleStep = (childEndAngle - childStartAngle) / childCount;
+
+      node.children.forEach((child, index) => {
+        const childStartAngleLocal = childStartAngle + index * angleStep;
+        const childEndAngleLocal = childStartAngle + (index + 1) * angleStep;
+
+        traverse(
+          child,
+          node.id,
+          x,
+          y,
+          childStartAngleLocal,
+          childEndAngleLocal,
+          depth + 1
+        );
+      });
     }
   };
 
   traverse(root);
-
-  // Apply dagre layout
-  dagre.layout(dagreGraph);
-
-  // Update node positions from dagre
-  nodes.forEach((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    node.position = {
-      x: nodeWithPosition.x - nodeWithPosition.width / 2,
-      y: nodeWithPosition.y - nodeWithPosition.height / 2,
-    };
-  });
 
   return { nodes, edges };
 };
@@ -392,15 +422,19 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
-            connectionLineType={ConnectionLineType.SmoothStep}
+            connectionLineType={ConnectionLineType.Bezier}
             fitView
-            fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}
-            minZoom={0.2}
+            fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+            minZoom={0.3}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
             nodesDraggable={false}
             nodesConnectable={false}
             elementsSelectable={false}
+            defaultEdgeOptions={{
+              type: 'default',
+              style: { strokeLinecap: 'round', strokeLinejoin: 'round' },
+            }}
           >
             {/* Expanding Indicator */}
             {isExpanding && (
@@ -571,12 +605,19 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
           :global(.react-flow__edge-path) {
             stroke-linecap: round;
             stroke-linejoin: round;
+            filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.3));
+          }
+          :global(.react-flow__edge) {
+            pointer-events: none;
           }
           :global(.react-flow__pane) {
             cursor: grab !important;
           }
           :global(.react-flow__pane:active) {
             cursor: grabbing !important;
+          }
+          :global(.react-flow__node) {
+            pointer-events: all;
           }
         `}</style>
       </div>
