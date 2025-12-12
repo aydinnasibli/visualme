@@ -163,11 +163,17 @@ const nodeTypes = {
 
 // Convert tree structure to nodes and edges with dagre layout
 const getLayoutedElements = (
-  root: MindMapNodeType,
+  root: MindMapNodeType | undefined,
   collapsedNodes: Set<string>
 ) => {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+
+  // Safety check - return empty if no root
+  if (!root || !root.id) {
+    return { nodes: [], edges: [] };
+  }
+
   const dagreGraph = new dagre.graphlib.Graph();
 
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -180,7 +186,10 @@ const getLayoutedElements = (
   });
 
   // Traverse tree and collect nodes/edges
-  const traverse = (node: MindMapNodeType, parentId: string | null = null) => {
+  const traverse = (node: MindMapNodeType | undefined, parentId: string | null = null) => {
+    // Safety check
+    if (!node || !node.id) return;
+
     const isCollapsed = collapsedNodes.has(node.id);
     const hasChildren = (node.children?.length || 0) > 0;
 
@@ -267,8 +276,11 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
 
     // Compute nodes and edges with layout
     const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
+      if (!data || !data.root) {
+        return { nodes: [], edges: [] };
+      }
       return getLayoutedElements(data.root, collapsedNodes);
-    }, [data.root, collapsedNodes]);
+    }, [data, collapsedNodes]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
