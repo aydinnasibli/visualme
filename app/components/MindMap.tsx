@@ -228,12 +228,18 @@ const getLayoutedElements = (
         id: `${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: ConnectionLineType.Bezier,
+        type: ConnectionLineType.SmoothStep,
         style: {
-          stroke: `${color}80`,
+          stroke: `${color}60`,
           strokeWidth: 2,
         },
         animated: false,
+        markerEnd: {
+          type: 'arrowclosed',
+          color: `${color}60`,
+          width: 15,
+          height: 15,
+        },
       });
       dagreGraph.setEdge(parentId, node.id);
     }
@@ -281,23 +287,6 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
       useState<CustomNodeData | null>(null);
     const [isExpanding, setIsExpanding] = useState(false);
 
-    // Compute nodes and edges with layout
-    const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
-      if (!data || !data.root) {
-        return { nodes: [], edges: [] };
-      }
-      return getLayoutedElements(data.root, collapsedNodes);
-    }, [data, collapsedNodes]);
-
-    const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
-
-    // Update nodes when layout changes
-    React.useEffect(() => {
-      setNodes(layoutedNodes);
-      setEdges(layoutedEdges);
-    }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
-
     // Toggle collapse/expand
     const handleToggleCollapse = useCallback((nodeId: string) => {
       setCollapsedNodes((prev) => {
@@ -330,20 +319,35 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
       setSelectedNodeData(data);
     }, []);
 
-    // Inject handlers into node data
+    // Compute nodes and edges with layout - WITH handlers already included
+    const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
+      if (!data || !data.root) {
+        return { nodes: [], edges: [] };
+      }
+      const result = getLayoutedElements(data.root, collapsedNodes);
+
+      // Inject handlers into nodes immediately
+      const nodesWithHandlers = result.nodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          onToggleCollapse: handleToggleCollapse,
+          onExpand: handleExpand,
+          onShowDetails: handleShowDetails,
+        },
+      }));
+
+      return { nodes: nodesWithHandlers, edges: result.edges };
+    }, [data, collapsedNodes, handleToggleCollapse, handleExpand, handleShowDetails]);
+
+    const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
+
+    // Update nodes when layout changes
     React.useEffect(() => {
-      setNodes((nds) =>
-        nds.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            onToggleCollapse: handleToggleCollapse,
-            onExpand: handleExpand,
-            onShowDetails: handleShowDetails,
-          },
-        }))
-      );
-    }, [handleToggleCollapse, handleExpand, handleShowDetails, setNodes]);
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
+    }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
 
     // Export functionality
     useImperativeHandle(
