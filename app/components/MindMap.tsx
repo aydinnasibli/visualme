@@ -19,7 +19,10 @@ import {
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
 import { motion, AnimatePresence } from "framer-motion";
-import { MindMapData, MindMapNode as MindMapNodeType } from "@/lib/types/visualization";
+import {
+  MindMapData,
+  MindMapNode as MindMapNodeType,
+} from "@/lib/types/visualization";
 import { ChevronDown, ChevronRight, Sparkles, X } from "lucide-react";
 
 interface MindMapProps {
@@ -178,7 +181,10 @@ const getLayoutedElements = (
   });
 
   // Traverse tree and collect nodes/edges
-  const traverse = (node: MindMapNodeType | undefined, parentId: string | null = null) => {
+  const traverse = (
+    node: MindMapNodeType | undefined,
+    parentId: string | null = null
+  ) => {
     // Safety check
     if (!node || !node.id) return;
 
@@ -360,7 +366,9 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
         {(!data || !data.root) && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-zinc-400 text-center">
-              <p className="text-lg font-semibold mb-2">No mind map data available</p>
+              <p className="text-lg font-semibold mb-2">
+                No mind map data available
+              </p>
               <p className="text-sm">Waiting for data to load...</p>
             </div>
           </div>
@@ -369,7 +377,9 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
         {data && data.root && nodes.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-zinc-400 text-center">
-              <p className="text-lg font-semibold mb-2">Processing mind map...</p>
+              <p className="text-lg font-semibold mb-2">
+                Processing mind map...
+              </p>
               <p className="text-sm">Generating layout...</p>
             </div>
           </div>
@@ -419,19 +429,13 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
                 className="rounded-2xl p-6 shadow-2xl border backdrop-blur-xl"
                 style={{
                   background: `linear-gradient(135deg, ${
-                    LEVEL_COLORS[
-                      selectedNodeData.level % LEVEL_COLORS.length
-                    ]
+                    LEVEL_COLORS[selectedNodeData.level % LEVEL_COLORS.length]
                   }15 0%, rgba(9, 9, 11, 0.95) 50%)`,
                   borderColor: `${
-                    LEVEL_COLORS[
-                      selectedNodeData.level % LEVEL_COLORS.length
-                    ]
+                    LEVEL_COLORS[selectedNodeData.level % LEVEL_COLORS.length]
                   }60`,
                   boxShadow: `0 0 30px ${
-                    LEVEL_COLORS[
-                      selectedNodeData.level % LEVEL_COLORS.length
-                    ]
+                    LEVEL_COLORS[selectedNodeData.level % LEVEL_COLORS.length]
                   }30, 0 10px 40px rgba(0,0,0,0.6)`,
                 }}
               >
@@ -523,39 +527,40 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
                   )}
 
                 {/* Expand Button */}
-                {selectedNodeData.extendable && !selectedNodeData.hasChildren && (
-                  <button
-                    onClick={async () => {
-                      await handleExpand(
-                        selectedNodeData.nodeId,
-                        selectedNodeData.label
-                      );
-                      setSelectedNodeData(null);
-                    }}
-                    disabled={isExpanding}
-                    className="mt-4 w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2"
-                    style={{
-                      background: `linear-gradient(135deg, ${
-                        LEVEL_COLORS[
-                          selectedNodeData.level % LEVEL_COLORS.length
-                        ]
-                      }80 0%, ${
-                        LEVEL_COLORS[
-                          selectedNodeData.level % LEVEL_COLORS.length
-                        ]
-                      }60 100%)`,
-                      color: "white",
-                      boxShadow: `0 4px 12px ${
-                        LEVEL_COLORS[
-                          selectedNodeData.level % LEVEL_COLORS.length
-                        ]
-                      }40`,
-                    }}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {isExpanding ? "Expanding..." : "Expand & Explore Deeper"}
-                  </button>
-                )}
+                {selectedNodeData.extendable &&
+                  !selectedNodeData.hasChildren && (
+                    <button
+                      onClick={async () => {
+                        await handleExpand(
+                          selectedNodeData.nodeId,
+                          selectedNodeData.label
+                        );
+                        setSelectedNodeData(null);
+                      }}
+                      disabled={isExpanding}
+                      className="mt-4 w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2"
+                      style={{
+                        background: `linear-gradient(135deg, ${
+                          LEVEL_COLORS[
+                            selectedNodeData.level % LEVEL_COLORS.length
+                          ]
+                        }80 0%, ${
+                          LEVEL_COLORS[
+                            selectedNodeData.level % LEVEL_COLORS.length
+                          ]
+                        }60 100%)`,
+                        color: "white",
+                        boxShadow: `0 4px 12px ${
+                          LEVEL_COLORS[
+                            selectedNodeData.level % LEVEL_COLORS.length
+                          ]
+                        }40`,
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {isExpanding ? "Expanding..." : "Expand & Explore Deeper"}
+                    </button>
+                  )}
               </div>
             </motion.div>
           )}
