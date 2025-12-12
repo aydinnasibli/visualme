@@ -70,35 +70,36 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
     <div
       className="relative group"
       style={{
-        minWidth: isRoot ? "200px" : "160px",
+        minWidth: isRoot ? "140px" : "110px",
+        maxWidth: isRoot ? "180px" : "140px",
       }}
     >
       {/* Node Container */}
       <div
-        className="relative px-4 py-3 rounded-xl shadow-lg transition-all duration-200 hover:shadow-2xl cursor-pointer"
+        className="relative px-3 py-2 rounded-lg shadow-md transition-all duration-200 hover:shadow-xl cursor-pointer"
         style={{
-          background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-          border: `2px solid ${color}80`,
-          boxShadow: `0 0 20px ${color}40, 0 4px 6px rgba(0,0,0,0.3)`,
+          background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`,
+          border: `1.5px solid ${color}60`,
+          boxShadow: `0 0 12px ${color}25, 0 2px 4px rgba(0,0,0,0.2)`,
         }}
         onClick={() => data.onShowDetails(data)}
       >
-        {/* Glow Effect */}
+        {/* Subtle Glow Effect */}
         <div
-          className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+          className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
           style={{
-            background: `radial-gradient(circle at center, ${color}30 0%, transparent 70%)`,
+            background: `radial-gradient(circle at center, ${color}20 0%, transparent 70%)`,
           }}
         />
 
         {/* Content */}
-        <div className="relative z-10 flex items-center justify-between gap-2">
+        <div className="relative z-10 flex items-center justify-between gap-1.5">
           <div className="flex-1 min-w-0">
             <p
-              className="font-semibold text-sm leading-tight text-white truncate"
+              className="font-semibold leading-snug text-white"
               style={{
-                fontSize: isRoot ? "16px" : "14px",
-                fontWeight: isRoot ? 700 : 600,
+                fontSize: isRoot ? "13px" : "11px",
+                fontWeight: isRoot ? 600 : 500,
               }}
             >
               {data.label}
@@ -106,7 +107,7 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
           </div>
 
           {/* Action Icons */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             {/* Collapse/Expand Toggle */}
             {data.hasChildren && (
               <button
@@ -114,13 +115,13 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
                   e.stopPropagation();
                   data.onToggleCollapse(data.nodeId);
                 }}
-                className="p-1 rounded hover:bg-white/10 transition-colors"
+                className="p-0.5 rounded hover:bg-white/10 transition-colors"
                 title={data.collapsed ? "Expand" : "Collapse"}
               >
                 {data.collapsed ? (
-                  <ChevronRight className="w-4 h-4 text-white/70" />
+                  <ChevronRight className="w-3 h-3 text-white/60" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-white/70" />
+                  <ChevronDown className="w-3 h-3 text-white/60" />
                 )}
               </button>
             )}
@@ -132,23 +133,23 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
                   e.stopPropagation();
                   await data.onExpand(data.nodeId, data.label);
                 }}
-                className="p-1 rounded hover:bg-white/10 transition-colors group/expand"
+                className="p-0.5 rounded hover:bg-white/10 transition-colors group/expand"
                 title="Expand with AI"
               >
-                <Sparkles className="w-4 h-4 text-yellow-400 group-hover/expand:text-yellow-300 transition-colors" />
+                <Sparkles className="w-3 h-3 text-yellow-400 group-hover/expand:text-yellow-300 transition-colors" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Extendable indicator */}
+        {/* Subtle extendable indicator */}
         {data.extendable && !data.hasChildren && (
           <div
-            className="absolute inset-0 rounded-xl pointer-events-none"
+            className="absolute inset-0 rounded-lg pointer-events-none"
             style={{
-              border: `2px dashed ${color}60`,
-              borderRadius: "12px",
-              transform: "scale(1.05)",
+              border: `1px dashed ${color}40`,
+              borderRadius: "8px",
+              transform: "scale(1.03)",
             }}
           />
         )}
@@ -179,10 +180,10 @@ const getLayoutedElements = (
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({
     rankdir: "TB", // Top to bottom
-    nodesep: 100,
-    ranksep: 120,
-    marginx: 50,
-    marginy: 50,
+    nodesep: 60,
+    ranksep: 80,
+    marginx: 30,
+    marginy: 30,
   });
 
   // Traverse tree and collect nodes/edges
@@ -356,19 +357,39 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
 
     return (
       <div className="relative w-full h-[750px] bg-zinc-950 rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          connectionLineType={ConnectionLineType.Bezier}
-          fitView
-          minZoom={0.2}
-          maxZoom={2}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-          proOptions={{ hideAttribution: true }}
-        >
+        {/* Debug info */}
+        {(!data || !data.root) && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-zinc-400 text-center">
+              <p className="text-lg font-semibold mb-2">No mind map data available</p>
+              <p className="text-sm">Waiting for data to load...</p>
+            </div>
+          </div>
+        )}
+
+        {data && data.root && nodes.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-zinc-400 text-center">
+              <p className="text-lg font-semibold mb-2">Processing mind map...</p>
+              <p className="text-sm">Generating layout...</p>
+            </div>
+          </div>
+        )}
+
+        {data && data.root && nodes.length > 0 && (
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            connectionLineType={ConnectionLineType.Bezier}
+            fitView
+            fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+            minZoom={0.1}
+            maxZoom={1.5}
+            proOptions={{ hideAttribution: true }}
+          >
           <Background color="#27272a" gap={16} />
           <Controls className="bg-zinc-900/80 border border-zinc-700 rounded-lg" />
           <MiniMap
@@ -390,7 +411,8 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
               </div>
             </Panel>
           )}
-        </ReactFlow>
+          </ReactFlow>
+        )}
 
         {/* Node Details Panel */}
         <AnimatePresence>
