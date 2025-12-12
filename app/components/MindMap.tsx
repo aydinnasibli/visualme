@@ -20,7 +20,7 @@ import {
   Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import dagre from "dagre";
+import dagre from "@dagrejs/dagre";
 import { motion, AnimatePresence } from "framer-motion";
 import { MindMapData, MindMapNode as MindMapNodeType } from "@/lib/types/visualization";
 import { ChevronDown, ChevronRight, Sparkles, X } from "lucide-react";
