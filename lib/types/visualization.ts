@@ -70,8 +70,21 @@ export interface NetworkGraphData {
 }
 
 export interface MindMapNode {
+  id: string;
   content: string;
+  description?: string;
   children?: MindMapNode[];
+  extendable?: boolean; // Whether this node can be expanded with AI
+  metadata?: {
+    keyPoints?: string[]; // Key points about this node
+    relatedConcepts?: string[]; // Related concepts for expansion
+  };
+  level?: number; // Depth level in the tree
+  color?: string; // Node color based on level/category
+}
+
+export interface MindMapData {
+  root: MindMapNode;
 }
 
 export interface TreeNode {
@@ -313,7 +326,7 @@ export interface SyntaxDiagramData {
 
 export type VisualizationData =
   | NetworkGraphData
-  | string // Mind map markdown
+  | MindMapData
   | TreeDiagramData
   | ForceDirectedGraphData
   | TimelineData

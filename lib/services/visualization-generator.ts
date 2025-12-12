@@ -9,6 +9,8 @@ import type {
   VisualizationType,
   VisualizationData,
   NetworkGraphData,
+  MindMapData,
+  MindMapNode,
   TreeDiagramData,
   ForceDirectedGraphData,
   TimelineData,
@@ -124,36 +126,119 @@ JSON Format:
 
   return await callOpenAI<NetworkGraphData>(systemPrompt, `Expand on ${nodeLabel} in the context of ${context}`, 'gpt-4o-mini');
 }
-export async function generateMindMap(userInput: string): Promise<string> {
-  const systemPrompt = `You are an AI that converts text into mind map markdown format.
+export async function generateMindMap(userInput: string): Promise<MindMapData> {
+  const systemPrompt = `You are an expert mind map generator. Convert the user's text into a hierarchical mind map structure with rich, explorable nodes.
 
-Create a hierarchical mind map structure using markdown.
+CRITICAL RULES:
+- Create a tree structure with a root node and 2-4 levels deep
+- Each node should have:
+  * id: unique identifier (e.g., "root", "n1", "n2")
+  * content: brief title/label (1-5 words)
+  * description: 2-3 sentence description explaining the concept
+  * children: array of child nodes (if applicable)
+  * extendable: true if the concept is broad enough to explore deeper (mark 50-70% of leaf nodes as extendable)
+  * metadata: for extendable nodes, include keyPoints (3-4 bullet points) and relatedConcepts (2-3 related topics)
+  * level: depth in tree (0 for root, 1 for first level children, etc.)
+- The root node should represent the main topic
+- Organize information hierarchically from general to specific
+- Keep content labels concise but descriptions comprehensive
 
-Rules:
-- Use markdown headers (# for main, ## for sub, ### for details)
-- Maximum 4 levels deep
-- Keep it organized and logical
+JSON Format:
+{
+  "root": {
+    "id": "root",
+    "content": "Main Topic",
+    "description": "Comprehensive description of the main topic...",
+    "level": 0,
+    "extendable": true,
+    "metadata": {
+      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
+      "relatedConcepts": ["Concept 1", "Concept 2"]
+    },
+    "children": [
+      {
+        "id": "n1",
+        "content": "Subtopic 1",
+        "description": "Description of subtopic 1...",
+        "level": 1,
+        "extendable": true,
+        "metadata": {
+          "keyPoints": ["Point 1", "Point 2"],
+          "relatedConcepts": ["Related 1"]
+        },
+        "children": [
+          {
+            "id": "n1.1",
+            "content": "Detail 1.1",
+            "description": "Description of detail...",
+            "level": 2,
+            "extendable": false
+          }
+        ]
+      }
+    ]
+  }
+}`;
 
-Example:
-# Main Topic
-## Subtopic 1
-### Detail 1.1
-### Detail 1.2
-## Subtopic 2
+  return await callOpenAI<MindMapData>(systemPrompt, userInput, 'gpt-4o-mini');
+}
 
-Respond with ONLY markdown, no additional text.`;
+export async function expandMindMapNode(
+  nodeId: string,
+  nodeContent: string,
+  context: string,
+  existingNodeIds: string[]
+): Promise<MindMapNode[]> {
+  const systemPrompt = `You are a mind map expander. The user wants to explore the concept "${nodeContent}" deeper by adding child nodes.
 
-  const client = getOpenAIClient();
-  const completion = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userInput },
-    ],
-    temperature: 0.7,
-  });
+Context: The user is visualizing "${context}".
+Existing Node IDs: ${existingNodeIds.join(', ')}.
+Parent Node ID: ${nodeId}
 
-  return completion.choices[0]?.message?.content?.trim() || '# Error\nFailed to generate mind map';
+Task:
+1. Generate 3-5 NEW child nodes that expand on "${nodeContent}".
+2. Do NOT generate nodes with IDs that are already in the "Existing Node IDs" list.
+3. Use ID format: "${nodeId}.1", "${nodeId}.2", "${nodeId}.3", etc.
+4. Each new node should have:
+   - id: unique identifier following the format above
+   - content: brief title (1-5 words)
+   - description: comprehensive 2-3 sentence description
+   - level: parent's level + 1
+   - extendable: true if it can be explored further (mark 50-70% as extendable)
+   - metadata: for extendable nodes, include keyPoints and relatedConcepts
+   - children: empty array or omit (these are new leaf nodes)
+5. Make descriptions detailed and informative, not generic.
+
+JSON Format - Return ONLY an array of nodes:
+[
+  {
+    "id": "${nodeId}.1",
+    "content": "Sub-concept 1",
+    "description": "Comprehensive 2-3 sentence description...",
+    "level": <parent_level + 1>,
+    "extendable": true,
+    "metadata": {
+      "keyPoints": ["Point 1", "Point 2", "Point 3"],
+      "relatedConcepts": ["Concept 1", "Concept 2"]
+    }
+  },
+  {
+    "id": "${nodeId}.2",
+    "content": "Sub-concept 2",
+    "description": "Comprehensive description...",
+    "level": <parent_level + 1>,
+    "extendable": false
+  }
+]`;
+
+  const result = await callOpenAI<{ nodes?: MindMapNode[] }>(
+    systemPrompt,
+    `Expand on "${nodeContent}" in the context of "${context}"`,
+    'gpt-4o-mini'
+  );
+
+  // Handle both { nodes: [...] } and direct array response
+  return Array.isArray(result) ? result : (result.nodes || []);
 }
 
 export async function generateTreeDiagram(userInput: string): Promise<TreeDiagramData> {
