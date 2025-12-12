@@ -92,7 +92,7 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
           className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
           style={{
             background: `radial-gradient(circle at center, ${color}30 0%, transparent 70%)`,
-            filter: 'blur(10px)',
+            filter: "blur(10px)",
           }}
         />
 
@@ -104,7 +104,7 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
               style={{
                 fontSize: isRoot ? "16px" : "13px",
                 fontWeight: isRoot ? 700 : 600,
-                textShadow: isRoot ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                textShadow: isRoot ? "0 1px 2px rgba(0,0,0,0.3)" : "none",
               }}
             >
               {data.label}
@@ -226,7 +226,11 @@ const getLayoutedElements = (
         id: `${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
+<<<<<<< Updated upstream
         type: 'default',
+=======
+        type: "smoothstep",
+>>>>>>> Stashed changes
         style: {
           stroke: color,
           strokeWidth: Math.max(6 - depth, 2.5),
@@ -354,7 +358,13 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
       }));
 
       return { nodes: nodesWithHandlers, edges: result.edges };
-    }, [data, collapsedNodes, handleToggleCollapse, handleExpand, handleShowDetails]);
+    }, [
+      data,
+      collapsedNodes,
+      handleToggleCollapse,
+      handleExpand,
+      handleShowDetails,
+    ]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
@@ -387,8 +397,9 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
         <div
           className="absolute inset-0 opacity-[0.02] pointer-events-none"
           style={{
-            backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-            backgroundSize: '40px 40px'
+            backgroundImage:
+              "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+            backgroundSize: "40px 40px",
           }}
         />
 
