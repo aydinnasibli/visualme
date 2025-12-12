@@ -42,8 +42,6 @@
     "react-cytoscapejs": "^2.0.0",
     "react-d3-tree": "^3.6.6",
     "react-dom": "19.2.0",
-    "react-force-graph": "^1.29.3",
-    "react-force-graph-2d": "^1.29.0",
     "recharts": "^3.5.1",
     "vis-timeline": "^8.4.0",
     "zod": "^4.1.13"

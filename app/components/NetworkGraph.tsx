@@ -131,8 +131,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       // 3. Create Nodes with Initial Positions
       const nodes = data.nodes.map((node) => {
         const degree = degrees[node.id] || 0;
-        // Size: 25px base + degree factor (larger nodes)
-        const size = Math.min(70, 25 + Math.sqrt(degree) * 10);
+        // Size: 20px base + degree factor (balanced sizing)
+        const size = Math.min(50, 20 + Math.sqrt(degree) * 6);
 
         // Seed positions to guarantee valid initial state
         const seedX = seededRandom(node.id + "x");
@@ -213,14 +213,14 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
             // Typography
             color: "#e4e4e7",
             "font-family": "Inter, ui-sans-serif, system-ui",
-            "font-size": 12,
+            "font-size": 10,
             "font-weight": 600,
             "text-valign": "bottom",
-            "text-margin-y": 10,
+            "text-margin-y": 8,
             "text-wrap": "wrap",
-            "text-max-width": "110px",
-            "line-height": 1.4,
-            "min-zoomed-font-size": 7,
+            "text-max-width": "90px",
+            "line-height": 1.3,
+            "min-zoomed-font-size": 6,
 
             // Subtle glow
             "shadow-blur": 15,
@@ -485,7 +485,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
                 animate={{ opacity: 1, x: 0, y: 0 }}
                 exit={{ opacity: 0, x: -50, y: -20 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="absolute top-6 left-6 w-[480px] max-w-[calc(100%-3rem)] max-h-[calc(100%-3rem)] bg-zinc-900/95 border border-zinc-700/50 rounded-2xl shadow-2xl pointer-events-auto z-50 overflow-hidden backdrop-blur-xl"
+                className="absolute top-6 left-6 w-[360px] max-w-[calc(100%-3rem)] max-h-[calc(100%-3rem)] bg-zinc-900/95 border border-zinc-700/50 rounded-2xl shadow-2xl pointer-events-auto z-50 overflow-hidden backdrop-blur-xl"
               >
                 {/* Header with gradient accent */}
                 <div
@@ -497,10 +497,10 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
                 </div>
 
-                <div className="p-6 overflow-y-auto max-h-[calc(100vh-120px)] custom-scrollbar">
+                <div className="p-5 overflow-y-auto max-h-[calc(100vh-120px)] custom-scrollbar">
                   {/* Title & Close */}
-                  <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-2xl font-bold text-white leading-tight pr-4 flex items-center gap-3">
+                  <div className="flex justify-between items-start mb-3">
+                    <h2 className="text-xl font-bold text-white leading-tight pr-4 flex items-center gap-2">
                       {selectedNode.label}
                       {selectedNode.extendable && (
                         <span
@@ -526,7 +526,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
                   </div>
 
                   {/* Badges */}
-                  <div className="flex flex-wrap items-center gap-2 mb-5">
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
                     <span
                       className="px-3 py-1.5 rounded-lg text-xs font-bold border"
                       style={{
@@ -544,8 +544,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
 
                   {/* Description */}
                   {selectedNode.description && (
-                    <div className="mb-6">
-                      <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <div className="mb-4">
+                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -559,8 +559,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
 
                   {/* Key Points */}
                   {selectedNode.keyPoints && selectedNode.keyPoints.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <div className="mb-4">
+                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -582,8 +582,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
 
                   {/* Related Concepts */}
                   {selectedNode.relatedConcepts && selectedNode.relatedConcepts.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <div className="mb-4">
+                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
@@ -607,7 +607,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
                     <button
                       onClick={handleExpand}
                       disabled={isExpanding}
-                      className="w-full py-3 px-4 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg relative overflow-hidden group"
+                      className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg relative overflow-hidden group"
                       style={{
                         backgroundColor: `${selectedNode.color}20`,
                         borderWidth: "2px",
