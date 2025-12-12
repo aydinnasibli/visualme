@@ -227,7 +227,11 @@ const getLayoutedElements = (
         source: parentId,
         target: node.id,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         type: 'default',
+=======
+        type: "smoothstep",
+>>>>>>> Stashed changes
 =======
         type: "smoothstep",
 >>>>>>> Stashed changes
