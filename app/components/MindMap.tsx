@@ -71,25 +71,25 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
     <div
       onClick={() => data.onShowDetails(data)}
       className="cursor-pointer group"
-      style={{ minWidth: isRoot ? "200px" : "150px" }}
+      style={{ minWidth: isRoot ? "180px" : "140px" }}
     >
       <div
-        className="px-4 py-3 rounded-xl shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
+        className="px-4 py-2.5 rounded-xl shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-2xl"
         style={{
           background: isRoot
             ? `linear-gradient(135deg, ${color}, ${color}dd)`
-            : `linear-gradient(135deg, ${color}20, ${color}10)`,
+            : `linear-gradient(135deg, ${color}25, ${color}15)`,
           border: `2px solid ${color}`,
-          boxShadow: `0 0 15px ${color}40`,
+          boxShadow: `0 0 20px ${color}50`,
         }}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p
-              className="font-bold text-white leading-snug break-words"
+              className="font-bold text-white leading-tight break-words text-center"
               style={{
-                fontSize: isRoot ? "15px" : "13px",
-                textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                fontSize: isRoot ? "16px" : "13px",
+                textShadow: "0 1px 3px rgba(0,0,0,0.4)",
               }}
             >
               {data.label}
@@ -103,7 +103,7 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
                   e.stopPropagation();
                   data.onToggleCollapse(data.nodeId);
                 }}
-                className="p-1 rounded hover:bg-white/20"
+                className="p-1 rounded hover:bg-white/25 transition"
               >
                 {data.collapsed ? (
                   <ChevronRight className="w-3.5 h-3.5 text-white" />
@@ -118,7 +118,7 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
                   e.stopPropagation();
                   await data.onExpand(data.nodeId, data.label);
                 }}
-                className="p-1 rounded hover:bg-yellow-400/20"
+                className="p-1 rounded hover:bg-yellow-400/25 transition"
               >
                 <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               </button>
@@ -134,7 +134,7 @@ const nodeTypes = {
   mindMapNode: MindMapNode,
 };
 
-// Create hierarchical mind map layout
+// Proper radial mind map layout - root centered, children in circles
 const createMindMapLayout = (
   root: MindMapNodeType | undefined,
   collapsedNodes: Set<string>
@@ -144,48 +144,52 @@ const createMindMapLayout = (
 
   if (!root || !root.id) return { nodes, edges };
 
-  const centerX = 0;
-  const centerY = 0;
-  const levelSpacing = 300;
-
-  // Count descendants for space allocation
-  const countDescendants = (node: MindMapNodeType): number => {
-    if (!node.children?.length || collapsedNodes.has(node.id)) return 1;
-    return node.children.reduce(
-      (sum, child) => sum + countDescendants(child),
-      0
-    );
-  };
+  const centerX = 400;
+  const centerY = 375;
+  const radiusPerLevel = 250; // Distance from center per level
 
   const buildTree = (
     node: MindMapNodeType,
     parentId: string | null,
-    startAngle: number,
-    endAngle: number,
-    depth: number
+    parentAngle: number,
+    level: number,
+    siblingIndex: number,
+    totalSiblings: number
   ) => {
     if (!node?.id) return;
 
     const isCollapsed = collapsedNodes.has(node.id);
     const hasChildren = (node.children?.length || 0) > 0;
 
-    // Calculate position
     let x = centerX;
     let y = centerY;
 
-    if (depth > 0) {
-      const midAngle = (startAngle + endAngle) / 2;
-      const angleRad = (midAngle * Math.PI) / 180;
-      const radius = depth * levelSpacing;
-      x = centerX + radius * Math.cos(angleRad);
-      y = centerY + radius * Math.sin(angleRad);
+    // Position nodes
+    if (level === 0) {
+      // Root at center
+      x = centerX;
+      y = centerY;
+    } else if (level === 1) {
+      // First level: arrange in circle around center
+      const angle = (siblingIndex / totalSiblings) * 2 * Math.PI;
+      x = centerX + radiusPerLevel * Math.cos(angle);
+      y = centerY + radiusPerLevel * Math.sin(angle);
+    } else {
+      // Deeper levels: arrange in arc around parent
+      const baseAngle = parentAngle;
+      const spreadAngle = Math.PI / 3; // 60 degrees spread
+      const startAngle = baseAngle - spreadAngle / 2;
+      const angle = startAngle + (siblingIndex / Math.max(totalSiblings - 1, 1)) * spreadAngle;
+      const radius = level * radiusPerLevel;
+      x = centerX + radius * Math.cos(angle);
+      y = centerY + radius * Math.sin(angle);
     }
 
     // Add node
     nodes.push({
       id: node.id,
       type: "mindMapNode",
-      position: { x: x - 100, y: y - 30 },
+      position: { x: x - 90, y: y - 25 },
       data: {
         label: node.content,
         description: node.description,
@@ -210,7 +214,7 @@ const createMindMapLayout = (
         type: "smoothstep",
         style: {
           stroke: color,
-          strokeWidth: Math.max(4 - depth * 0.3, 2),
+          strokeWidth: 3,
         },
         animated: false,
       });
@@ -218,40 +222,31 @@ const createMindMapLayout = (
 
     // Process children
     if (!isCollapsed && node.children?.length) {
-      const angleSpan = depth === 0 ? 360 : endAngle - startAngle;
-      const childDescendants = node.children.map(countDescendants);
-      const totalDescendants = childDescendants.reduce((a, b) => a + b, 0);
+      const childAngle = level === 0
+        ? 0
+        : Math.atan2(y - centerY, x - centerX);
 
-      let currentAngle = startAngle;
       node.children.forEach((child, i) => {
-        const proportion = childDescendants[i] / totalDescendants;
-        const allocatedAngle = angleSpan * proportion;
-
         buildTree(
           child,
           node.id,
-          currentAngle,
-          currentAngle + allocatedAngle,
-          depth + 1
+          childAngle,
+          level + 1,
+          i,
+          node.children!.length
         );
-
-        currentAngle += allocatedAngle;
       });
     }
   };
 
-  buildTree(root, null, 0, 360, 0);
+  buildTree(root, null, 0, 0, 0, 1);
   return { nodes, edges };
 };
 
 const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
   ({ data, onExpand }, ref) => {
-    const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(
-      new Set()
-    );
-    const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(
-      null
-    );
+    const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
+    const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(null);
     const [isExpanding, setIsExpanding] = useState(false);
 
     const handleToggleCollapse = useCallback((nodeId: string) => {
@@ -338,8 +333,8 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
             fitView
-            fitViewOptions={{ padding: 0.3, maxZoom: 1, minZoom: 0.4 }}
-            minZoom={0.1}
+            fitViewOptions={{ padding: 0.2 }}
+            minZoom={0.2}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
           >
@@ -381,9 +376,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                   background: `linear-gradient(135deg, ${
                     COLORS[selectedNodeData.level % COLORS.length]
                   }15, rgba(9,9,11,0.95))`,
-                  borderColor: `${
-                    COLORS[selectedNodeData.level % COLORS.length]
-                  }60`,
+                  borderColor: `${COLORS[selectedNodeData.level % COLORS.length]}60`,
                 }}
               >
                 <button
@@ -414,8 +407,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                           <span
                             className="w-1 h-1 rounded-full mt-2 flex-shrink-0"
                             style={{
-                              backgroundColor:
-                                COLORS[selectedNodeData.level % COLORS.length],
+                              backgroundColor: COLORS[selectedNodeData.level % COLORS.length],
                             }}
                           />
                           <span>{point}</span>
@@ -436,13 +428,9 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                           key={i}
                           className="px-2 py-1 rounded text-xs font-medium"
                           style={{
-                            backgroundColor: `${
-                              COLORS[selectedNodeData.level % COLORS.length]
-                            }20`,
+                            backgroundColor: `${COLORS[selectedNodeData.level % COLORS.length]}20`,
                             color: COLORS[selectedNodeData.level % COLORS.length],
-                            border: `1px solid ${
-                              COLORS[selectedNodeData.level % COLORS.length]
-                            }40`,
+                            border: `1px solid ${COLORS[selectedNodeData.level % COLORS.length]}40`,
                           }}
                         >
                           {concept}
@@ -455,10 +443,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                 {selectedNodeData.extendable && !selectedNodeData.hasChildren && (
                   <button
                     onClick={async () => {
-                      await handleExpand(
-                        selectedNodeData.nodeId,
-                        selectedNodeData.label
-                      );
+                      await handleExpand(selectedNodeData.nodeId, selectedNodeData.label);
                       setSelectedNodeData(null);
                     }}
                     disabled={isExpanding}
