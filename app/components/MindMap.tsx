@@ -39,7 +39,7 @@ export interface MindMapHandle {
 }
 
 const COLORS = [
-  "#a855f7", // purple
+  "#a855f7", // purple - root
   "#06b6d4", // cyan
   "#10b981", // emerald
   "#f59e0b", // amber
@@ -62,7 +62,6 @@ interface NodeData {
   onShowDetails: (data: NodeData) => void;
 }
 
-// Custom node component
 const MindMapNode = ({ data }: { data: NodeData }) => {
   const color = COLORS[data.level % COLORS.length];
   const isRoot = data.level === 0;
@@ -70,45 +69,43 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
   return (
     <div
       onClick={() => data.onShowDetails(data)}
-      className="cursor-pointer group"
-      style={{ minWidth: isRoot ? "180px" : "140px" }}
+      className="cursor-pointer"
+      style={{ minWidth: isRoot ? "200px" : "150px" }}
     >
       <div
-        className="px-4 py-2.5 rounded-xl shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-2xl"
+        className="px-5 py-3 rounded-2xl shadow-xl transition-all duration-200 hover:scale-105"
         style={{
           background: isRoot
             ? `linear-gradient(135deg, ${color}, ${color}dd)`
-            : `linear-gradient(135deg, ${color}25, ${color}15)`,
-          border: `2px solid ${color}`,
-          boxShadow: `0 0 20px ${color}50`,
+            : `linear-gradient(135deg, ${color}30, ${color}20)`,
+          border: `3px solid ${color}`,
+          boxShadow: `0 0 25px ${color}60`,
         }}
       >
         <div className="flex items-center justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p
-              className="font-bold text-white leading-tight break-words text-center"
-              style={{
-                fontSize: isRoot ? "16px" : "13px",
-                textShadow: "0 1px 3px rgba(0,0,0,0.4)",
-              }}
-            >
-              {data.label}
-            </p>
-          </div>
+          <p
+            className="font-bold text-white text-center flex-1"
+            style={{
+              fontSize: isRoot ? "17px" : "14px",
+              textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+            }}
+          >
+            {data.label}
+          </p>
 
-          <div className="flex gap-1 flex-shrink-0">
+          <div className="flex gap-1">
             {data.hasChildren && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   data.onToggleCollapse(data.nodeId);
                 }}
-                className="p-1 rounded hover:bg-white/25 transition"
+                className="p-1 rounded-full hover:bg-white/30"
               >
                 {data.collapsed ? (
-                  <ChevronRight className="w-3.5 h-3.5 text-white" />
+                  <ChevronRight className="w-4 h-4 text-white" />
                 ) : (
-                  <ChevronDown className="w-3.5 h-3.5 text-white" />
+                  <ChevronDown className="w-4 h-4 text-white" />
                 )}
               </button>
             )}
@@ -118,9 +115,9 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
                   e.stopPropagation();
                   await data.onExpand(data.nodeId, data.label);
                 }}
-                className="p-1 rounded hover:bg-yellow-400/25 transition"
+                className="p-1 rounded-full hover:bg-yellow-400/30"
               >
-                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                <Sparkles className="w-4 h-4 text-yellow-300" />
               </button>
             )}
           </div>
@@ -134,7 +131,7 @@ const nodeTypes = {
   mindMapNode: MindMapNode,
 };
 
-// Proper radial mind map layout - root centered, children in circles
+// Create proper radial mind map layout - exactly like the reference image
 const createMindMapLayout = (
   root: MindMapNodeType | undefined,
   collapsedNodes: Set<string>
@@ -142,19 +139,22 @@ const createMindMapLayout = (
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  if (!root || !root.id) return { nodes, edges };
+  if (!root?.id) return { nodes, edges };
 
-  const centerX = 400;
-  const centerY = 375;
-  const radiusPerLevel = 250; // Distance from center per level
+  // Center point for the canvas
+  const centerX = 0;
+  const centerY = 0;
+
+  // Spacing between levels
+  const levelRadius = 280;
 
   const buildTree = (
     node: MindMapNodeType,
     parentId: string | null,
-    parentAngle: number,
     level: number,
     siblingIndex: number,
-    totalSiblings: number
+    totalSiblings: number,
+    parentAngle: number = 0
   ) => {
     if (!node?.id) return;
 
@@ -163,33 +163,34 @@ const createMindMapLayout = (
 
     let x = centerX;
     let y = centerY;
+    let currentAngle = 0;
 
-    // Position nodes
     if (level === 0) {
-      // Root at center
+      // Root node at center
       x = centerX;
       y = centerY;
     } else if (level === 1) {
-      // First level: arrange in circle around center
-      const angle = (siblingIndex / totalSiblings) * 2 * Math.PI;
-      x = centerX + radiusPerLevel * Math.cos(angle);
-      y = centerY + radiusPerLevel * Math.sin(angle);
+      // First level: perfect circle around center
+      currentAngle = (siblingIndex / totalSiblings) * 2 * Math.PI;
+      x = centerX + levelRadius * Math.cos(currentAngle);
+      y = centerY + levelRadius * Math.sin(currentAngle);
     } else {
-      // Deeper levels: arrange in arc around parent
+      // Deeper levels: arc around parent's direction
       const baseAngle = parentAngle;
-      const spreadAngle = Math.PI / 3; // 60 degrees spread
-      const startAngle = baseAngle - spreadAngle / 2;
-      const angle = startAngle + (siblingIndex / Math.max(totalSiblings - 1, 1)) * spreadAngle;
-      const radius = level * radiusPerLevel;
-      x = centerX + radius * Math.cos(angle);
-      y = centerY + radius * Math.sin(angle);
+      const arcSpan = Math.PI / 2; // 90 degree arc for children
+      const angleStep = totalSiblings > 1 ? arcSpan / (totalSiblings - 1) : 0;
+      currentAngle = baseAngle - arcSpan / 2 + siblingIndex * angleStep;
+
+      const radius = level * levelRadius;
+      x = centerX + radius * Math.cos(currentAngle);
+      y = centerY + radius * Math.sin(currentAngle);
     }
 
     // Add node
     nodes.push({
       id: node.id,
       type: "mindMapNode",
-      position: { x: x - 90, y: y - 25 },
+      position: { x: x - 100, y: y - 30 },
       data: {
         label: node.content,
         description: node.description,
@@ -204,7 +205,7 @@ const createMindMapLayout = (
       draggable: true,
     });
 
-    // Add edge
+    // Add edge with proper curve
     if (parentId) {
       const color = COLORS[(node.level || 0) % COLORS.length];
       edges.push({
@@ -220,26 +221,22 @@ const createMindMapLayout = (
       });
     }
 
-    // Process children
+    // Process children if not collapsed
     if (!isCollapsed && node.children?.length) {
-      const childAngle = level === 0
-        ? 0
-        : Math.atan2(y - centerY, x - centerX);
-
       node.children.forEach((child, i) => {
         buildTree(
           child,
           node.id,
-          childAngle,
           level + 1,
           i,
-          node.children!.length
+          node.children!.length,
+          currentAngle
         );
       });
     }
   };
 
-  buildTree(root, null, 0, 0, 0, 1);
+  buildTree(root, null, 0, 0, 1, 0);
   return { nodes, edges };
 };
 
@@ -320,7 +317,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-zinc-400 text-center">
               <p className="text-lg font-semibold">No mind map data</p>
-              <p className="text-sm">Waiting for data...</p>
             </div>
           </div>
         )}
@@ -333,7 +329,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
             fitView
-            fitViewOptions={{ padding: 0.2 }}
+            fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
@@ -352,9 +348,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
               <Panel position="top-center">
                 <div className="px-4 py-2 bg-purple-600/90 backdrop-blur rounded-lg border border-purple-400/50 shadow-lg flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-                  <span className="text-white text-sm font-medium">
-                    Expanding with AI...
-                  </span>
+                  <span className="text-white text-sm font-medium">Expanding...</span>
                 </div>
               </Panel>
             )}
@@ -405,7 +399,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                       {selectedNodeData.keyPoints.map((point, i) => (
                         <li key={i} className="text-sm text-zinc-200 flex gap-2">
                           <span
-                            className="w-1 h-1 rounded-full mt-2 flex-shrink-0"
+                            className="w-1 h-1 rounded-full mt-2"
                             style={{
                               backgroundColor: COLORS[selectedNodeData.level % COLORS.length],
                             }}
@@ -426,7 +420,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                       {selectedNodeData.relatedConcepts.map((concept, i) => (
                         <span
                           key={i}
-                          className="px-2 py-1 rounded text-xs font-medium"
+                          className="px-2 py-1 rounded text-xs"
                           style={{
                             backgroundColor: `${COLORS[selectedNodeData.level % COLORS.length]}20`,
                             color: COLORS[selectedNodeData.level % COLORS.length],
