@@ -16,6 +16,7 @@ import {
   useEdgesState,
   ReactFlowProvider,
   Background,
+  MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,6 +25,8 @@ import {
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
 import { Sparkles, X } from "lucide-react";
+import FloatingEdge from "./FloatingEdge";
+import FloatingConnectionLine from "./FloatingConnectionLine";
 
 interface MindMapProps {
   data: MindMapData;
@@ -109,6 +112,10 @@ const nodeTypes = {
   mindMapNode: MindMapNode,
 };
 
+const edgeTypes = {
+  floating: FloatingEdge,
+};
+
 // Simple radial layout - root centered, children in circle
 const createMindMapLayout = (
   root: MindMapNodeType | undefined
@@ -175,11 +182,16 @@ const createMindMapLayout = (
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "default",
-        animated: false,
+        type: "floating",
+        markerEnd: {
+          type: MarkerType.Arrow,
+          color: color,
+          width: 30,
+          height: 30,
+        },
         style: {
           stroke: color,
-          strokeWidth: 6,
+          strokeWidth: 8,
         },
       });
     }
@@ -263,10 +275,14 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden">
         <style>{`
           .react-flow__edge-path {
-            stroke-width: 6px !important;
+            stroke-width: 8px !important;
           }
           .react-flow__edge {
             pointer-events: all !important;
+            z-index: 100 !important;
+          }
+          .react-flow__edge path {
+            stroke-width: 8px !important;
           }
         `}</style>
 
@@ -285,15 +301,13 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionLineComponent={FloatingConnectionLine}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
-            defaultEdgeOptions={{
-              type: "default",
-              animated: false,
-            }}
           >
             <Background />
           </ReactFlow>
