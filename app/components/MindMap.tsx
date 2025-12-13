@@ -190,6 +190,9 @@ const createMindMapLayout = (
     endAngle: number,
     depth: number
   ) => {
+    // Safety check
+    if (!node || !node.id) return;
+
     const isCollapsed = collapsedNodes.has(node.id);
     const hasChildren = (node.children?.length || 0) > 0;
 
@@ -212,7 +215,7 @@ const createMindMapLayout = (
     nodes.push({
       id: node.id,
       type: "mindMapNode",
-      position: { x: x - nodeWidth / 2, y: y - nodeHeight / 2 },
+      position: { x: x - 100, y: y - 30 }, // Center the node
       data: {
         label: node.content,
         description: node.description,
@@ -239,6 +242,8 @@ const createMindMapLayout = (
           strokeWidth: Math.max(5 - depth * 0.5, 2.5),
         },
         animated: false,
+        sourceHandle: null,
+        targetHandle: null,
       });
     }
 
@@ -270,6 +275,17 @@ const createMindMapLayout = (
   buildTree(root, null, 0, 360, 0);
 
   return { nodes, edges };
+};
+
+// Helper to collect all node IDs from tree
+const collectAllNodeIds = (node: MindMapNodeType): string[] => {
+  const ids = [node.id];
+  if (node.children) {
+    node.children.forEach((child) => {
+      ids.push(...collectAllNodeIds(child));
+    });
+  }
+  return ids;
 };
 
 const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
