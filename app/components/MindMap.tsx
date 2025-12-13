@@ -8,24 +8,25 @@ import React, {
   forwardRef,
   useEffect,
 } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   Node,
   Edge,
   useNodesState,
   useEdgesState,
-  Background,
-  Controls,
-  MiniMap,
-  Panel,
   ReactFlowProvider,
-} from "reactflow";
-import "reactflow/dist/style.css";
+  Background,
+  MarkerType,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
-import { ChevronDown, ChevronRight, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
+import FloatingEdge from "./FloatingEdge";
+import FloatingConnectionLine from "./FloatingConnectionLine";
 
 interface MindMapProps {
   data: MindMapData;
@@ -39,12 +40,12 @@ export interface MindMapHandle {
 }
 
 const COLORS = [
-  "#a855f7", // purple - root
-  "#06b6d4", // cyan
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ec4899", // pink
-  "#6366f1", // indigo
+  "#a855f7",
+  "#06b6d4",
+  "#10b981",
+  "#f59e0b",
+  "#ec4899",
+  "#6366f1",
 ];
 
 interface NodeData {
@@ -55,9 +56,6 @@ interface NodeData {
   keyPoints?: string[];
   relatedConcepts?: string[];
   nodeId: string;
-  collapsed: boolean;
-  hasChildren: boolean;
-  onToggleCollapse: (nodeId: string) => void;
   onExpand: (nodeId: string, content: string) => Promise<void>;
   onShowDetails: (data: NodeData) => void;
 }
@@ -77,7 +75,7 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
         style={{
           background: isRoot
             ? `linear-gradient(135deg, ${color}, ${color}dd)`
-            : `linear-gradient(135deg, ${color}30, ${color}20)`,
+            : `linear-gradient(135deg, ${color}35, ${color}25)`,
           border: `3px solid ${color}`,
           boxShadow: `0 0 25px ${color}60`,
         }}
@@ -93,34 +91,17 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
             {data.label}
           </p>
 
-          <div className="flex gap-1">
-            {data.hasChildren && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  data.onToggleCollapse(data.nodeId);
-                }}
-                className="p-1 rounded-full hover:bg-white/30"
-              >
-                {data.collapsed ? (
-                  <ChevronRight className="w-4 h-4 text-white" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-white" />
-                )}
-              </button>
-            )}
-            {data.extendable && !data.hasChildren && (
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await data.onExpand(data.nodeId, data.label);
-                }}
-                className="p-1 rounded-full hover:bg-yellow-400/30"
-              >
-                <Sparkles className="w-4 h-4 text-yellow-300" />
-              </button>
-            )}
-          </div>
+          {data.extendable && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                await data.onExpand(data.nodeId, data.label);
+              }}
+              className="p-1 rounded-full hover:bg-yellow-400/30"
+            >
+              <Sparkles className="w-4 h-4 text-yellow-300" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -131,21 +112,21 @@ const nodeTypes = {
   mindMapNode: MindMapNode,
 };
 
-// Create proper radial mind map layout - exactly like the reference image
+const edgeTypes = {
+  floating: FloatingEdge,
+};
+
+// Simple radial layout - root centered, children in circle
 const createMindMapLayout = (
-  root: MindMapNodeType | undefined,
-  collapsedNodes: Set<string>
+  root: MindMapNodeType | undefined
 ): { nodes: Node[]; edges: Edge[] } => {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   if (!root?.id) return { nodes, edges };
 
-  // Center point for the canvas
   const centerX = 0;
   const centerY = 0;
-
-  // Spacing between levels
   const levelRadius = 280;
 
   const buildTree = (
@@ -158,35 +139,27 @@ const createMindMapLayout = (
   ) => {
     if (!node?.id) return;
 
-    const isCollapsed = collapsedNodes.has(node.id);
-    const hasChildren = (node.children?.length || 0) > 0;
-
     let x = centerX;
     let y = centerY;
     let currentAngle = 0;
 
     if (level === 0) {
-      // Root node at center
       x = centerX;
       y = centerY;
     } else if (level === 1) {
-      // First level: perfect circle around center
       currentAngle = (siblingIndex / totalSiblings) * 2 * Math.PI;
       x = centerX + levelRadius * Math.cos(currentAngle);
       y = centerY + levelRadius * Math.sin(currentAngle);
     } else {
-      // Deeper levels: arc around parent's direction
       const baseAngle = parentAngle;
-      const arcSpan = Math.PI / 2; // 90 degree arc for children
+      const arcSpan = Math.PI / 2;
       const angleStep = totalSiblings > 1 ? arcSpan / (totalSiblings - 1) : 0;
       currentAngle = baseAngle - arcSpan / 2 + siblingIndex * angleStep;
-
       const radius = level * levelRadius;
       x = centerX + radius * Math.cos(currentAngle);
       y = centerY + radius * Math.sin(currentAngle);
     }
 
-    // Add node
     nodes.push({
       id: node.id,
       type: "mindMapNode",
@@ -199,30 +172,32 @@ const createMindMapLayout = (
         keyPoints: node.metadata?.keyPoints,
         relatedConcepts: node.metadata?.relatedConcepts,
         nodeId: node.id,
-        collapsed: isCollapsed,
-        hasChildren,
       },
       draggable: true,
     });
 
-    // Add edge with proper curve
     if (parentId) {
       const color = COLORS[(node.level || 0) % COLORS.length];
       edges.push({
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "smoothstep",
+        type: "floating",
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: color,
+          width: 20,
+          height: 20,
+        },
         style: {
           stroke: color,
           strokeWidth: 3,
+          strokeOpacity: 1,
         },
-        animated: false,
       });
     }
 
-    // Process children if not collapsed
-    if (!isCollapsed && node.children?.length) {
+    if (node.children?.length) {
       node.children.forEach((child, i) => {
         buildTree(
           child,
@@ -242,21 +217,8 @@ const createMindMapLayout = (
 
 const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
   ({ data, onExpand }, ref) => {
-    const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
     const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(null);
     const [isExpanding, setIsExpanding] = useState(false);
-
-    const handleToggleCollapse = useCallback((nodeId: string) => {
-      setCollapsedNodes((prev) => {
-        const next = new Set(prev);
-        if (next.has(nodeId)) {
-          next.delete(nodeId);
-        } else {
-          next.add(nodeId);
-        }
-        return next;
-      });
-    }, []);
 
     const handleExpand = useCallback(
       async (nodeId: string, content: string) => {
@@ -278,20 +240,19 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
       if (!data?.root) return { nodes: [], edges: [] };
 
-      const result = createMindMapLayout(data.root, collapsedNodes);
+      const result = createMindMapLayout(data.root);
 
       const nodesWithHandlers = result.nodes.map((node) => ({
         ...node,
         data: {
           ...node.data,
-          onToggleCollapse: handleToggleCollapse,
           onExpand: handleExpand,
           onShowDetails: handleShowDetails,
         },
       }));
 
       return { nodes: nodesWithHandlers, edges: result.edges };
-    }, [data, collapsedNodes, handleToggleCollapse, handleExpand, handleShowDetails]);
+    }, [data, handleExpand, handleShowDetails]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
@@ -328,30 +289,15 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionLineComponent={FloatingConnectionLine}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
           >
-            <Background color="#444" gap={16} />
-            <Controls className="bg-zinc-800 border-zinc-700" />
-            <MiniMap
-              className="bg-zinc-900 border-zinc-700"
-              nodeColor={(node) => {
-                const level = (node.data as any).level || 0;
-                return COLORS[level % COLORS.length];
-              }}
-            />
-
-            {isExpanding && (
-              <Panel position="top-center">
-                <div className="px-4 py-2 bg-purple-600/90 backdrop-blur rounded-lg border border-purple-400/50 shadow-lg flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-                  <span className="text-white text-sm font-medium">Expanding...</span>
-                </div>
-              </Panel>
-            )}
+            <Background />
           </ReactFlow>
         )}
 
@@ -434,7 +380,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                   </div>
                 )}
 
-                {selectedNodeData.extendable && !selectedNodeData.hasChildren && (
+                {selectedNodeData.extendable && (
                   <button
                     onClick={async () => {
                       await handleExpand(selectedNodeData.nodeId, selectedNodeData.label);
