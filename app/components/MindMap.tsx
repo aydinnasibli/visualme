@@ -155,7 +155,7 @@ const nodeTypes = {
   mindMapNode: CustomMindMapNode,
 };
 
-// Radial Mind Map Layout - Traditional mind map style
+// Proper Radial Mind Map Layout - Clean hierarchical tree structure
 const getLayoutedElements = (
   root: MindMapNodeType | undefined,
   collapsedNodes: Set<string>
@@ -168,25 +168,30 @@ const getLayoutedElements = (
     return { nodes: [], edges: [] };
   }
 
-  // Radial layout parameters
+  // Layout parameters - optimized for clarity
   const centerX = 0;
   const centerY = 0;
-  const levelRadius = 250; // Distance between levels
-  const minAngleSeparation = 20; // Minimum degrees between siblings
+  const baseRadius = 280; // Base distance from root to first level
+  const radiusIncrement = 200; // Additional distance per level
 
-  // Calculate positions recursively with radial layout
+  // Count total descendants for angle allocation
+  const countDescendants = (node: MindMapNodeType): number => {
+    if (!node.children || node.children.length === 0) return 1;
+    if (collapsedNodes.has(node.id)) return 1;
+    return node.children.reduce(
+      (sum, child) => sum + countDescendants(child),
+      0
+    );
+  };
+
+  // Calculate positions recursively with improved radial layout
   const traverse = (
-    node: MindMapNodeType | undefined,
+    node: MindMapNodeType,
     parentId: string | null = null,
-    parentX: number = centerX,
-    parentY: number = centerY,
     startAngle: number = 0,
     endAngle: number = 360,
     depth: number = 0
   ) => {
-    // Safety check
-    if (!node || !node.id) return;
-
     const isCollapsed = collapsedNodes.has(node.id);
     const hasChildren = (node.children?.length || 0) > 0;
 
@@ -195,17 +200,22 @@ const getLayoutedElements = (
     let y = centerY;
 
     if (depth > 0) {
-      // For non-root nodes, position radially around parent
-      const angle = (startAngle + endAngle) / 2;
-      const radius = depth * levelRadius;
-      x = centerX + radius * Math.cos((angle * Math.PI) / 180);
-      y = centerY + radius * Math.sin((angle * Math.PI) / 180);
+      // Position nodes radially from center
+      const midAngle = (startAngle + endAngle) / 2;
+      const radius = baseRadius + (depth - 1) * radiusIncrement;
+      const angleRad = (midAngle * Math.PI) / 180;
+      x = centerX + radius * Math.cos(angleRad);
+      y = centerY + radius * Math.sin(angleRad);
     }
+
+    // Node width/height approximations for centering
+    const nodeWidth = depth === 0 ? 230 : 170;
+    const nodeHeight = 60;
 
     nodes.push({
       id: node.id,
       type: "mindMapNode",
-      position: { x: x - 100, y: y - 30 }, // Center the node
+      position: { x: x - nodeWidth / 2, y: y - nodeHeight / 2 },
       data: {
         label: node.content,
         description: node.description,
@@ -219,22 +229,20 @@ const getLayoutedElements = (
       },
     });
 
-    // Create edge to parent
+    // Create edge to parent with smooth bezier curve
     if (parentId) {
       const color = LEVEL_COLORS[(node.level || 0) % LEVEL_COLORS.length];
       edges.push({
         id: `${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "default",
+        type: ConnectionLineType.Bezier,
         style: {
           stroke: color,
-          strokeWidth: Math.max(6 - depth, 2.5),
-          strokeOpacity: 0.8,
+          strokeWidth: Math.max(4 - depth * 0.5, 2),
+          strokeOpacity: 0.85,
         },
         animated: false,
-        sourceHandle: null,
-        targetHandle: null,
       });
     }
 
@@ -242,38 +250,29 @@ const getLayoutedElements = (
     if (!isCollapsed && node.children && node.children.length > 0) {
       const childCount = node.children.length;
 
-      // For root node, distribute children in full circle
-      // For other nodes, use a sector based on their position
-      let childStartAngle = startAngle;
-      let childEndAngle = endAngle;
+      // Calculate angle span for this subtree
+      let totalAngleSpan = endAngle - startAngle;
 
+      // For root node, use full circle
       if (depth === 0) {
-        // Root node - distribute evenly in full circle
-        childStartAngle = 0;
-        childEndAngle = 360;
-      } else {
-        // Calculate sector size based on subtree size
-        const sectorSize = Math.min(120, (endAngle - startAngle) * 1.2);
-        const midAngle = (startAngle + endAngle) / 2;
-        childStartAngle = midAngle - sectorSize / 2;
-        childEndAngle = midAngle + sectorSize / 2;
+        totalAngleSpan = 360;
       }
 
-      const angleStep = (childEndAngle - childStartAngle) / childCount;
+      // Count descendants for proportional angle allocation
+      const childDescendants = node.children.map(countDescendants);
+      const totalDescendants = childDescendants.reduce((a, b) => a + b, 0);
 
+      // Allocate angles proportionally to subtree sizes
+      let currentAngle = startAngle;
       node.children.forEach((child, index) => {
-        const childStartAngleLocal = childStartAngle + index * angleStep;
-        const childEndAngleLocal = childStartAngle + (index + 1) * angleStep;
+        const proportion = childDescendants[index] / totalDescendants;
+        const allocatedAngle = totalAngleSpan * proportion;
+        const childStart = currentAngle;
+        const childEnd = currentAngle + allocatedAngle;
 
-        traverse(
-          child,
-          node.id,
-          x,
-          y,
-          childStartAngleLocal,
-          childEndAngleLocal,
-          depth + 1
-        );
+        traverse(child, node.id, childStart, childEnd, depth + 1);
+
+        currentAngle = childEnd;
       });
     }
   };
@@ -281,17 +280,6 @@ const getLayoutedElements = (
   traverse(root);
 
   return { nodes, edges };
-};
-
-// Helper to collect all node IDs from tree
-const collectAllNodeIds = (node: MindMapNodeType): string[] => {
-  const ids = [node.id];
-  if (node.children) {
-    node.children.forEach((child) => {
-      ids.push(...collectAllNodeIds(child));
-    });
-  }
-  return ids;
 };
 
 const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
@@ -431,17 +419,20 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
             nodeTypes={nodeTypes}
             connectionLineType={ConnectionLineType.Bezier}
             fitView
-            fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-            minZoom={0.3}
-            maxZoom={2}
+            fitViewOptions={{ padding: 0.25, maxZoom: 1.2, minZoom: 0.5 }}
+            minZoom={0.2}
+            maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
-            nodesDraggable={false}
+            nodesDraggable={true}
             nodesConnectable={false}
-            elementsSelectable={false}
+            elementsSelectable={true}
             defaultEdgeOptions={{
-              type: "default",
+              type: ConnectionLineType.Bezier,
               style: { strokeLinecap: "round", strokeLinejoin: "round" },
             }}
+            panOnScroll
+            zoomOnScroll
+            preventScrolling={false}
           >
             {/* Expanding Indicator */}
             {isExpanding && (
