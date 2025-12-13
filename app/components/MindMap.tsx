@@ -226,15 +226,7 @@ const getLayoutedElements = (
         id: `${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        type: 'default',
-=======
-        type: "smoothstep",
->>>>>>> Stashed changes
-=======
-        type: "smoothstep",
->>>>>>> Stashed changes
+        type: "default",
         style: {
           stroke: color,
           strokeWidth: Math.max(6 - depth, 2.5),
@@ -447,8 +439,8 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
             nodesConnectable={false}
             elementsSelectable={false}
             defaultEdgeOptions={{
-              type: 'default',
-              style: { strokeLinecap: 'round', strokeLinejoin: 'round' },
+              type: "default",
+              style: { strokeLinecap: "round", strokeLinejoin: "round" },
             }}
           >
             {/* Expanding Indicator */}
