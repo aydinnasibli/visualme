@@ -184,21 +184,22 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       () =>
         ({
           name: "fcose",
-          animate: false,
-          randomize: false,
-          fit: true,
+          animate: false, // First render without animation for faster initial load
+          randomize: true, // Important: randomize for better distribution
+          fit: true, // Fit only on initial render
           padding: 80,
-          nodeRepulsion: 8500, // Slightly reduced for better clustering
-          idealEdgeLength: 180, // Increased for more breathing room
-          edgeElasticity: 0.5, // Better edge routing
+          nodeRepulsion: 8500,
+          idealEdgeLength: 180,
+          edgeElasticity: 0.5,
           nestingFactor: 0.1,
-          gravity: 0.3, // Slightly increased to prevent drift
-          numIter: 3500, // More iterations for stable convergence
+          gravity: 0.3,
+          numIter: 3500,
           tile: true,
           tilingPaddingVertical: 30,
           tilingPaddingHorizontal: 30,
-          quality: "proof", // Higher quality layout
-          nodeSeparation: 100, // Minimum separation between nodes
+          quality: "proof",
+          nodeSeparation: 100,
+          initialEnergyOnIncremental: 0.8, // Energy for incremental layout
         } as any),
       []
     );
@@ -342,6 +343,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
     // --- Lifecycle & Handlers ---
 
     const hasInitialFitRef = useRef(false);
+    const layoutRunCountRef = useRef(0);
 
     useEffect(() => {
       if (!containerRef.current) return;
@@ -367,6 +369,45 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       resizeObserver.observe(containerRef.current);
       return () => resizeObserver.disconnect();
     }, [isReady]);
+
+    // Re-run layout when data changes (e.g., after expansion)
+    useEffect(() => {
+      if (!cyRef.current || !isReady) return;
+
+      // Skip the first run since initial layout is handled by CytoscapeComponent
+      if (layoutRunCountRef.current === 0) {
+        layoutRunCountRef.current++;
+        return;
+      }
+
+      // Run layout again when data changes
+      const layoutConfig = {
+        name: "fcose",
+        animate: true,
+        animationDuration: 800,
+        animationEasing: "ease-out",
+        randomize: true,
+        fit: false, // Don't auto-fit to prevent view jumps
+        padding: 80,
+        nodeRepulsion: 8500,
+        idealEdgeLength: 180,
+        edgeElasticity: 0.5,
+        nestingFactor: 0.1,
+        gravity: 0.3,
+        numIter: 3500,
+        tile: true,
+        tilingPaddingVertical: 30,
+        tilingPaddingHorizontal: 30,
+        quality: "proof",
+        nodeSeparation: 100,
+        initialEnergyOnIncremental: 0.8,
+      };
+
+      const layoutInstance = cyRef.current.layout(layoutConfig as any);
+      layoutInstance.run();
+
+      layoutRunCountRef.current++;
+    }, [elements, isReady]);
 
     const setupListeners = (cy: Core) => {
       cyRef.current = cy;
