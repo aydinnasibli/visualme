@@ -8,8 +8,7 @@ import React, {
   forwardRef,
   useEffect,
 } from "react";
-import {
-  ReactFlow,
+import ReactFlow, {
   Node,
   Edge,
   useNodesState,
@@ -17,8 +16,8 @@ import {
   ReactFlowProvider,
   Background,
   MarkerType,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
+} from "reactflow";
+import "reactflow/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
@@ -186,12 +185,10 @@ const createMindMapLayout = (
         markerEnd: {
           type: MarkerType.Arrow,
           color: color,
-          width: 30,
-          height: 30,
         },
         style: {
           stroke: color,
-          strokeWidth: 8,
+          strokeWidth: 10,
         },
       });
     }
@@ -275,14 +272,19 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden">
         <style>{`
           .react-flow__edge-path {
-            stroke-width: 8px !important;
+            stroke-width: 10px !important;
+            stroke-opacity: 1 !important;
           }
           .react-flow__edge {
             pointer-events: all !important;
-            z-index: 100 !important;
+            z-index: 1000 !important;
           }
           .react-flow__edge path {
-            stroke-width: 8px !important;
+            stroke-width: 10px !important;
+            fill: none !important;
+          }
+          .react-flow__edges {
+            z-index: 1000 !important;
           }
         `}</style>
 
