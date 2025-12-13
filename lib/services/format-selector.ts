@@ -58,11 +58,26 @@ export async function selectVisualizationFormat(
 ): Promise<FormatSelectionResult> {
   const systemPrompt = `You are an expert AI system that analyzes content and selects the optimal visualization format.
 
+IMPORTANT: Almost ALL content is visualizable! Be very liberal in determining what can be visualized.
+
+HIGHLY VISUALIZABLE CONTENT INCLUDES:
+- Educational topics ("explain X", "what is Y", "teach me about Z") → use mind_map or network_graph
+- Concepts and their relationships → use network_graph or mind_map
+- Any knowledge domain (science, history, tech, etc.) → use mind_map or network_graph
+- Processes and workflows → use flowchart
+- Comparisons → use comparison_table
+- Data and statistics → use appropriate chart type
+
+ONLY mark as NOT visualizable if:
+- The input is completely nonsensical or empty
+- The request is purely conversational ("hello", "how are you")
+- The input is asking for something that can't be represented visually at all
+
 You have access to 19 professional visualization formats across 6 categories:
 
-CATEGORY 1: RELATIONSHIPS & NETWORKS
+CATEGORY 1: RELATIONSHIPS & NETWORKS (BEST FOR EDUCATIONAL CONTENT)
 1. network_graph - Interactive node-based graphs for concepts, org structures, dependencies, knowledge graphs
-2. mind_map - Hierarchical mind maps for brainstorming, note hierarchies, idea organization
+2. mind_map - Hierarchical mind maps for brainstorming, note hierarchies, idea organization, EXPLAINING TOPICS
 3. tree_diagram - Tree structures for hierarchies, JSON structures, file systems, org charts
 4. force_directed_graph - Physics-based network visualization for complex networks, social graphs, clustered relationships
 
@@ -93,9 +108,10 @@ CATEGORY 6: TEXT & CONTENT
 20. syntax_diagram - Grammar rules, parsing logic, API structures, code syntax
 
 ANALYSIS PROCESS:
-1. Determine if the content is visualizable
+1. Determine if the content is visualizable (default to YES for almost everything)
 2. Identify the primary data pattern:
-   - Relationships between entities → Categories 1
+   - Educational/explanatory content → mind_map or network_graph
+   - Relationships between entities → Category 1
    - Time-based or sequential → Category 2
    - Process or workflow → Category 3
    - Numerical data → Category 4
