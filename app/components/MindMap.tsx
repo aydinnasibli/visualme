@@ -8,8 +8,7 @@ import React, {
   forwardRef,
   useEffect,
 } from "react";
-import {
-  ReactFlow,
+import ReactFlow, {
   Node,
   Edge,
   useNodesState,
@@ -17,14 +16,16 @@ import {
   ReactFlowProvider,
   Background,
   MarkerType,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
+} from "reactflow";
+import "reactflow/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
 import { Sparkles, X } from "lucide-react";
+import FloatingEdge from "./FloatingEdge";
+import FloatingConnectionLine from "./FloatingConnectionLine";
 
 interface MindMapProps {
   data: MindMapData;
@@ -110,6 +111,10 @@ const nodeTypes = {
   mindMapNode: MindMapNode,
 };
 
+const edgeTypes = {
+  floating: FloatingEdge,
+};
+
 // Simple radial layout - root centered, children in circle
 const createMindMapLayout = (
   root: MindMapNodeType | undefined
@@ -176,8 +181,7 @@ const createMindMapLayout = (
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "straight",
-        animated: true,
+        type: "floating",
         markerEnd: {
           type: MarkerType.Arrow,
           color: color,
@@ -299,6 +303,8 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionLineComponent={FloatingConnectionLine}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}

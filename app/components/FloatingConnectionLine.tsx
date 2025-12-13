@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useStore, getBezierPath, ConnectionLineComponentProps } from '@xyflow/react';
+import { useStore, getBezierPath, ConnectionLineComponentProps } from 'reactflow';
 import { getEdgeParams } from './edgeUtils';
 
 function FloatingConnectionLine({ toX, toY, fromPosition, toPosition, fromNode }: ConnectionLineComponentProps) {
