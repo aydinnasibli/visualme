@@ -93,6 +93,13 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
     );
     const [isReady, setIsReady] = useState(false);
     const [isExpanding, setIsExpanding] = useState(false);
+    const [hoveredNode, setHoveredNode] = useState<{
+      label: string;
+      category: string;
+      description?: string;
+      x: number;
+      y: number;
+    } | null>(null);
 
     // Store original nodes for metadata lookup
     const nodeDataMap = useMemo(() => {
@@ -131,8 +138,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       // 3. Create Nodes with Initial Positions
       const nodes = data.nodes.map((node) => {
         const degree = degrees[node.id] || 0;
-        // Size: 16px base + degree factor (compact, modern sizing)
-        const size = Math.min(40, 16 + Math.sqrt(degree) * 4);
+        // Improved size: larger base + better scaling for visibility
+        const size = Math.min(55, 24 + Math.sqrt(degree) * 5);
 
         // Seed positions to guarantee valid initial state
         const seedX = seededRandom(node.id + "x");
@@ -152,8 +159,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
             extendable: node.extendable || false,
           },
           position: {
-            x: seedX * 800 - 400,
-            y: seedY * 600 - 300,
+            x: seedX * 1000 - 500,
+            y: seedY * 800 - 400,
           },
         };
       });
@@ -172,7 +179,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       };
     }, [data]);
 
-    // --- High-Performance Layout ---
+    // --- Improved Layout - Stable and well-distributed ---
     const layout = useMemo(
       () =>
         ({
@@ -181,15 +188,17 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
           randomize: false,
           fit: true,
           padding: 80,
-          nodeRepulsion: 9000,
-          idealEdgeLength: 140,
-          edgeElasticity: 0.45,
+          nodeRepulsion: 8500, // Slightly reduced for better clustering
+          idealEdgeLength: 180, // Increased for more breathing room
+          edgeElasticity: 0.5, // Better edge routing
           nestingFactor: 0.1,
-          gravity: 0.25,
-          numIter: 2500,
+          gravity: 0.3, // Slightly increased to prevent drift
+          numIter: 3500, // More iterations for stable convergence
           tile: true,
-          tilingPaddingVertical: 25,
-          tilingPaddingHorizontal: 25,
+          tilingPaddingVertical: 30,
+          tilingPaddingHorizontal: 30,
+          quality: "proof", // Higher quality layout
+          nodeSeparation: 100, // Minimum separation between nodes
         } as any),
       []
     );
@@ -200,49 +209,51 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
         {
           selector: "node",
           style: {
-            "background-color": "#0a0a0f",
+            "background-color": "data(color)",
+            "background-opacity": 0.15,
             width: "data(size)",
             height: "data(size)",
             label: "data(label)",
             shape: "ellipse",
 
-            // Softer border
-            "border-width": 2,
+            // Smooth, rounded border with better visibility
+            "border-width": 2.5,
             "border-color": "data(color)",
-            "border-opacity": 0.7,
+            "border-opacity": 0.85,
 
-            // Typography - smaller, softer
-            color: "#d4d4d8",
+            // Improved typography for better readability
+            color: "#e4e4e7",
             "font-family": "Inter, ui-sans-serif, system-ui",
-            "font-size": 9,
-            "font-weight": 500,
+            "font-size": 10,
+            "font-weight": 600,
             "text-valign": "bottom",
-            "text-margin-y": 6,
+            "text-margin-y": 8,
             "text-wrap": "wrap",
-            "text-max-width": "75px",
-            "line-height": 1.2,
-            "min-zoomed-font-size": 5,
+            "text-max-width": "90px",
+            "line-height": 1.3,
+            "min-zoomed-font-size": 6,
 
-            // Subtle, soft glow
-            "shadow-blur": 10,
+            // Enhanced glow for better visual appeal
+            "shadow-blur": 15,
             "shadow-color": "data(color)",
-            "shadow-opacity": 0.3,
+            "shadow-opacity": 0.4,
 
             "transition-property":
-              "background-color, border-width, border-color, opacity, shadow-opacity",
-            "transition-duration": 200,
+              "background-color, background-opacity, border-width, border-color, opacity, shadow-opacity, shadow-blur",
+            "transition-duration": 250,
+            "transition-timing-function": "ease-in-out",
           } as any,
         },
         {
           selector: "edge",
           style: {
-            width: 1.5,
-            "line-color": "#27272a",
+            width: 2,
+            "line-color": "#3f3f46",
             "curve-style": "bezier",
             "target-arrow-shape": "triangle",
-            "target-arrow-color": "#3f3f46",
-            "arrow-scale": 0.6,
-            opacity: 0.3,
+            "target-arrow-color": "#52525b",
+            "arrow-scale": 0.7,
+            opacity: 0.5,
             label: "data(label)",
             // Enhanced label styling for better visibility
             "font-size": 10,
@@ -250,13 +261,16 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
             "font-family": "Inter, ui-sans-serif, system-ui",
             color: "#a1a1aa",
             "text-background-color": "#09090b",
-            "text-background-opacity": 0.9,
-            "text-background-padding": "4px",
+            "text-background-opacity": 0.95,
+            "text-background-padding": "5px",
             "text-background-shape": "roundrectangle",
             "text-border-width": 1,
             "text-border-color": "#27272a",
-            "text-border-opacity": 0.4,
+            "text-border-opacity": 0.5,
             "min-zoomed-font-size": 6,
+            "transition-property": "opacity, width, line-color",
+            "transition-duration": 250,
+            "transition-timing-function": "ease-in-out",
           } as any,
         },
         {
@@ -274,49 +288,51 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
             opacity: 1,
             "z-index": 9999,
             "background-color": "data(color)",
-            "background-opacity": 0.12,
-            "border-width": 2.5,
-            "border-opacity": 0.9,
+            "background-opacity": 0.25,
+            "border-width": 3,
+            "border-opacity": 1,
             "text-background-color": "#000000",
-            "text-background-opacity": 0.85,
-            "text-background-padding": "3px",
+            "text-background-opacity": 0.95,
+            "text-background-padding": "4px",
             "text-background-shape": "roundrectangle",
             color: "#ffffff",
-            "font-weight": 600,
-            "shadow-blur": 15,
+            "font-weight": 700,
+            "font-size": 11,
+            "shadow-blur": 20,
             "shadow-color": "data(color)",
-            "shadow-opacity": 0.5,
+            "shadow-opacity": 0.65,
           } as any,
         },
         {
           selector: "edge.highlighted",
           style: {
-            opacity: 0.8,
-            width: 2,
+            opacity: 0.9,
+            width: 3,
             "line-color": "data(color)",
             "target-arrow-color": "data(color)",
             "z-index": 9998,
-            "shadow-blur": 8,
+            "shadow-blur": 12,
             "shadow-color": "data(color)",
-            "shadow-opacity": 0.4,
+            "shadow-opacity": 0.5,
             // Enhanced label styling when highlighted
             "font-size": 11,
             "font-weight": 600,
             color: "#ffffff",
             "text-background-color": "#000000",
             "text-background-opacity": 0.95,
-            "text-background-padding": "5px",
-            "text-border-width": 1,
+            "text-background-padding": "6px",
+            "text-border-width": 1.5,
             "text-border-color": "data(color)",
-            "text-border-opacity": 0.6,
+            "text-border-opacity": 0.7,
           } as any,
         },
         {
           selector: "node[extendable = true]",
           style: {
             "border-style": "dashed",
-            "border-width": 2,
-            "border-opacity": 0.5,
+            "border-width": 2.5,
+            "border-opacity": 0.7,
+            "border-dash-pattern": [6, 4],
           } as any,
         },
       ],
@@ -325,16 +341,24 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
 
     // --- Lifecycle & Handlers ---
 
+    const hasInitialFitRef = useRef(false);
+
     useEffect(() => {
       if (!containerRef.current) return;
       const resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-            setIsReady(true);
+            if (!isReady) {
+              setIsReady(true);
+            }
             requestAnimationFrame(() => {
               if (cyRef.current) {
                 cyRef.current.resize();
-                if (!selectedNode) cyRef.current.fit();
+                // Only fit on initial load, not on every resize
+                if (!hasInitialFitRef.current) {
+                  cyRef.current.fit(undefined, 80);
+                  hasInitialFitRef.current = true;
+                }
               }
             });
           }
@@ -342,7 +366,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       });
       resizeObserver.observe(containerRef.current);
       return () => resizeObserver.disconnect();
-    }, [selectedNode]);
+    }, [isReady]);
 
     const setupListeners = (cy: Core) => {
       cyRef.current = cy;
@@ -358,13 +382,28 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
           neighbors.edges().addClass("highlighted");
         });
 
-        if (containerRef.current) containerRef.current.style.cursor = "pointer";
+        // Show tooltip with node info
+        const renderedPosition = node.renderedPosition();
+        if (containerRef.current) {
+          containerRef.current.style.cursor = "pointer";
+          const description = node.data("description");
+          if (description) {
+            setHoveredNode({
+              label: node.data("label"),
+              category: node.data("category"),
+              description: description,
+              x: renderedPosition.x,
+              y: renderedPosition.y,
+            });
+          }
+        }
       });
 
       cy.on("mouseout", "node", () => {
         cy.batch(() => {
           cy.elements().removeClass("dimmed highlighted");
         });
+        setHoveredNode(null);
         if (containerRef.current) containerRef.current.style.cursor = "default";
       });
 
@@ -420,10 +459,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       try {
         await onExpand(selectedNode.id, selectedNode.label);
         setSelectedNode(null);
-        setTimeout(
-          () => cyRef.current?.animate({ fit: { padding: 80 } } as any),
-          800
-        );
+        // Don't auto-fit after expansion to prevent view jumps
+        // User can manually reset view if needed
       } catch (e) {
         console.error("Expansion failed", e);
       } finally {
@@ -498,6 +535,39 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
             </span>
           </div>
         )}
+
+        {/* Hover Tooltip */}
+        <AnimatePresence>
+          {hoveredNode && !selectedNode && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.15 }}
+              className="absolute pointer-events-none z-30 max-w-xs"
+              style={{
+                left: `${hoveredNode.x + 20}px`,
+                top: `${hoveredNode.y - 10}px`,
+              }}
+            >
+              <div className="bg-zinc-900/98 border border-zinc-700/60 rounded-lg px-3 py-2 shadow-2xl backdrop-blur-sm">
+                <div className="text-xs font-bold text-white mb-0.5">
+                  {hoveredNode.label}
+                </div>
+                <div className="text-[10px] font-medium text-zinc-400 mb-1">
+                  {hoveredNode.category}
+                </div>
+                {hoveredNode.description && (
+                  <div className="text-xs text-zinc-300 leading-snug max-w-[250px]">
+                    {hoveredNode.description.length > 120
+                      ? hoveredNode.description.slice(0, 120) + "..."
+                      : hoveredNode.description}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Top-Left Node Detail Panel */}
         <AnimatePresence>
