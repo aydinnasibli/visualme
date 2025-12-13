@@ -100,7 +100,7 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
         <div className="relative z-10 flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p
-              className="font-bold leading-tight text-white break-words"
+              className="font-bold leading-tight text-white wrap-break-words"
               style={{
                 fontSize: isRoot ? "16px" : "13px",
                 fontWeight: isRoot ? 700 : 600,
@@ -112,7 +112,7 @@ const CustomMindMapNode = ({ data }: { data: CustomNodeData }) => {
           </div>
 
           {/* Action Icons */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {/* Collapse/Expand Toggle */}
             {data.hasChildren && (
               <button
@@ -172,14 +172,11 @@ const getLayoutedElements = (
   const centerX = 0;
   const centerY = 0;
   const levelRadius = 250; // Distance between levels
-  const minAngleSeparation = 20; // Minimum degrees between siblings
 
   // Calculate positions recursively with radial layout
   const traverse = (
     node: MindMapNodeType | undefined,
     parentId: string | null = null,
-    parentX: number = centerX,
-    parentY: number = centerY,
     startAngle: number = 0,
     endAngle: number = 360,
     depth: number = 0
@@ -268,8 +265,6 @@ const getLayoutedElements = (
         traverse(
           child,
           node.id,
-          x,
-          y,
           childStartAngleLocal,
           childEndAngleLocal,
           depth + 1
@@ -514,7 +509,7 @@ const MindMapVisualization = forwardRef<MindMapHandle, MindMapProps>(
                             className="text-sm text-zinc-200 flex items-start gap-2"
                           >
                             <span
-                              className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0"
+                              className="mt-1.5 w-1 h-1 rounded-full shrink-0"
                               style={{
                                 backgroundColor:
                                   LEVEL_COLORS[
