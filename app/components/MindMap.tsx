@@ -8,7 +8,8 @@ import React, {
   forwardRef,
   useEffect,
 } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   Node,
   Edge,
   useNodesState,
@@ -16,8 +17,9 @@ import ReactFlow, {
   ReactFlowProvider,
   Background,
   MarkerType,
-} from "reactflow";
-import "reactflow/dist/style.css";
+  Controls,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
@@ -175,14 +177,17 @@ const createMindMapLayout = (
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "smoothstep",
+        type: "straight",
+        animated: true,
         markerEnd: {
-          type: MarkerType.Arrow,
+          type: MarkerType.ArrowClosed,
           color: color,
+          width: 30,
+          height: 30,
         },
         style: {
           stroke: color,
-          strokeWidth: 10,
+          strokeWidth: 8,
         },
       });
     }
@@ -267,20 +272,17 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     return (
       <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden">
         <style>{`
-          .react-flow__edge-path {
-            stroke-width: 10px !important;
-            stroke-opacity: 1 !important;
-          }
-          .react-flow__edge {
-            pointer-events: all !important;
-            z-index: 1000 !important;
-          }
           .react-flow__edge path {
-            stroke-width: 10px !important;
-            fill: none !important;
+            stroke-width: 8px !important;
           }
-          .react-flow__edges {
-            z-index: 1000 !important;
+          .react-flow__edge.animated path {
+            stroke-dasharray: 5;
+            animation: dashdraw 0.5s linear infinite;
+          }
+          @keyframes dashdraw {
+            to {
+              stroke-dashoffset: -10;
+            }
           }
         `}</style>
 
@@ -303,9 +305,9 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
             maxZoom={2}
-            proOptions={{ hideAttribution: true }}
           >
             <Background />
+            <Controls />
           </ReactFlow>
         )}
 
