@@ -26,6 +26,8 @@ import {
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
 import { Sparkles, X } from "lucide-react";
+import FloatingEdge from "./FloatingEdge";
+import FloatingConnectionLine from "./FloatingConnectionLine";
 
 interface MindMapProps {
   data: MindMapData;
@@ -111,6 +113,10 @@ const nodeTypes = {
   mindMapNode: MindMapNode,
 };
 
+const edgeTypes = {
+  floating: FloatingEdge,
+};
+
 // Simple radial layout - root centered, children in circle
 const createMindMapLayout = (
   root: MindMapNodeType | undefined
@@ -177,8 +183,7 @@ const createMindMapLayout = (
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "straight",
-        animated: true,
+        type: "floating",
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: color,
@@ -272,17 +277,11 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     return (
       <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden">
         <style>{`
-          .react-flow__edge path {
+          .react-flow__edge-path {
             stroke-width: 8px !important;
           }
-          .react-flow__edge.animated path {
-            stroke-dasharray: 5;
-            animation: dashdraw 0.5s linear infinite;
-          }
-          @keyframes dashdraw {
-            to {
-              stroke-dashoffset: -10;
-            }
+          .react-flow__edge {
+            pointer-events: all;
           }
         `}</style>
 
@@ -301,6 +300,8 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionLineComponent={FloatingConnectionLine}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
