@@ -183,7 +183,8 @@ const createMindMapLayout = (
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "floating",
+        type: "straight",
+        animated: true,
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: color,
