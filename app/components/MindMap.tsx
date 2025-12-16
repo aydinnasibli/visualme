@@ -8,7 +8,8 @@ import React, {
   forwardRef,
   useEffect,
 } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   Node,
   Edge,
   useNodesState,
@@ -16,14 +17,17 @@ import ReactFlow, {
   ReactFlowProvider,
   Background,
   MarkerType,
-} from "reactflow";
-import "reactflow/dist/style.css";
+  Controls,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
 import { Sparkles, X } from "lucide-react";
+import FloatingEdge from "./FloatingEdge";
+import FloatingConnectionLine from "./FloatingConnectionLine";
 
 interface MindMapProps {
   data: MindMapData;
@@ -109,6 +113,10 @@ const nodeTypes = {
   mindMapNode: MindMapNode,
 };
 
+const edgeTypes = {
+  floating: FloatingEdge,
+};
+
 // Simple radial layout - root centered, children in circle
 const createMindMapLayout = (
   root: MindMapNodeType | undefined
@@ -175,14 +183,16 @@ const createMindMapLayout = (
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "smoothstep",
+        type: "floating",
         markerEnd: {
-          type: MarkerType.Arrow,
+          type: MarkerType.ArrowClosed,
           color: color,
+          width: 30,
+          height: 30,
         },
         style: {
           stroke: color,
-          strokeWidth: 10,
+          strokeWidth: 8,
         },
       });
     }
@@ -268,19 +278,10 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden">
         <style>{`
           .react-flow__edge-path {
-            stroke-width: 10px !important;
-            stroke-opacity: 1 !important;
+            stroke-width: 8px !important;
           }
           .react-flow__edge {
-            pointer-events: all !important;
-            z-index: 1000 !important;
-          }
-          .react-flow__edge path {
-            stroke-width: 10px !important;
-            fill: none !important;
-          }
-          .react-flow__edges {
-            z-index: 1000 !important;
+            pointer-events: all;
           }
         `}</style>
 
@@ -299,13 +300,15 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionLineComponent={FloatingConnectionLine}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
             maxZoom={2}
-            proOptions={{ hideAttribution: true }}
           >
             <Background />
+            <Controls />
           </ReactFlow>
         )}
 
