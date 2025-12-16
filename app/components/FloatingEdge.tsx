@@ -1,21 +1,22 @@
-import { useCallback } from "react";
-import { useStore, getBezierPath, EdgeProps, Position } from "@xyflow/react";
+import { getBezierPath, useInternalNode, EdgeProps, Position } from "@xyflow/react";
 
 function getNodeIntersection(intersectionNode: any, targetNode: any) {
-  const {
-    width: intersectionNodeWidth,
-    height: intersectionNodeHeight,
-    positionAbsolute: intersectionNodePosition,
-  } = intersectionNode;
-  const targetPosition = targetNode.positionAbsolute;
+  const intersectionNodeWidth = intersectionNode.measured?.width ?? 0;
+  const intersectionNodeHeight = intersectionNode.measured?.height ?? 0;
+  const intersectionNodePosition = intersectionNode.internals?.positionAbsolute;
+  const targetPosition = targetNode.internals?.positionAbsolute;
 
-  const w = intersectionNodeWidth! / 2;
-  const h = intersectionNodeHeight! / 2;
+  if (!intersectionNodePosition || !targetPosition) {
+    return { x: 0, y: 0 };
+  }
 
-  const x2 = intersectionNodePosition!.x + w;
-  const y2 = intersectionNodePosition!.y + h;
-  const x1 = targetPosition!.x + (targetNode.width || 0) / 2;
-  const y1 = targetPosition!.y + (targetNode.height || 0) / 2;
+  const w = intersectionNodeWidth / 2;
+  const h = intersectionNodeHeight / 2;
+
+  const x2 = intersectionNodePosition.x + w;
+  const y2 = intersectionNodePosition.y + h;
+  const x1 = targetPosition.x + (targetNode.measured?.width ?? 0) / 2;
+  const y1 = targetPosition.y + (targetNode.measured?.height ?? 0) / 2;
 
   const xx1 = (x1 - x2) / (2 * w) - (y1 - y2) / (2 * h);
   const yy1 = (x1 - x2) / (2 * w) + (y1 - y2) / (2 * h);
@@ -29,22 +30,27 @@ function getNodeIntersection(intersectionNode: any, targetNode: any) {
 }
 
 function getEdgePosition(node: any, intersectionPoint: any) {
-  const n = { ...node.positionAbsolute, ...node };
-  const nx = Math.round(n.x);
-  const ny = Math.round(n.y);
+  const pos = node.internals?.positionAbsolute;
+  if (!pos) return Position.Top;
+
+  const width = node.measured?.width ?? 0;
+  const height = node.measured?.height ?? 0;
+
+  const nx = Math.round(pos.x);
+  const ny = Math.round(pos.y);
   const px = Math.round(intersectionPoint.x);
   const py = Math.round(intersectionPoint.y);
 
   if (px <= nx + 1) {
     return Position.Left;
   }
-  if (px >= nx + n.width! - 1) {
+  if (px >= nx + width - 1) {
     return Position.Right;
   }
   if (py <= ny + 1) {
     return Position.Top;
   }
-  if (py >= ny + n.height! - 1) {
+  if (py >= ny + height - 1) {
     return Position.Bottom;
   }
 
@@ -69,12 +75,8 @@ function getEdgeParams(source: any, target: any) {
 }
 
 function FloatingEdge({ id, source, target, markerEnd, style }: EdgeProps) {
-  const sourceNode = useStore(
-    useCallback((store) => store.nodeLookup.get(source), [source])
-  );
-  const targetNode = useStore(
-    useCallback((store) => store.nodeLookup.get(target), [target])
-  );
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
 
   if (!sourceNode || !targetNode) {
     return null;
@@ -99,9 +101,6 @@ function FloatingEdge({ id, source, target, markerEnd, style }: EdgeProps) {
       id={id}
       className="react-flow__edge-path"
       d={edgePath}
-      fill="none"
-      stroke={style?.stroke || "#fff"}
-      strokeWidth={style?.strokeWidth || 8}
       markerEnd={markerEnd}
       style={style}
     />
