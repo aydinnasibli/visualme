@@ -273,7 +273,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     );
 
     return (
-      <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden floating-edges">
+      <div className="relative w-full h-[750px]  rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden floating-edges">
         <style>{`
           .floating-edges .react-flow__handle {
             opacity: 0;
