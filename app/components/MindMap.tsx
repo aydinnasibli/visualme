@@ -187,8 +187,6 @@ const createMindMapLayout = (
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: color,
-          width: 30,
-          height: 30,
         },
         style: {
           stroke: color,
@@ -275,13 +273,13 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     );
 
     return (
-      <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden">
+      <div className="relative w-full h-[750px] bg-gradient-to-br from-zinc-900 via-zinc-950 to-black rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden floating-edges">
         <style>{`
+          .floating-edges .react-flow__handle {
+            opacity: 0;
+          }
           .react-flow__edge-path {
             stroke-width: 8px !important;
-          }
-          .react-flow__edge {
-            pointer-events: all;
           }
         `}</style>
 
@@ -302,6 +300,9 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionLineComponent={FloatingConnectionLine}
+            defaultEdgeOptions={{
+              style: { strokeWidth: 8 },
+            }}
             fitView
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
