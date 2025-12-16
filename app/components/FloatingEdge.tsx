@@ -1,16 +1,23 @@
-import { useCallback } from 'react';
-import { useStore, getBezierPath, EdgeProps } from 'reactflow';
-import { getEdgeParams } from './edgeUtils';
+import { useCallback } from "react";
+import { useStore, getBezierPath, EdgeProps } from "reactflow";
+import { getEdgeParams } from "./edgeUtils";
 
 function FloatingEdge({ id, source, target, markerEnd, style }: EdgeProps) {
-  const sourceNode = useStore(useCallback((store) => store.nodeInternals.get(source), [source]));
-  const targetNode = useStore(useCallback((store) => store.nodeInternals.get(target), [target]));
+  const sourceNode = useStore(
+    useCallback((store) => store.nodeInternals.get(source), [source])
+  );
+  const targetNode = useStore(
+    useCallback((store) => store.nodeInternals.get(target), [target])
+  );
 
   if (!sourceNode || !targetNode) {
     return null;
   }
 
-  const { sx, sy, tx, ty, sourcePos, targetPos } = getEdgeParams(sourceNode, targetNode);
+  const { sx, sy, tx, ty, sourcePos, targetPos } = getEdgeParams(
+    sourceNode,
+    targetNode
+  );
 
   const [edgePath] = getBezierPath({
     sourceX: sx,
@@ -27,7 +34,7 @@ function FloatingEdge({ id, source, target, markerEnd, style }: EdgeProps) {
       className="react-flow__edge-path"
       d={edgePath}
       fill="none"
-      stroke={style?.stroke || '#fff'}
+      stroke={style?.stroke || "#fff"}
       strokeWidth={style?.strokeWidth || 8}
       markerEnd={markerEnd}
       style={style}

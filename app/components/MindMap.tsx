@@ -213,7 +213,9 @@ const createMindMapLayout = (
 
 const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
   ({ data, onExpand }, ref) => {
-    const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(null);
+    const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(
+      null
+    );
     const [isExpanding, setIsExpanding] = useState(false);
 
     const handleExpand = useCallback(
@@ -330,7 +332,9 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                   background: `linear-gradient(135deg, ${
                     COLORS[selectedNodeData.level % COLORS.length]
                   }15, rgba(9,9,11,0.95))`,
-                  borderColor: `${COLORS[selectedNodeData.level % COLORS.length]}60`,
+                  borderColor: `${
+                    COLORS[selectedNodeData.level % COLORS.length]
+                  }60`,
                 }}
               >
                 <button
@@ -357,11 +361,15 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                     </h4>
                     <ul className="space-y-1">
                       {selectedNodeData.keyPoints.map((point, i) => (
-                        <li key={i} className="text-sm text-zinc-200 flex gap-2">
+                        <li
+                          key={i}
+                          className="text-sm text-zinc-200 flex gap-2"
+                        >
                           <span
                             className="w-1 h-1 rounded-full mt-2"
                             style={{
-                              backgroundColor: COLORS[selectedNodeData.level % COLORS.length],
+                              backgroundColor:
+                                COLORS[selectedNodeData.level % COLORS.length],
                             }}
                           />
                           <span>{point}</span>
@@ -382,9 +390,14 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                           key={i}
                           className="px-2 py-1 rounded text-xs"
                           style={{
-                            backgroundColor: `${COLORS[selectedNodeData.level % COLORS.length]}20`,
-                            color: COLORS[selectedNodeData.level % COLORS.length],
-                            border: `1px solid ${COLORS[selectedNodeData.level % COLORS.length]}40`,
+                            backgroundColor: `${
+                              COLORS[selectedNodeData.level % COLORS.length]
+                            }20`,
+                            color:
+                              COLORS[selectedNodeData.level % COLORS.length],
+                            border: `1px solid ${
+                              COLORS[selectedNodeData.level % COLORS.length]
+                            }40`,
                           }}
                         >
                           {concept}
@@ -397,7 +410,10 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                 {selectedNodeData.extendable && (
                   <button
                     onClick={async () => {
-                      await handleExpand(selectedNodeData.nodeId, selectedNodeData.label);
+                      await handleExpand(
+                        selectedNodeData.nodeId,
+                        selectedNodeData.label
+                      );
                       setSelectedNodeData(null);
                     }}
                     disabled={isExpanding}
@@ -405,7 +421,9 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                     style={{
                       background: `linear-gradient(135deg, ${
                         COLORS[selectedNodeData.level % COLORS.length]
-                      }80, ${COLORS[selectedNodeData.level % COLORS.length]}60)`,
+                      }80, ${
+                        COLORS[selectedNodeData.level % COLORS.length]
+                      }60)`,
                       color: "white",
                     }}
                   >

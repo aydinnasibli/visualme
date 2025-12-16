@@ -1,12 +1,22 @@
-import { useCallback } from 'react';
-import { useStore, getBezierPath, ConnectionLineComponentProps } from 'reactflow';
-import { getEdgeParams } from './edgeUtils';
+import { useCallback } from "react";
+import {
+  useStore,
+  getBezierPath,
+  ConnectionLineComponentProps,
+} from "reactflow";
+import { getEdgeParams } from "./edgeUtils";
 
-function FloatingConnectionLine({ toX, toY, fromPosition, toPosition, fromNode }: ConnectionLineComponentProps) {
+function FloatingConnectionLine({
+  toX,
+  toY,
+  fromPosition,
+  toPosition,
+  fromNode,
+}: ConnectionLineComponentProps) {
   const targetNode = useStore(
     useCallback(
       (store) => ({
-        id: 'connection-target',
+        id: "connection-target",
         width: 1,
         height: 1,
         positionAbsolute: { x: toX, y: toY },
@@ -32,8 +42,21 @@ function FloatingConnectionLine({ toX, toY, fromPosition, toPosition, fromNode }
 
   return (
     <g>
-      <path fill="none" stroke="#222" strokeWidth={2} className="animated" d={edgePath} />
-      <circle cx={toX} cy={toY} fill="#fff" r={3} stroke="#222" strokeWidth={1.5} />
+      <path
+        fill="none"
+        stroke="#222"
+        strokeWidth={2}
+        className="animated"
+        d={edgePath}
+      />
+      <circle
+        cx={toX}
+        cy={toY}
+        fill="#fff"
+        r={3}
+        stroke="#222"
+        strokeWidth={1.5}
+      />
     </g>
   );
 }
