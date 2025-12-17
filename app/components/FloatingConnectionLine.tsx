@@ -42,18 +42,25 @@ function FloatingConnectionLine({
     <g>
       <path
         fill="none"
-        stroke="#b1b1b7"
-        strokeWidth={3}
-        className="animated"
+        stroke="#a855f7"
+        strokeWidth={4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          filter: 'drop-shadow(0 0 6px #a855f7)',
+        }}
         d={edgePath}
       />
       <circle
         cx={tx || toX}
         cy={ty || toY}
         fill="#fff"
-        r={3}
-        stroke="#b1b1b7"
+        r={4}
+        stroke="#a855f7"
         strokeWidth={2}
+        style={{
+          filter: 'drop-shadow(0 0 4px #a855f7)',
+        }}
       />
     </g>
   );

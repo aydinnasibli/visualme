@@ -196,13 +196,16 @@ const createMindMapLayout = (
         source: parentId,
         target: node.id,
         type: "floating",
+        animated: true,
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: color,
+          width: 25,
+          height: 25,
         },
         style: {
           stroke: color,
-          strokeWidth: 8,
+          strokeWidth: 6,
         },
       });
     }
@@ -291,7 +294,21 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             opacity: 0;
           }
           .react-flow__edge-path {
-            stroke-width: 8px !important;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 8px currentColor);
+          }
+          .react-flow__edge.animated path {
+            stroke-dasharray: 5;
+            animation: dashdraw 0.5s linear infinite;
+          }
+          @keyframes dashdraw {
+            to {
+              stroke-dashoffset: -10;
+            }
+          }
+          .react-flow__edge:hover path {
+            filter: drop-shadow(0 0 12px currentColor) brightness(1.2);
           }
         `}</style>
 
@@ -313,7 +330,12 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             edgeTypes={edgeTypes}
             connectionLineComponent={FloatingConnectionLine}
             defaultEdgeOptions={{
-              style: { strokeWidth: 8 },
+              style: {
+                strokeWidth: 6,
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round',
+              },
+              animated: true,
             }}
             fitView
             fitViewOptions={{ padding: 0.25 }}
