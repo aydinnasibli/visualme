@@ -20,6 +20,9 @@ import {
   Controls,
   Handle,
   Position,
+  MiniMap,
+  Panel,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
@@ -228,6 +231,8 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       null
     );
     const [isExpanding, setIsExpanding] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
+    const { fitView, zoomIn, zoomOut } = useReactFlow();
 
     const handleExpand = useCallback(
       async (nodeId: string, content: string) => {
@@ -271,14 +276,69 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       setEdges(layoutedEdges);
     }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
 
+    const handleExportPNG = useCallback(async () => {
+      const element = document.querySelector('.react-flow') as HTMLElement;
+      if (!element) return;
+
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#09090b',
+        scale: 2,
+      });
+
+      const link = document.createElement('a');
+      link.download = `mindmap-${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    }, []);
+
+    // Keyboard shortcuts
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // ?: Show help
+        if (e.key === '?') {
+          e.preventDefault();
+          setShowHelp(prev => !prev);
+        }
+        // Shift + R: Reset view
+        if (e.shiftKey && e.key === 'R') {
+          e.preventDefault();
+          fitView({ padding: 0.25, duration: 400 });
+        }
+        // Shift + E: Export PNG
+        if (e.shiftKey && e.key === 'E') {
+          e.preventDefault();
+          handleExportPNG();
+        }
+        // +/=: Zoom in
+        if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          zoomIn({ duration: 200 });
+        }
+        // -: Zoom out
+        if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          zoomOut({ duration: 200 });
+        }
+        // Escape: Close panels
+        if (e.key === 'Escape') {
+          setShowHelp(false);
+          setSelectedNodeData(null);
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [fitView, handleExportPNG, zoomIn, zoomOut]);
+
     useImperativeHandle(
       ref,
       () => ({
-        exportPNG: async () => console.log("Export PNG not implemented"),
+        exportPNG: handleExportPNG,
         exportSVG: async () => console.log("Export SVG not implemented"),
         getData: () => data,
       }),
-      [data]
+      [data, handleExportPNG]
     );
 
     return (
@@ -331,11 +391,106 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             fitViewOptions={{ padding: 0.25 }}
             minZoom={0.2}
             maxZoom={2}
+            selectNodesOnDrag={false}
+            panOnScroll
+            zoomOnScroll
+            zoomOnPinch
+            nodesDraggable
+            nodesConnectable={false}
+            elementsSelectable
           >
-            <Background />
-            <Controls />
+            <Background gap={16} size={1} color="#27272a" />
+            <Controls
+              showZoom
+              showFitView
+              showInteractive={false}
+              position="bottom-right"
+            />
+            <MiniMap
+              nodeColor={(node) => {
+                const level = (node.data as any).level || 0;
+                return COLORS[level % COLORS.length];
+              }}
+              maskColor="rgba(0, 0, 0, 0.6)"
+              position="bottom-left"
+              style={{
+                backgroundColor: '#18181b',
+                border: '1px solid #3f3f46',
+              }}
+            />
+            <Panel position="top-right" className="flex gap-2">
+              <button
+                onClick={() => fitView({ padding: 0.25, duration: 400 })}
+                className="px-3 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white rounded-lg border border-zinc-600 transition text-sm font-medium"
+                title="Reset View (Shift + R)"
+              >
+                Reset View
+              </button>
+              <button
+                onClick={handleExportPNG}
+                className="px-3 py-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg border border-purple-500 transition text-sm font-medium"
+                title="Export as PNG (Shift + E)"
+              >
+                Export PNG
+              </button>
+              <button
+                onClick={() => setShowHelp(!showHelp)}
+                className="px-3 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white rounded-lg border border-zinc-600 transition text-sm font-medium"
+                title="Keyboard Shortcuts (?)"
+              >
+                ?
+              </button>
+            </Panel>
           </ReactFlow>
         )}
+
+        {/* Keyboard Shortcuts Help */}
+        <AnimatePresence>
+          {showHelp && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-20 right-4 bg-zinc-900/95 border border-zinc-700 rounded-xl p-4 shadow-2xl z-50 backdrop-blur-sm"
+            >
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-white font-bold">Keyboard Shortcuts</h3>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="text-zinc-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between gap-8">
+                  <span className="text-zinc-400">Pan</span>
+                  <span className="text-white font-mono">Click + Drag</span>
+                </div>
+                <div className="flex justify-between gap-8">
+                  <span className="text-zinc-400">Zoom</span>
+                  <span className="text-white font-mono">Scroll / +/-</span>
+                </div>
+                <div className="flex justify-between gap-8">
+                  <span className="text-zinc-400">Reset View</span>
+                  <span className="text-white font-mono">Shift + R</span>
+                </div>
+                <div className="flex justify-between gap-8">
+                  <span className="text-zinc-400">Export PNG</span>
+                  <span className="text-white font-mono">Shift + E</span>
+                </div>
+                <div className="flex justify-between gap-8">
+                  <span className="text-zinc-400">Toggle Help</span>
+                  <span className="text-white font-mono">?</span>
+                </div>
+                <div className="flex justify-between gap-8">
+                  <span className="text-zinc-400">Close Panels</span>
+                  <span className="text-white font-mono">Esc</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Details Panel */}
         <AnimatePresence>
