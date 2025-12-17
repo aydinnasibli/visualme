@@ -18,6 +18,8 @@ import {
   Background,
   MarkerType,
   Controls,
+  Handle,
+  Position,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { motion, AnimatePresence } from "framer-motion";
@@ -71,6 +73,16 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
       className="cursor-pointer"
       style={{ minWidth: isRoot ? "200px" : "150px" }}
     >
+      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Right} />
+      <Handle type="target" position={Position.Bottom} />
+      <Handle type="target" position={Position.Left} />
+
+      <Handle type="source" position={Position.Top} />
+      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Left} />
+
       <div
         className="px-5 py-3 rounded-2xl shadow-xl transition-all duration-200 hover:scale-105"
         style={{
@@ -183,8 +195,7 @@ const createMindMapLayout = (
         id: `e-${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
-        type: "straight",
-        animated: true,
+        type: "floating",
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: color,
