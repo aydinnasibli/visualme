@@ -70,6 +70,7 @@ export default function Home() {
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   // Refs remain the same
   const networkGraphRef = useRef<NetworkGraphHandle>(null);
@@ -105,6 +106,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setIsSaved(false);
 
     try {
       const data = await generateVisualization(input.trim());
@@ -126,6 +128,11 @@ export default function Home() {
   const handleSave = async () => {
     if (!result || !isSignedIn) {
       setError("Please sign in to save visualizations");
+      return;
+    }
+
+    if (isSaved) {
+      setError("This visualization is already saved");
       return;
     }
 
@@ -151,6 +158,7 @@ export default function Home() {
         return;
       }
 
+      setIsSaved(true);
       alert("Visualization saved successfully!");
     } catch (err) {
       setError("Failed to save visualization");
@@ -164,6 +172,7 @@ export default function Home() {
     setInput("");
     setResult(null);
     setError(null);
+    setIsSaved(false);
   };
 
   const handleFormatSwitch = async (
@@ -173,6 +182,7 @@ export default function Home() {
 
     setLoading(true);
     setError(null);
+    setIsSaved(false);
 
     try {
       const data = await regenerateVisualization(input.trim(), newFormat);
@@ -692,9 +702,13 @@ export default function Home() {
                     {isSignedIn && (
                       <button
                         onClick={handleSave}
-                        disabled={saving}
-                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-500/25"
-                        title="Save Visualization"
+                        disabled={saving || isSaved}
+                        className={`px-5 py-2.5 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg ${
+                          isSaved
+                            ? "bg-green-600 shadow-green-500/25"
+                            : "bg-purple-600 hover:bg-purple-700 shadow-purple-500/25"
+                        }`}
+                        title={isSaved ? "Already Saved" : "Save Visualization"}
                       >
                         {saving ? (
                           <>
@@ -718,6 +732,23 @@ export default function Home() {
                               />
                             </svg>
                             Saving...
+                          </>
+                        ) : isSaved ? (
+                          <>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                            Saved
                           </>
                         ) : (
                           <>
