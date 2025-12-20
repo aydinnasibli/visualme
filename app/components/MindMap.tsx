@@ -17,10 +17,8 @@ import {
   ReactFlowProvider,
   Background,
   MarkerType,
-  Controls,
   Handle,
   Position,
-  MiniMap,
   Panel,
   useReactFlow,
 } from "@xyflow/react";
@@ -132,7 +130,7 @@ const edgeTypes = {
   floating: FloatingEdge,
 };
 
-// Simple radial layout - root centered, children in circle
+// Improved hierarchical radial layout with better spacing
 const createMindMapLayout = (
   root: MindMapNodeType | undefined
 ): { nodes: Node[]; edges: Edge[] } => {
@@ -143,7 +141,9 @@ const createMindMapLayout = (
 
   const centerX = 0;
   const centerY = 0;
-  const levelRadius = 280;
+  const baseRadius = 320; // Increased spacing between levels
+  const nodeWidth = 200;
+  const nodeHeight = 60;
 
   const buildTree = (
     node: MindMapNodeType,
@@ -160,26 +160,35 @@ const createMindMapLayout = (
     let currentAngle = 0;
 
     if (level === 0) {
+      // Root at center
       x = centerX;
       y = centerY;
     } else if (level === 1) {
+      // First level: evenly distributed in full circle
       currentAngle = (siblingIndex / totalSiblings) * 2 * Math.PI;
-      x = centerX + levelRadius * Math.cos(currentAngle);
-      y = centerY + levelRadius * Math.sin(currentAngle);
+      x = centerX + baseRadius * Math.cos(currentAngle);
+      y = centerY + baseRadius * Math.sin(currentAngle);
     } else {
+      // Deeper levels: positioned in wider arcs around parent
       const baseAngle = parentAngle;
-      const arcSpan = Math.PI / 2;
+      // Use dynamic arc span based on number of children (wider for more children)
+      const arcSpan = Math.min(Math.PI * 1.2, Math.PI / 2 + (totalSiblings * 0.15));
       const angleStep = totalSiblings > 1 ? arcSpan / (totalSiblings - 1) : 0;
       currentAngle = baseAngle - arcSpan / 2 + siblingIndex * angleStep;
-      const radius = level * levelRadius;
+      // Increase radius for each level with better spacing
+      const radius = level * baseRadius * 0.85;
       x = centerX + radius * Math.cos(currentAngle);
       y = centerY + radius * Math.sin(currentAngle);
     }
 
+    // Center node based on actual size
     nodes.push({
       id: node.id,
       type: "mindMapNode",
-      position: { x: x - 100, y: y - 30 },
+      position: {
+        x: x - nodeWidth / 2,
+        y: y - nodeHeight / 2
+      },
       data: {
         label: node.content,
         description: node.description,
@@ -400,24 +409,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             elementsSelectable
           >
             <Background gap={16} size={1} color="#27272a" />
-            <Controls
-              showZoom
-              showFitView
-              showInteractive={false}
-              position="bottom-right"
-            />
-            <MiniMap
-              nodeColor={(node) => {
-                const level = (node.data as any).level || 0;
-                return COLORS[level % COLORS.length];
-              }}
-              maskColor="rgba(0, 0, 0, 0.6)"
-              position="bottom-left"
-              style={{
-                backgroundColor: '#18181b',
-                border: '1px solid #3f3f46',
-              }}
-            />
             <Panel position="top-right" className="flex gap-2">
               <button
                 onClick={() => fitView({ padding: 0.25, duration: 400 })}
