@@ -36,6 +36,7 @@ import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
 interface MindMapProps {
   data: MindMapData;
   onExpand?: (nodeId: string, nodeContent: string) => Promise<void>;
+  readOnly?: boolean;
 }
 
 export interface MindMapHandle {
@@ -63,6 +64,7 @@ interface NodeData {
   nodeId: string;
   onExpand: (nodeId: string, content: string) => Promise<void>;
   onShowDetails: (data: NodeData) => void;
+  readOnly?: boolean;
 }
 
 const MindMapNode = ({ data }: { data: NodeData }) => {
@@ -106,7 +108,7 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
             {data.label}
           </p>
 
-          {data.extendable && (
+          {data.extendable && !data.readOnly && (
             <div className="p-1 rounded-full">
               <Sparkles className="w-4 h-4 text-yellow-300" />
             </div>
@@ -230,7 +232,7 @@ const createMindMapLayout = (
 };
 
 const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
-  ({ data, onExpand }, ref) => {
+  ({ data, onExpand, readOnly = false }, ref) => {
     const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(
       null
     );
@@ -269,11 +271,12 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
           ...node.data,
           onExpand: handleExpand,
           onShowDetails: handleShowDetails,
+          readOnly,
         },
       }));
 
       return { nodes: nodesWithHandlers, edges: result.edges };
-    }, [data, handleExpand, handleShowDetails]);
+    }, [data, handleExpand, handleShowDetails, readOnly]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
@@ -571,7 +574,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                   </div>
                 )}
 
-                {selectedNodeData.extendable && (
+                {selectedNodeData.extendable && !readOnly && (
                   isNodeExtended(selectedNodeData.nodeId) ? (
                     <div
                       className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
