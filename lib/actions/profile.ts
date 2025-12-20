@@ -152,3 +152,43 @@ export async function updateUserPlan(plan: 'free' | 'pro' | 'enterprise'): Promi
     return { success: false, error: 'Failed to update plan' };
   }
 }
+
+/**
+ * Get a specific visualization by ID
+ */
+export async function getVisualizationById(visualizationId: string): Promise<{ success: boolean; data?: SavedVisualization; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    await connectToDatabase();
+
+    const visualization = await VisualizationModel
+      .findOne({ _id: visualizationId, userId })
+      .lean()
+      .exec();
+
+    if (!visualization) {
+      return { success: false, error: 'Visualization not found' };
+    }
+
+    // Convert MongoDB document to plain object
+    const data = {
+      ...visualization,
+      _id: visualization._id.toString(),
+      createdAt: visualization.createdAt.toISOString(),
+      updatedAt: visualization.updatedAt.toISOString(),
+      metadata: {
+        ...visualization.metadata,
+        generatedAt: visualization.metadata.generatedAt.toISOString(),
+      },
+    } as unknown as SavedVisualization;
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error fetching visualization:', error);
+    return { success: false, error: 'Failed to fetch visualization' };
+  }
+}
