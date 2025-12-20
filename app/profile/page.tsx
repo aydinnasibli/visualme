@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions/profile";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { Trash2, Calendar, Eye, Sparkles } from "lucide-react";
+import VisualizationModal from "../components/VisualizationModal";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedVisualization, setSelectedVisualization] = useState<SavedVisualization | null>(null);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -213,7 +215,7 @@ export default function ProfilePage() {
                     </div>
 
                     <button
-                      onClick={() => router.push(`/?load=${viz._id}`)}
+                      onClick={() => setSelectedVisualization(viz)}
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
                     >
                       <Eye className="w-4 h-4" />
@@ -226,6 +228,12 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Visualization Modal */}
+      <VisualizationModal
+        visualization={selectedVisualization}
+        onClose={() => setSelectedVisualization(null)}
+      />
     </div>
   );
 }
