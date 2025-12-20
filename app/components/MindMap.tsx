@@ -245,8 +245,8 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
         setIsExpanding(true);
         try {
           await onExpand(nodeId, content);
-          // Mark node as extended globally
-          addExtendedNode(nodeId);
+          // Mark node as extended globally (save to database)
+          await addExtendedNode(nodeId);
         } finally {
           setIsExpanding(false);
         }

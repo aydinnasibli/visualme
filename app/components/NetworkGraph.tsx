@@ -501,8 +501,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       setIsExpanding(true);
       try {
         await onExpand(selectedNode.id, selectedNode.label);
-        // Mark node as extended globally
-        addExtendedNode(selectedNode.id);
+        // Mark node as extended globally (save to database)
+        await addExtendedNode(selectedNode.id);
         setSelectedNode(null);
         // Don't auto-fit after expansion to prevent view jumps
         // User can manually reset view if needed
