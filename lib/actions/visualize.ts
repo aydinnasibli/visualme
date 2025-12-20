@@ -2,7 +2,7 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
-import { VisualizationModel, UserUsageModel } from '@/lib/database/models';
+import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
 import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
 import { checkRateLimit, cacheGet, cacheSet } from '@/lib/database/redis';
@@ -212,6 +212,7 @@ export async function saveVisualization(
 
     await connectToDatabase();
 
+    // Create visualization
     const visualization = await VisualizationModel.create({
       userId,
       title,
@@ -220,6 +221,16 @@ export async function saveVisualization(
       metadata,
       isPublic,
     });
+
+    // Update user's saved visualizations
+    const user = await UserModel.findOrCreate(userId);
+    const visualizationIdStr = visualization._id.toString();
+    const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
+
+    if (!exists) {
+      user.savedVisualizations.push(visualization._id as any);
+      await user.save();
+    }
 
     return { success: true, id: visualization._id.toString() };
   } catch (error) {

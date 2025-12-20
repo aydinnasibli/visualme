@@ -31,6 +31,7 @@ import {
 import { Sparkles, X } from "lucide-react";
 import FloatingEdge from "./FloatingEdge";
 import FloatingConnectionLine from "./FloatingConnectionLine";
+import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
 
 interface MindMapProps {
   data: MindMapData;
@@ -235,7 +236,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     );
     const [isExpanding, setIsExpanding] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
-    const [extendedNodes, setExtendedNodes] = useState<Set<string>>(new Set());
+    const { addExtendedNode, isNodeExtended } = useExtendedNodes();
     const { fitView, zoomIn, zoomOut } = useReactFlow();
 
     const handleExpand = useCallback(
@@ -244,13 +245,13 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
         setIsExpanding(true);
         try {
           await onExpand(nodeId, content);
-          // Mark node as extended
-          setExtendedNodes(prev => new Set(prev).add(nodeId));
+          // Mark node as extended globally (save to database)
+          await addExtendedNode(nodeId);
         } finally {
           setIsExpanding(false);
         }
       },
-      [onExpand]
+      [onExpand, addExtendedNode]
     );
 
     const handleShowDetails = useCallback((nodeData: NodeData) => {
@@ -571,7 +572,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                 )}
 
                 {selectedNodeData.extendable && (
-                  extendedNodes.has(selectedNodeData.nodeId) ? (
+                  isNodeExtended(selectedNodeData.nodeId) ? (
                     <div
                       className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
                       style={{
@@ -608,7 +609,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                       }}
                     >
                       <Sparkles className="w-4 h-4" />
-                      {isExpanding ? "Expanding..." : "Expand & Explore"}
+                      {isExpanding ? "Extending..." : "Extend & Explore"}
                     </button>
                   )
                 )}
