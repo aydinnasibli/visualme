@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, Suspense } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic"; // STEP 1: Import dynamic
 import { motion, AnimatePresence } from "framer-motion";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { saveAs } from "file-saver";
 import { useAuth } from "@clerk/nextjs";
-import VisualizationLoader from "./components/VisualizationLoader";
 
 // STEP 2: Remove the static import
 // import NetworkGraph, { NetworkGraphHandle } from './components/NetworkGraph';
@@ -76,12 +75,6 @@ export default function Home() {
   const networkGraphRef = useRef<NetworkGraphHandle>(null);
   const mindMapRef = useRef<MindMapHandle>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-
-  // Callback for VisualizationLoader
-  const handleVisualizationLoad = (loadedInput: string, loadedResult: VisualizationResponse) => {
-    setInput(loadedInput);
-    setResult(loadedResult);
-  };
 
   // Close export menu when clicking outside
   useEffect(() => {
@@ -494,15 +487,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      {/* Load visualization from URL parameter */}
-      <Suspense fallback={null}>
-        <VisualizationLoader
-          onLoad={handleVisualizationLoad}
-          onError={setError}
-          onLoadingChange={setLoading}
-        />
-      </Suspense>
-
       <div className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
         {/* Hero Section */}
         <motion.div
