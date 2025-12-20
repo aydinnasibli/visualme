@@ -212,6 +212,20 @@ export async function saveVisualization(
 
     await connectToDatabase();
 
+    // Check for existing visualization with same title and type
+    const existingVisualization = await VisualizationModel.findOne({
+      userId,
+      title,
+      type,
+    });
+
+    if (existingVisualization) {
+      return {
+        success: false,
+        error: 'A visualization with this title already exists. Please modify your input to save a new version.'
+      };
+    }
+
     // Create visualization
     const visualization = await VisualizationModel.create({
       userId,
