@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/database/mongodb";
-import { UserExtendedNodesModel } from "@/lib/database/models";
+import { UserModel } from "@/lib/database/models";
 
 /**
  * Get all extended nodes for the current user
@@ -15,9 +15,9 @@ export async function getExtendedNodes(): Promise<string[]> {
     }
 
     await connectToDatabase();
-    const record = await UserExtendedNodesModel.findOne({ userId });
+    const user = await UserModel.findOrCreate(userId);
 
-    return record?.extendedNodes || [];
+    return user?.extendedNodes || [];
   } catch (error) {
     console.error("Error fetching extended nodes:", error);
     return [];
@@ -35,18 +35,12 @@ export async function addExtendedNode(nodeId: string): Promise<boolean> {
     }
 
     await connectToDatabase();
+    const user = await UserModel.findOrCreate(userId);
 
-    // Use upsert to create if doesn't exist, or update if exists
-    await UserExtendedNodesModel.findOneAndUpdate(
-      { userId },
-      {
-        $addToSet: { extendedNodes: nodeId }, // $addToSet prevents duplicates
-      },
-      {
-        upsert: true,
-        new: true
-      }
-    );
+    if (!user.extendedNodes.includes(nodeId)) {
+      user.extendedNodes.push(nodeId);
+      await user.save();
+    }
 
     return true;
   } catch (error) {
@@ -66,12 +60,12 @@ export async function isNodeExtended(nodeId: string): Promise<boolean> {
     }
 
     await connectToDatabase();
-    const record = await UserExtendedNodesModel.findOne({
-      userId,
+    const user = await UserModel.findOne({
+      clerkId: userId,
       extendedNodes: nodeId
     });
 
-    return !!record;
+    return !!user;
   } catch (error) {
     console.error("Error checking if node is extended:", error);
     return false;
@@ -89,11 +83,9 @@ export async function clearExtendedNodes(): Promise<boolean> {
     }
 
     await connectToDatabase();
-    await UserExtendedNodesModel.findOneAndUpdate(
-      { userId },
-      { extendedNodes: [] },
-      { upsert: true }
-    );
+    const user = await UserModel.findOrCreate(userId);
+    user.extendedNodes = [];
+    await user.save();
 
     return true;
   } catch (error) {

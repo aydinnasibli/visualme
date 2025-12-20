@@ -40,6 +40,12 @@ export default function Header() {
           </Link>
           <SignedIn>
             <Link
+              href="/profile"
+              className="text-sm font-medium text-gray-300 transition-colors hover:text-white"
+            >
+              Profile
+            </Link>
+            <Link
               href="/dashboard"
               className="text-sm font-medium text-gray-300 transition-colors hover:text-white"
             >
