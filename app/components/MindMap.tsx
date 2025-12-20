@@ -106,15 +106,9 @@ const MindMapNode = ({ data }: { data: NodeData }) => {
           </p>
 
           {data.extendable && (
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                await data.onExpand(data.nodeId, data.label);
-              }}
-              className="p-1 rounded-full hover:bg-yellow-400/30"
-            >
+            <div className="p-1 rounded-full">
               <Sparkles className="w-4 h-4 text-yellow-300" />
-            </button>
+            </div>
           )}
         </div>
       </div>
@@ -241,6 +235,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     );
     const [isExpanding, setIsExpanding] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    const [extendedNodes, setExtendedNodes] = useState<Set<string>>(new Set());
     const { fitView, zoomIn, zoomOut } = useReactFlow();
 
     const handleExpand = useCallback(
@@ -249,6 +244,8 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
         setIsExpanding(true);
         try {
           await onExpand(nodeId, content);
+          // Mark node as extended
+          setExtendedNodes(prev => new Set(prev).add(nodeId));
         } finally {
           setIsExpanding(false);
         }
@@ -574,28 +571,46 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                 )}
 
                 {selectedNodeData.extendable && (
-                  <button
-                    onClick={async () => {
-                      await handleExpand(
-                        selectedNodeData.nodeId,
-                        selectedNodeData.label
-                      );
-                      setSelectedNodeData(null);
-                    }}
-                    disabled={isExpanding}
-                    className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
-                    style={{
-                      background: `linear-gradient(135deg, ${
-                        COLORS[selectedNodeData.level % COLORS.length]
-                      }80, ${
-                        COLORS[selectedNodeData.level % COLORS.length]
-                      }60)`,
-                      color: "white",
-                    }}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {isExpanding ? "Expanding..." : "Expand & Explore"}
-                  </button>
+                  extendedNodes.has(selectedNodeData.nodeId) ? (
+                    <div
+                      className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
+                      style={{
+                        background: `linear-gradient(135deg, ${
+                          COLORS[selectedNodeData.level % COLORS.length]
+                        }40, ${
+                          COLORS[selectedNodeData.level % COLORS.length]
+                        }20)`,
+                        color: COLORS[selectedNodeData.level % COLORS.length],
+                        border: `1px solid ${COLORS[selectedNodeData.level % COLORS.length]}60`,
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Extended
+                    </div>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        await handleExpand(
+                          selectedNodeData.nodeId,
+                          selectedNodeData.label
+                        );
+                        setSelectedNodeData(null);
+                      }}
+                      disabled={isExpanding}
+                      className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
+                      style={{
+                        background: `linear-gradient(135deg, ${
+                          COLORS[selectedNodeData.level % COLORS.length]
+                        }80, ${
+                          COLORS[selectedNodeData.level % COLORS.length]
+                        }60)`,
+                        color: "white",
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {isExpanding ? "Expanding..." : "Expand & Explore"}
+                    </button>
+                  )
                 )}
               </div>
             </motion.div>
