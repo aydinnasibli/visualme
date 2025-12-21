@@ -5,9 +5,25 @@ import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
 import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
-import { checkRateLimit, cacheGet, cacheSet } from '@/lib/database/redis';
+import {
+  checkRateLimit,
+  checkExpansionRateLimit,
+  checkSaveRateLimit,
+  checkDeleteRateLimit,
+  cacheGet,
+  cacheSet
+} from '@/lib/database/redis';
 import { generateCacheKey, calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
+import {
+  validateInputLength,
+  validateObjectId,
+  validateDataSize,
+  validateArraySize,
+  validateTitle,
+  sanitizeError,
+  VALIDATION_LIMITS
+} from '@/lib/utils/validation';
 import type {
   VisualizationType,
   VisualizationResponse,
@@ -31,6 +47,18 @@ export async function generateVisualization(
   const startTime = Date.now();
 
   try {
+    // SECURITY: Validate input length
+    const inputValidation = validateInputLength(input);
+    if (!inputValidation.valid) {
+      return {
+        success: false,
+        type: 'network_graph',
+        data: {} as VisualizationData,
+        reason: '',
+        error: inputValidation.error || 'Invalid input',
+      };
+    }
+
     // Get authenticated user
     const { userId } = await auth();
 
@@ -150,13 +178,51 @@ export async function expandNodeAction(
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
 
+    // SECURITY: Validate inputs
+    const labelValidation = validateInputLength(nodeLabel, VALIDATION_LIMITS.MAX_NODE_LABEL_LENGTH);
+    if (!labelValidation.valid) {
+      return { success: false, error: labelValidation.error };
+    }
+
+    const inputValidation = validateInputLength(originalInput);
+    if (!inputValidation.valid) {
+      return { success: false, error: inputValidation.error };
+    }
+
+    const arrayValidation = validateArraySize(existingNodeLabels, VALIDATION_LIMITS.MAX_EXISTING_NODES_ARRAY);
+    if (!arrayValidation.valid) {
+      return { success: false, error: arrayValidation.error };
+    }
+
+    await connectToDatabase();
+
+    // SECURITY: Get user tier for rate limiting
+    const userUsage = await UserUsageModel.findOne({ userId });
+    const tier = userUsage?.tier || 'free';
+
+    // SECURITY: Check expansion rate limit
+    const rateLimit = await checkExpansionRateLimit(userId, tier);
+    if (!rateLimit.allowed) {
+      const resetDate = new Date(rateLimit.resetAt);
+      return {
+        success: false,
+        error: `Expansion limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
+      };
+    }
+
     // Call the AI service to get new nodes
     const newData = await expandNetworkNode(nodeLabel, nodeId, originalInput, existingNodeLabels);
+
+    // Track expansion count
+    await UserUsageModel.updateOne(
+      { userId },
+      { $inc: { visualizationsCreated: 1 } }
+    );
 
     return { success: true, data: newData };
   } catch (error) {
     console.error('Error expanding node:', error);
-    return { success: false, error: 'Failed to expand node' };
+    return { success: false, error: sanitizeError(error, 'Failed to expand node') };
   }
 }
 
@@ -173,13 +239,51 @@ export async function expandMindMapNodeAction(
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
 
+    // SECURITY: Validate inputs
+    const contentValidation = validateInputLength(nodeContent, VALIDATION_LIMITS.MAX_NODE_LABEL_LENGTH);
+    if (!contentValidation.valid) {
+      return { success: false, error: contentValidation.error };
+    }
+
+    const inputValidation = validateInputLength(originalInput);
+    if (!inputValidation.valid) {
+      return { success: false, error: inputValidation.error };
+    }
+
+    const arrayValidation = validateArraySize(existingNodeIds, VALIDATION_LIMITS.MAX_EXISTING_NODES_ARRAY);
+    if (!arrayValidation.valid) {
+      return { success: false, error: arrayValidation.error };
+    }
+
+    await connectToDatabase();
+
+    // SECURITY: Get user tier for rate limiting
+    const userUsage = await UserUsageModel.findOne({ userId });
+    const tier = userUsage?.tier || 'free';
+
+    // SECURITY: Check expansion rate limit
+    const rateLimit = await checkExpansionRateLimit(userId, tier);
+    if (!rateLimit.allowed) {
+      const resetDate = new Date(rateLimit.resetAt);
+      return {
+        success: false,
+        error: `Expansion limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
+      };
+    }
+
     // Call the AI service to get new child nodes
     const newNodes = await expandMindMapNode(nodeContent, nodeId, originalInput, existingNodeIds);
+
+    // Track expansion count
+    await UserUsageModel.updateOne(
+      { userId },
+      { $inc: { visualizationsCreated: 1 } }
+    );
 
     return { success: true, data: newNodes };
   } catch (error) {
     console.error('Error expanding mind map node:', error);
-    return { success: false, error: 'Failed to expand mind map node' };
+    return { success: false, error: sanitizeError(error, 'Failed to expand mind map node') };
   }
 }
 
@@ -210,7 +314,33 @@ export async function saveVisualization(
       return { success: false, error: 'Authentication required' };
     }
 
+    // SECURITY: Validate title
+    const titleValidation = validateTitle(title);
+    if (!titleValidation.valid) {
+      return { success: false, error: titleValidation.error };
+    }
+
+    // SECURITY: Validate data size
+    const dataValidation = validateDataSize(data);
+    if (!dataValidation.valid) {
+      return { success: false, error: dataValidation.error };
+    }
+
     await connectToDatabase();
+
+    // SECURITY: Get user tier for rate limiting
+    const userUsage = await UserUsageModel.findOne({ userId });
+    const tier = userUsage?.tier || 'free';
+
+    // SECURITY: Check save rate limit
+    const rateLimit = await checkSaveRateLimit(userId, tier);
+    if (!rateLimit.allowed) {
+      const resetDate = new Date(rateLimit.resetAt);
+      return {
+        success: false,
+        error: `Save limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
+      };
+    }
 
     // Check for existing visualization with same title and type
     const existingVisualization = await VisualizationModel.findOne({
@@ -231,6 +361,20 @@ export async function saveVisualization(
 
       visualization = existingVisualization;
     } else {
+      // SECURITY: Check if user exceeded max saved visualizations
+      const user = await UserModel.findOrCreate(userId);
+      const currentCount = user.savedVisualizations.length;
+      const maxAllowed = tier === 'free'
+        ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
+        : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
+
+      if (currentCount >= maxAllowed) {
+        return {
+          success: false,
+          error: `Maximum saved visualizations limit reached (${maxAllowed}). Please delete some or upgrade your plan.`
+        };
+      }
+
       // Create new visualization
       visualization = await VisualizationModel.create({
         userId,
@@ -242,7 +386,6 @@ export async function saveVisualization(
       });
 
       // Update user's saved visualizations for new visualization only
-      const user = await UserModel.findOrCreate(userId);
       const visualizationIdStr = visualization._id.toString();
       const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
 
@@ -257,7 +400,7 @@ export async function saveVisualization(
     console.error('Error saving visualization:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to save visualization',
+      error: sanitizeError(error, 'Failed to save visualization'),
     };
   }
 }
@@ -275,7 +418,9 @@ export async function getUserVisualizations(limit: number = 20) {
 
     await connectToDatabase();
 
+    // SECURITY: Use field projection to only return necessary fields
     const visualizations = await VisualizationModel.find({ userId })
+      .select('_id userId title type data metadata isPublic createdAt updatedAt')
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
@@ -289,7 +434,7 @@ export async function getUserVisualizations(limit: number = 20) {
     };
   } catch (error) {
     console.error('Error fetching visualizations:', error);
-    return { success: false, error: 'Failed to fetch visualizations', data: [] };
+    return { success: false, error: sanitizeError(error, 'Failed to fetch visualizations'), data: [] };
   }
 }
 

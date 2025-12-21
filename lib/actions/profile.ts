@@ -2,7 +2,9 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/database/mongodb";
-import { UserModel, VisualizationModel } from "@/lib/database/models";
+import { UserModel, VisualizationModel, UserUsageModel } from "@/lib/database/models";
+import { checkDeleteRateLimit } from "@/lib/database/redis";
+import { validateObjectId, sanitizeError } from "@/lib/utils/validation";
 import type { SavedVisualization } from "@/lib/types/visualization";
 
 export interface UserProfile {
@@ -53,7 +55,7 @@ export async function getUserProfile(): Promise<{ success: boolean; data?: UserP
     return { success: true, data: profile };
   } catch (error) {
     console.error('Error fetching user profile:', error);
-    return { success: false, error: 'Failed to fetch user profile' };
+    return { success: false, error: sanitizeError(error, 'Failed to fetch user profile') };
   }
 }
 
@@ -69,8 +71,10 @@ export async function getUserVisualizations(): Promise<{ success: boolean; data?
 
     await connectToDatabase();
 
+    // SECURITY: Use field projection to only return necessary fields
     const visualizations = await VisualizationModel
       .find({ userId })
+      .select('_id userId title type data metadata isPublic createdAt updatedAt')
       .sort({ createdAt: -1 })
       .limit(50)
       .lean()
@@ -91,7 +95,7 @@ export async function getUserVisualizations(): Promise<{ success: boolean; data?
     return { success: true, data };
   } catch (error) {
     console.error('Error fetching user visualizations:', error);
-    return { success: false, error: 'Failed to fetch visualizations' };
+    return { success: false, error: sanitizeError(error, 'Failed to fetch visualizations') };
   }
 }
 
@@ -105,7 +109,27 @@ export async function deleteVisualization(visualizationId: string): Promise<{ su
       return { success: false, error: 'Authentication required' };
     }
 
+    // SECURITY: Validate ObjectId format
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) {
+      return { success: false, error: idValidation.error };
+    }
+
     await connectToDatabase();
+
+    // SECURITY: Get user tier for rate limiting
+    const userUsage = await UserUsageModel.findOne({ userId });
+    const tier = userUsage?.tier || 'free';
+
+    // SECURITY: Check delete rate limit
+    const rateLimit = await checkDeleteRateLimit(userId, tier);
+    if (!rateLimit.allowed) {
+      const resetDate = new Date(rateLimit.resetAt);
+      return {
+        success: false,
+        error: `Delete limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
+      };
+    }
 
     // Delete the visualization
     const result = await VisualizationModel.findOneAndDelete({
@@ -126,31 +150,25 @@ export async function deleteVisualization(visualizationId: string): Promise<{ su
     return { success: true };
   } catch (error) {
     console.error('Error deleting visualization:', error);
-    return { success: false, error: 'Failed to delete visualization' };
+    return { success: false, error: sanitizeError(error, 'Failed to delete visualization') };
   }
 }
 
 /**
  * Update user plan
+ * SECURITY: This function has been disabled for security.
+ * Plan upgrades should only be performed via payment webhooks or admin dashboard.
+ *
+ * @deprecated Use payment provider webhooks to handle plan upgrades
  */
 export async function updateUserPlan(plan: 'free' | 'pro' | 'enterprise'): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: 'Authentication required' };
-    }
-
-    await connectToDatabase();
-    const user = await UserModel.findOrCreate(userId);
-
-    user.plan = plan;
-    await user.save();
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error updating user plan:', error);
-    return { success: false, error: 'Failed to update plan' };
-  }
+  // SECURITY FIX: Prevent unauthorized plan upgrades
+  // Users should not be able to upgrade their own plans
+  // This should only be done via Stripe webhooks or admin panel
+  return {
+    success: false,
+    error: 'Plan upgrades must be processed through the payment system'
+  };
 }
 
 /**
@@ -163,10 +181,18 @@ export async function getVisualizationById(visualizationId: string): Promise<{ s
       return { success: false, error: 'Authentication required' };
     }
 
+    // SECURITY: Validate ObjectId format
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) {
+      return { success: false, error: idValidation.error };
+    }
+
     await connectToDatabase();
 
+    // SECURITY: Use field projection to only return necessary fields
     const visualization = await VisualizationModel
       .findOne({ _id: visualizationId, userId })
+      .select('_id userId title type data metadata isPublic createdAt updatedAt')
       .lean()
       .exec();
 
@@ -189,6 +215,6 @@ export async function getVisualizationById(visualizationId: string): Promise<{ s
     return { success: true, data };
   } catch (error) {
     console.error('Error fetching visualization:', error);
-    return { success: false, error: 'Failed to fetch visualization' };
+    return { success: false, error: sanitizeError(error, 'Failed to fetch visualization') };
   }
 }
