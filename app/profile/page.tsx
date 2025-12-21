@@ -239,7 +239,10 @@ export default function ProfilePage() {
                     <p className="text-zinc-300 text-sm mb-3">
                       Upgrade to Pro and get 2000 tokens/month (20x more) for just $9.99!
                     </p>
-                    <button className="px-4 py-2 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-lg transition font-medium text-sm">
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      className="px-4 py-2 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-lg transition font-medium text-sm"
+                    >
                       Upgrade to Pro
                     </button>
                   </div>
