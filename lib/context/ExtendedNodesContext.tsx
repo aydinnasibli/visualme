@@ -9,8 +9,8 @@ import {
 
 interface ExtendedNodesContextType {
   extendedNodes: Set<string>;
-  addExtendedNode: (nodeId: string) => Promise<void>;
-  isNodeExtended: (nodeId: string) => boolean;
+  addExtendedNode: (nodeId: string, visualizationKey: string) => Promise<void>;
+  isNodeExtended: (nodeId: string, visualizationKey: string) => boolean;
   clearExtendedNodes: () => Promise<void>;
   isLoading: boolean;
 }
@@ -38,30 +38,34 @@ export function ExtendedNodesProvider({ children }: { children: ReactNode }) {
     loadExtendedNodes();
   }, []);
 
-  const addExtendedNode = async (nodeId: string) => {
+  const addExtendedNode = async (nodeId: string, visualizationKey: string) => {
+    // Create composite key: visualizationKey + nodeId
+    const compositeKey = `${visualizationKey}::${nodeId}`;
+
     // Optimistic update
     setExtendedNodes((prev) => {
       const newSet = new Set(prev);
-      newSet.add(nodeId);
+      newSet.add(compositeKey);
       return newSet;
     });
 
     // Persist to database
     try {
-      await dbAddExtendedNode(nodeId);
+      await dbAddExtendedNode(compositeKey);
     } catch (error) {
       console.error("Failed to add extended node:", error);
       // Rollback on error
       setExtendedNodes((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(nodeId);
+        newSet.delete(compositeKey);
         return newSet;
       });
     }
   };
 
-  const isNodeExtended = (nodeId: string) => {
-    return extendedNodes.has(nodeId);
+  const isNodeExtended = (nodeId: string, visualizationKey: string) => {
+    const compositeKey = `${visualizationKey}::${nodeId}`;
+    return extendedNodes.has(compositeKey);
   };
 
   const clearExtendedNodes = async () => {

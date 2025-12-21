@@ -37,6 +37,7 @@ interface MindMapProps {
   data: MindMapData;
   onExpand?: (nodeId: string, nodeContent: string) => Promise<void>;
   readOnly?: boolean;
+  visualizationKey?: string;
 }
 
 export interface MindMapHandle {
@@ -232,7 +233,7 @@ const createMindMapLayout = (
 };
 
 const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
-  ({ data, onExpand, readOnly = false }, ref) => {
+  ({ data, onExpand, readOnly = false, visualizationKey = "default" }, ref) => {
     const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(
       null
     );
@@ -247,13 +248,13 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
         setIsExpanding(true);
         try {
           await onExpand(nodeId, content);
-          // Mark node as extended globally (save to database)
-          await addExtendedNode(nodeId);
+          // Mark node as extended for this visualization (save to database)
+          await addExtendedNode(nodeId, visualizationKey);
         } finally {
           setIsExpanding(false);
         }
       },
-      [onExpand, addExtendedNode]
+      [onExpand, addExtendedNode, visualizationKey]
     );
 
     const handleShowDetails = useCallback((nodeData: NodeData) => {
@@ -575,7 +576,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
                 )}
 
                 {selectedNodeData.extendable && !readOnly && (
-                  isNodeExtended(selectedNodeData.nodeId) ? (
+                  isNodeExtended(selectedNodeData.nodeId, visualizationKey) ? (
                     <div
                       className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
                       style={{

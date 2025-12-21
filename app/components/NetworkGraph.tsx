@@ -62,6 +62,7 @@ interface NetworkGraphProps {
   data: NetworkGraphData;
   onExpand?: (nodeId: string, nodeLabel: string) => Promise<void>;
   readOnly?: boolean;
+  visualizationKey?: string;
 }
 
 export interface NetworkGraphHandle {
@@ -87,7 +88,7 @@ interface SelectedNodeInfo {
 /* -------------------------------------------------------------------------- */
 
 const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
-  ({ data, onExpand, readOnly = false }, ref) => {
+  ({ data, onExpand, readOnly = false, visualizationKey = "default" }, ref) => {
     const cyRef = useRef<Core | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(
@@ -502,8 +503,8 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       setIsExpanding(true);
       try {
         await onExpand(selectedNode.id, selectedNode.label);
-        // Mark node as extended globally (save to database)
-        await addExtendedNode(selectedNode.id);
+        // Mark node as extended for this visualization (save to database)
+        await addExtendedNode(selectedNode.id, visualizationKey);
         setSelectedNode(null);
         // Don't auto-fit after expansion to prevent view jumps
         // User can manually reset view if needed
@@ -799,7 +800,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
 
                   {/* Extend Button */}
                   {selectedNode.extendable && onExpand && !readOnly && (
-                    isNodeExtended(selectedNode.id) ? (
+                    isNodeExtended(selectedNode.id, visualizationKey) ? (
                       <div
                         className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg"
                         style={{
