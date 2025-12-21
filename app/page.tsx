@@ -2,9 +2,9 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col">
+    <div className="relative flex h-auto min-h-screen w-full flex-col bg-[#0f1419]">
       {/* Header */}
-      <div className="w-full border-b border-solid border-border-dark bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+      <div className="w-full border-b border-solid border-[#282e39] bg-[#101622]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex justify-center w-full">
           <div className="flex max-w-[1280px] w-full items-center justify-between px-6 py-4 lg:px-10">
             <Link href="/" className="flex items-center gap-3 text-white cursor-pointer group">
@@ -19,7 +19,7 @@ export default function HomePage() {
               <a className="text-sm font-medium text-slate-300 hover:text-primary transition-colors" href="#community">Community</a>
             </div>
             <div className="flex gap-3">
-              <Link href="/sign-in" className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 hover:bg-border-dark transition-all text-sm font-bold tracking-wide text-slate-300">
+              <Link href="/sign-in" className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 hover:bg-[#282e39] transition-all text-sm font-bold tracking-wide text-slate-300">
                 <span className="truncate">Log In</span>
               </Link>
               <Link href="/dashboard" className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-5 bg-primary hover:bg-blue-600 transition-all text-white text-sm font-bold tracking-wide shadow-lg shadow-primary/25 hover:shadow-primary/40 transform active:scale-95">
@@ -48,7 +48,7 @@ export default function HomePage() {
 
               <h1 className="text-5xl md:text-7xl font-black leading-[1.1] tracking-tight text-white">
                 Visualize Anything.{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">In Seconds.</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">In Seconds.</span>
               </h1>
 
               <h2 className="text-slate-300 text-lg md:text-xl font-normal leading-relaxed max-w-2xl mx-auto">
@@ -57,7 +57,7 @@ export default function HomePage() {
             </div>
 
             <Link href="/dashboard" className="flex flex-col h-16 w-full max-w-[640px] shadow-2xl shadow-primary/10 rounded-2xl transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 mt-2">
-              <div className="flex w-full flex-1 items-center rounded-2xl h-full border border-border-dark bg-surface-dark overflow-hidden hover:ring-2 hover:ring-primary/50 hover:border-primary transition-all p-1">
+              <div className="flex w-full flex-1 items-center rounded-2xl h-full border border-[#282e39] bg-[#1c1f27] overflow-hidden hover:ring-2 hover:ring-primary/50 hover:border-primary transition-all p-1">
                 <div className="text-slate-400 flex items-center justify-center pl-4 pr-2">
                   <span className="material-symbols-outlined">edit_note</span>
                 </div>
@@ -74,15 +74,15 @@ export default function HomePage() {
 
             <div className="flex flex-wrap justify-center gap-3 w-full max-w-[800px] mt-2">
               <p className="w-full text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Try an example</p>
-              <Link href="/dashboard?example=roadmap" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-border-dark bg-surface-dark/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
+              <Link href="/dashboard?example=roadmap" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-[#282e39] bg-[#1c1f27]/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
                 <span className="material-symbols-outlined text-purple-500 text-[16px]">timeline</span>
                 <span className="text-xs font-medium text-slate-300">Project Roadmap</span>
               </Link>
-              <Link href="/dashboard?example=revenue" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-border-dark bg-surface-dark/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
+              <Link href="/dashboard?example=revenue" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-[#282e39] bg-[#1c1f27]/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
                 <span className="material-symbols-outlined text-blue-500 text-[16px]">pie_chart</span>
                 <span className="text-xs font-medium text-slate-300">Revenue Dashboard</span>
               </Link>
-              <Link href="/dashboard?example=org" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-border-dark bg-surface-dark/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
+              <Link href="/dashboard?example=org" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-[#282e39] bg-[#1c1f27]/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
                 <span className="material-symbols-outlined text-emerald-500 text-[16px]">account_tree</span>
                 <span className="text-xs font-medium text-slate-300">Org Structure</span>
               </Link>
@@ -92,14 +92,14 @@ export default function HomePage() {
       </div>
 
       {/* 19 Ways to Visualize Section */}
-      <div className="flex flex-col items-center py-16 px-6 bg-surface-dark/20 border-y border-border-dark">
+      <div className="flex flex-col items-center py-16 px-6 bg-[#1c1f27]/20 border-y border-[#282e39]">
         <div className="max-w-[1100px] w-full flex flex-col gap-10">
           <div className="flex flex-col md:flex-row items-end justify-between gap-4">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-white">19 Ways to Visualize</h2>
               <p className="text-slate-400 max-w-lg text-lg">Don&apos;t limit yourself. From simple flowcharts to complex data dashboards, we support the formats you use every day.</p>
             </div>
-            <a className="group text-white text-sm font-bold flex items-center gap-2 border border-border-dark px-4 py-2 rounded-lg hover:bg-surface-dark transition-all" href="#types">
+            <a className="group text-white text-sm font-bold flex items-center gap-2 border border-[#282e39] px-4 py-2 rounded-lg hover:bg-[#1c1f27] transition-all" href="#types">
               View All Types
               <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </a>
@@ -107,7 +107,7 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-[280px]">
             {/* Featured Card */}
-            <div className="md:col-span-2 md:row-span-2 rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+            <div className="md:col-span-2 md:row-span-2 rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-600/20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
               <div className="absolute bottom-0 left-0 p-8">
@@ -120,7 +120,7 @@ export default function HomePage() {
             </div>
 
             {/* Small Cards */}
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-emerald-800/20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
@@ -132,7 +132,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-purple-800/20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
@@ -144,7 +144,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-orange-600/20 to-orange-800/20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
@@ -156,7 +156,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark flex flex-col items-center justify-center p-6 text-center hover:bg-border-dark transition-colors">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] flex flex-col items-center justify-center p-6 text-center hover:bg-[#282e39] transition-colors">
               <div className="size-16 rounded-full bg-white/5 text-slate-400 flex items-center justify-center mb-4 shadow-sm">
                 <span className="material-symbols-outlined text-3xl">apps</span>
               </div>
@@ -168,7 +168,7 @@ export default function HomePage() {
       </div>
 
       {/* Three Steps Section */}
-      <div className="flex flex-col items-center py-20 px-6 bg-background-dark">
+      <div className="flex flex-col items-center py-20 px-6 bg-[#101622]">
         <div className="max-w-[960px] w-full">
           <div className="flex flex-col gap-4 mb-16 text-center">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">Clarity in Three Steps</h2>
@@ -176,10 +176,10 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-border-dark to-transparent -z-10"></div>
+            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-[#282e39] to-transparent -z-10"></div>
 
             <div className="flex flex-col items-center text-center gap-6 group">
-              <div className="size-20 rounded-2xl bg-surface-dark border border-border-dark shadow-sm flex items-center justify-center text-primary group-hover:scale-110 group-hover:border-primary/30 group-hover:shadow-primary/10 group-hover:shadow-lg transition-all duration-300">
+              <div className="size-20 rounded-2xl bg-[#1c1f27] border border-[#282e39] shadow-sm flex items-center justify-center text-primary group-hover:scale-110 group-hover:border-primary/30 group-hover:shadow-primary/10 group-hover:shadow-lg transition-all duration-300">
                 <span className="material-symbols-outlined text-4xl">keyboard</span>
               </div>
               <div>
@@ -189,7 +189,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col items-center text-center gap-6 group">
-              <div className="size-20 rounded-2xl bg-surface-dark border border-border-dark shadow-sm flex items-center justify-center text-purple-500 group-hover:scale-110 group-hover:border-purple-500/30 group-hover:shadow-purple-500/10 group-hover:shadow-lg transition-all duration-300">
+              <div className="size-20 rounded-2xl bg-[#1c1f27] border border-[#282e39] shadow-sm flex items-center justify-center text-purple-500 group-hover:scale-110 group-hover:border-purple-500/30 group-hover:shadow-purple-500/10 group-hover:shadow-lg transition-all duration-300">
                 <span className="material-symbols-outlined text-4xl">auto_fix_high</span>
               </div>
               <div>
@@ -199,7 +199,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col items-center text-center gap-6 group">
-              <div className="size-20 rounded-2xl bg-surface-dark border border-border-dark shadow-sm flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:border-emerald-500/30 group-hover:shadow-emerald-500/10 group-hover:shadow-lg transition-all duration-300">
+              <div className="size-20 rounded-2xl bg-[#1c1f27] border border-[#282e39] shadow-sm flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:border-emerald-500/30 group-hover:shadow-emerald-500/10 group-hover:shadow-lg transition-all duration-300">
                 <span className="material-symbols-outlined text-4xl">ios_share</span>
               </div>
               <div>
@@ -211,13 +211,63 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* See It In Action Section */}
+      <div className="w-full bg-[#0d1017] border-y border-[#282e39] py-20 px-6">
+        <div className="flex flex-col max-w-[1080px] w-full mx-auto gap-16">
+          <div className="text-center mb-4">
+            <h2 className="text-3xl font-bold tracking-tight mb-4 text-white">See It In Action</h2>
+            <p className="text-slate-400 max-w-2xl mx-auto">From a simple sentence to a comprehensive visual structure. Here is what you can build.</p>
+          </div>
+
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="flex-1 flex flex-col gap-6 w-full">
+              <div className="inline-flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-xs">
+                <span className="material-symbols-outlined text-sm">analytics</span> Business Intelligence
+              </div>
+              <h3 className="text-2xl md:text-3xl font-bold text-white">Instant Dashboards</h3>
+              <p className="text-slate-400 leading-relaxed text-lg">Stop wrestling with spreadsheet charts. Just paste your CSV data or describe your KPIs, and get a complete, interactive dashboard ready for your presentation.</p>
+              <div className="bg-[#1c1f27] p-4 rounded-xl border border-[#282e39] shadow-sm">
+                <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Input Prompt</p>
+                <p className="text-slate-300 font-medium italic">&quot;Create a quarterly revenue dashboard showing growth by region, top 5 products, and customer retention trends.&quot;</p>
+              </div>
+            </div>
+            <div className="flex-1 w-full relative">
+              <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full opacity-20"></div>
+              <div className="relative w-full h-[400px] rounded-2xl shadow-2xl border border-[#282e39] bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[120px] text-primary/40">bar_chart</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
+            <div className="flex-1 flex flex-col gap-6 w-full">
+              <div className="inline-flex items-center gap-2 text-purple-500 font-bold uppercase tracking-wider text-xs">
+                <span className="material-symbols-outlined text-sm">hub</span> System Design
+              </div>
+              <h3 className="text-2xl md:text-3xl font-bold text-white">Complex Architectures</h3>
+              <p className="text-slate-400 leading-relaxed text-lg">Visualize your cloud infrastructure or software architecture without dragging a single box. Perfect for technical documentation.</p>
+              <div className="bg-[#1c1f27] p-4 rounded-xl border border-[#282e39] shadow-sm">
+                <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Input Prompt</p>
+                <p className="text-slate-300 font-medium italic">&quot;Diagram a microservices architecture using AWS with a load balancer, 3 EC2 instances, and an RDS database.&quot;</p>
+              </div>
+            </div>
+            <div className="flex-1 w-full relative">
+              <div className="absolute inset-0 bg-purple-500/20 blur-3xl rounded-full opacity-20"></div>
+              <div className="relative w-full h-[400px] rounded-2xl shadow-2xl border border-[#282e39] bg-gradient-to-br from-purple-600/20 to-blue-600/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[120px] text-purple-400/40">hub</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Testimonials Section */}
-      <div className="py-20 px-6 bg-background-dark">
+      <div className="py-20 px-6 bg-[#0f1419]">
         <div className="max-w-[1080px] w-full mx-auto flex flex-col gap-12">
           <h2 className="text-3xl font-bold tracking-tight text-center text-white">Trusted by Creators</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
               <div className="flex text-yellow-400 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="material-symbols-outlined text-sm">star</span>
@@ -233,7 +283,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
               <div className="flex text-yellow-400 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="material-symbols-outlined text-sm">star</span>
@@ -249,7 +299,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
               <div className="flex text-yellow-400 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="material-symbols-outlined text-sm">star</span>
@@ -269,7 +319,7 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="w-full border-t border-border-dark bg-background-dark py-12">
+      <footer className="w-full border-t border-[#282e39] bg-[#101622] py-12">
         <div className="flex flex-col items-center justify-center px-6">
           <div className="flex items-center gap-2 mb-6">
             <div className="size-8 flex items-center justify-center rounded-lg bg-primary text-white">
