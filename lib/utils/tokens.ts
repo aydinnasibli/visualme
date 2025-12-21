@@ -70,6 +70,15 @@ export async function getUserUsage(userId: string): Promise<any> {
       lastResetDate: new Date(),
     });
   } else {
+    // CRITICAL FIX: Ensure tokensLimit matches tier
+    const expectedLimit = getTokenLimitForTier(usage.tier);
+    if (usage.tokensLimit !== expectedLimit) {
+      console.log(`⚠️  Token limit mismatch for user ${userId}. Tier: ${usage.tier}, Limit: ${usage.tokensLimit}, Expected: ${expectedLimit}. Fixing...`);
+      usage.tokensLimit = expectedLimit;
+      await usage.save();
+      console.log(`✅ Fixed token limit for user ${userId} to ${expectedLimit}`);
+    }
+
     // Check if we need to refresh tokens
     await refreshTokensIfNeeded(usage);
   }
