@@ -402,6 +402,12 @@ export async function deleteVisualization(visualizationId: string) {
       return { success: false, error: 'Authentication required' };
     }
 
+    // SECURITY: Validate ObjectId format
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) {
+      return { success: false, error: idValidation.error };
+    }
+
     await connectToDatabase();
 
     const result = await VisualizationModel.deleteOne({
