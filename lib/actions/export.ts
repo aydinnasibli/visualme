@@ -9,6 +9,7 @@ import {
   exportAsCSV,
   exportAsHTML,
 } from '@/lib/services/export-service';
+import { validateObjectId, sanitizeError } from '@/lib/utils/validation';
 import type { ExportFormat, SavedVisualization } from '@/lib/types/visualization';
 
 /**
@@ -27,6 +28,12 @@ export async function exportVisualization(
 
     if (!userId) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    // SECURITY: Validate ObjectId format
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) {
+      return { success: false, error: idValidation.error };
     }
 
     await connectToDatabase();
@@ -83,7 +90,7 @@ export async function exportVisualization(
     console.error('Export error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to export visualization',
+      error: sanitizeError(error, 'Failed to export visualization'),
     };
   }
 }
@@ -104,6 +111,12 @@ export async function createShareLink(
 
     if (!userId) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    // SECURITY: Validate ObjectId format
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) {
+      return { success: false, error: idValidation.error };
     }
 
     await connectToDatabase();
@@ -136,7 +149,7 @@ export async function createShareLink(
     console.error('Share link error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create share link',
+      error: sanitizeError(error, 'Failed to create share link'),
     };
   }
 }
@@ -168,7 +181,7 @@ export async function getSharedVisualization(shareId: string) {
     console.error('Get shared visualization error:', error);
     return {
       success: false,
-      error: 'Failed to fetch shared visualization',
+      error: sanitizeError(error, 'Failed to fetch shared visualization'),
     };
   }
 }
