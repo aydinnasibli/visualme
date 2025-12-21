@@ -1,1205 +1,299 @@
-"use client";
+import Link from 'next/link';
 
-import React, { useState, useRef, useEffect } from "react";
-import dynamic from "next/dynamic"; // STEP 1: Import dynamic
-import { motion, AnimatePresence } from "framer-motion";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { saveAs } from "file-saver";
-import { useAuth } from "@clerk/nextjs";
-
-// STEP 2: Remove the static import
-// import NetworkGraph, { NetworkGraphHandle } from './components/NetworkGraph';
-
-// Import ONLY the types we need for TypeScript
-import { NetworkGraphHandle } from "./components/NetworkGraph";
-import MindMapVisualization, { MindMapHandle } from "./components/MindMap";
-import {
-  generateVisualization,
-  regenerateVisualization,
-  saveVisualization,
-} from "@/lib/actions/visualize";
-import type {
-  VisualizationResponse,
-  NetworkGraphData,
-  MindMapData,
-  MindMapNode,
-} from "@/lib/types/visualization";
-
-// STEP 3: Create the Dynamic Component
-// This tells Next.js: "Only load this chunk of code in the browser, never on the server."
-const DynamicNetworkGraph = dynamic(() => import("./components/NetworkGraph"), {
-  ssr: false, // Critical: Disables server-side rendering for this component
-  loading: () => (
-    // Optional: A loading skeleton that matches the graph's dimensions
-    <div className="w-full h-[800px] bg-gray-900/50 rounded-2xl flex items-center justify-center border border-gray-800 animate-pulse">
-      <div className="flex flex-col items-center gap-3">
-        <svg
-          className="w-10 h-10 text-gray-600 animate-spin"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-            fill="none"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
-        <span className="text-gray-500 font-medium text-sm">
-          Initializing Graph Engine...
-        </span>
-      </div>
-    </div>
-  ),
-});
-
-export default function Home() {
-  const { isSignedIn } = useAuth();
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState<'analyzing' | 'generating' | 'finalizing' | null>(null);
-  const [result, setResult] = useState<VisualizationResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-
-  // Refs remain the same
-  const networkGraphRef = useRef<NetworkGraphHandle>(null);
-  const mindMapRef = useRef<MindMapHandle>(null);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close export menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        exportMenuRef.current &&
-        !exportMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowExportMenu(false);
-      }
-    };
-
-    if (showExportMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [showExportMenu]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!input.trim()) {
-      setError("Please enter some text to visualize");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setIsSaved(false);
-
-    try {
-      // Step 1: Analyzing & generating (combined in single AI call)
-      setLoadingStep('analyzing');
-
-      // After 200ms, show generating step (optimized for speed)
-      const generatingTimer = setTimeout(() => setLoadingStep('generating'), 200);
-
-      const data = await generateVisualization(input.trim());
-      clearTimeout(generatingTimer);
-
-      if (!data.success) {
-        setError(data.error || "Failed to generate visualization");
-        return;
-      }
-
-      // Step 2: Finalizing
-      setLoadingStep('finalizing');
-      await new Promise(resolve => setTimeout(resolve, 150)); // Faster transition for snappier UX
-
-      setResult(data);
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-      console.error("Error:", err);
-    } finally {
-      setLoading(false);
-      setLoadingStep(null);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!result || !isSignedIn) {
-      setError("Please sign in to save visualizations");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const title = input.substring(0, 100);
-      const metadata = {
-        generatedAt: new Date(),
-        aiModel: "gpt-4o-mini",
-        originalInput: input,
-      };
-      const saveResult = await saveVisualization(
-        title,
-        result.type,
-        result.data,
-        metadata
-      );
-
-      if (!saveResult.success) {
-        setError(saveResult.error || "Failed to save visualization");
-        return;
-      }
-
-      const wasAlreadySaved = isSaved;
-      setIsSaved(true);
-      alert(wasAlreadySaved ? "Visualization updated successfully!" : "Visualization saved successfully!");
-    } catch (err) {
-      setError("Failed to save visualization");
-      console.error("Save error:", err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleClear = () => {
-    setInput("");
-    setResult(null);
-    setError(null);
-    setIsSaved(false);
-  };
-
-  const handleFormatSwitch = async (
-    newFormat: "network_graph" | "mind_map"
-  ) => {
-    if (!input || !result) return;
-
-    setLoading(true);
-    setError(null);
-    setIsSaved(false);
-
-    try {
-      const data = await regenerateVisualization(input.trim(), newFormat);
-
-      if (!data.success) {
-        setError(data.error || "Failed to regenerate visualization");
-        return;
-      }
-
-      setResult(data);
-    } catch (err) {
-      setError("An error occurred while switching format.");
-      console.error("Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExpandNode = async (nodeId: string, nodeLabel: string) => {
-    if (!result || result.type !== "network_graph") return;
-
-    const currentData = result.data as NetworkGraphData;
-    const existingLabels = currentData.nodes.map((n) => n.label);
-
-    try {
-      const { expandNodeAction } = await import("@/lib/actions/visualize");
-      const expandResult = await expandNodeAction(
-        nodeId,
-        nodeLabel,
-        input,
-        existingLabels
-      );
-
-      if (!expandResult.success || !expandResult.data) {
-        setError("Failed to expand node");
-        return;
-      }
-
-      // Merge new nodes and edges with existing data
-      const mergedData: NetworkGraphData = {
-        nodes: [...currentData.nodes, ...expandResult.data.nodes],
-        edges: [...currentData.edges, ...expandResult.data.edges],
-      };
-
-      setResult({
-        ...result,
-        data: mergedData,
-      });
-    } catch (err) {
-      setError("An error occurred while expanding the node.");
-      console.error("Error:", err);
-    }
-  };
-
-  const handleExpandMindMapNode = async (
-    nodeId: string,
-    nodeContent: string
-  ) => {
-    if (!result || result.type !== "mind_map") return;
-
-    const currentData = result.data as MindMapData;
-
-    // Collect all existing node IDs from the tree
-    const collectNodeIds = (node: MindMapNode): string[] => {
-      const ids = [node.id];
-      if (node.children) {
-        node.children.forEach((child) => {
-          ids.push(...collectNodeIds(child));
-        });
-      }
-      return ids;
-    };
-
-    const existingNodeIds = collectNodeIds(currentData.root);
-
-    try {
-      const { expandMindMapNodeAction } = await import(
-        "@/lib/actions/visualize"
-      );
-      const expandResult = await expandMindMapNodeAction(
-        nodeId,
-        nodeContent,
-        input,
-        existingNodeIds
-      );
-
-      if (!expandResult.success || !expandResult.data) {
-        setError("Failed to expand mind map node");
-        return;
-      }
-
-      // Find the parent node and add new children
-      const addChildrenToNode = (node: MindMapNode): MindMapNode => {
-        if (node.id === nodeId) {
-          return {
-            ...node,
-            children: [...(node.children || []), ...expandResult.data],
-          };
-        }
-        if (node.children) {
-          return {
-            ...node,
-            children: node.children.map(addChildrenToNode),
-          };
-        }
-        return node;
-      };
-
-      const updatedRoot = addChildrenToNode(currentData.root);
-
-      setResult({
-        ...result,
-        data: { root: updatedRoot },
-      });
-    } catch (err) {
-      setError("An error occurred while expanding the mind map node.");
-      console.error("Error:", err);
-    }
-  };
-
-  // Export Format 1: PNG with resolution options
-  const handleExportPNG = async (scale: number = 2) => {
-    if (!result) return;
-    setExporting(true);
-    setShowExportMenu(false);
-
-    try {
-      if (result.type === "network_graph" && networkGraphRef.current) {
-        await networkGraphRef.current.exportPNG();
-      } else if (result.type === "mind_map" && mindMapRef.current) {
-        await mindMapRef.current.exportPNG(scale);
-      }
-    } catch (err) {
-      console.error("PNG export error:", err);
-      setError("Failed to export PNG. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Export Format 2: SVG Vector (only for MindMap)
-  const handleExportSVG = async () => {
-    if (!result) return;
-    setExporting(true);
-    setShowExportMenu(false);
-
-    try {
-      if (result.type === "network_graph") {
-        setError(
-          "SVG export is only available for Mind Maps. Use PNG for Network Graphs."
-        );
-      } else if (result.type === "mind_map" && mindMapRef.current) {
-        await mindMapRef.current.exportSVG();
-      }
-    } catch (err) {
-      console.error("SVG export error:", err);
-      setError("Failed to export SVG. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Export Format 3: PDF Document
-  const handleExportPDF = async () => {
-    if (!result) return;
-    setExporting(true);
-    setShowExportMenu(false);
-
-    try {
-      const pdf = new jsPDF("landscape", "px", [1920, 1080]);
-
-      // Add title and metadata
-      pdf.setFontSize(24);
-      pdf.text(input.substring(0, 100), 40, 40);
-      pdf.setFontSize(12);
-      pdf.text(
-        `Format: ${
-          result.type === "network_graph" ? "Network Graph" : "Mind Map"
-        }`,
-        40,
-        65
-      );
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 40, 85);
-
-      // Export visualization as image and add to PDF
-      if (result.type === "network_graph" && networkGraphRef.current) {
-        const container = networkGraphRef.current.getContainer();
-        if (container) {
-          const canvas = await html2canvas(container, {
-            backgroundColor: "#0a0a0f",
-            scale: 2,
-            logging: false,
-          });
-          pdf.addImage(
-            canvas.toDataURL("image/png"),
-            "PNG",
-            40,
-            100,
-            1840,
-            900
-          );
-        }
-      } else if (result.type === "mind_map" && mindMapRef.current) {
-        // For MindMap, create image from SVG
-        setError("PDF export for Mind Maps coming soon!");
-        return;
-      }
-
-      pdf.save(`visualization-${Date.now()}.pdf`);
-    } catch (err) {
-      console.error("PDF export error:", err);
-      setError("Failed to export PDF. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Export Format 4: JSON/CSV Data
-  const handleExportData = async (format: "json" | "csv") => {
-    if (!result) return;
-    setShowExportMenu(false);
-
-    try {
-      const exportData = {
-        format: result.type,
-        data: result.data,
-        metadata: {
-          created: new Date().toISOString(),
-          input: input,
-          aiModel: "gpt-4o-mini",
-        },
-      };
-
-      if (format === "json") {
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-          type: "application/json",
-        });
-        saveAs(blob, `visualization-data-${Date.now()}.json`);
-      } else {
-        // CSV export for applicable formats
-        let csvContent = "";
-        if (result.type === "network_graph") {
-          const data = result.data as NetworkGraphData;
-          csvContent = "Node ID,Label,Description,Category\n";
-          data.nodes.forEach((node) => {
-            csvContent += `"${node.id}","${node.label}","${
-              node.description || ""
-            }","${node.category || ""}"\n`;
-          });
-          csvContent += "\n\nEdge Source,Target,Label\n";
-          data.edges.forEach((edge) => {
-            csvContent += `"${edge.source}","${edge.target}","${
-              edge.label || ""
-            }"\n`;
-          });
-        } else {
-          // For mind map, export the tree structure
-          const mindMapData = mindMapRef.current?.getData();
-          if (mindMapData) {
-            const serializeNode = (
-              node: MindMapNode,
-              level: number = 0
-            ): string => {
-              const indent = "  ".repeat(level);
-              let text = `${indent}${node.content}\n`;
-              if (node.description) {
-                text += `${indent}  Description: ${node.description}\n`;
-              }
-              if (node.children) {
-                node.children.forEach((child) => {
-                  text += serializeNode(child, level + 1);
-                });
-              }
-              return text;
-            };
-            const textContent = serializeNode(mindMapData.root);
-            csvContent = `Content\n"${textContent.replace(/"/g, '""')}"`;
-          } else {
-            csvContent = `Content\n"No data available"`;
-          }
-        }
-
-        const blob = new Blob([csvContent], { type: "text/csv" });
-        saveAs(blob, `visualization-data-${Date.now()}.csv`);
-      }
-    } catch (err) {
-      console.error("Data export error:", err);
-      setError(`Failed to export ${format.toUpperCase()}. Please try again.`);
-    }
-  };
-
-  // Export Format 5: Share Link (placeholder - needs backend)
-  const handleShareLink = async () => {
-    setShowExportMenu(false);
-    setError(
-      "Share link functionality requires backend implementation. Coming soon!"
-    );
-  };
-
-  // Export Format 6: Interactive HTML
-  const handleExportHTML = async () => {
-    setShowExportMenu(false);
-    setError("Interactive HTML export coming soon!");
-  };
-
-  const samplePrompts = [
-    "Explain machine learning and its main branches",
-    "Show me the structure of a modern web application",
-    "Visualize the process of photosynthesis",
-    "Create a knowledge map of project management methodologies",
-  ];
-
+export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <div className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
-        {/* Hero Section */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8 md:mb-12"
-        >
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-3 md:mb-4">
-            Universal Visualization Engine
-          </h1>
-          <p className="text-gray-300 text-lg md:text-xl mb-2">
-            AI-powered platform for visualizing anything
-          </p>
-          <p className="text-gray-500 text-sm">
-            Currently supporting 2 formats • Network Graphs & Mind Maps
-          </p>
-        </motion.div>
-
-        {/* Input Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-2xl border border-gray-700/50 mb-8"
-        >
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label
-                htmlFor="input"
-                className="block text-sm font-semibold text-gray-200 mb-3"
-              >
-                What would you like to visualize?
-              </label>
-              <textarea
-                id="input"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="e.g., Explain machine learning, Show me the solar system, Visualize a hiring process..."
-                rows={5}
-                className="w-full px-4 py-4 bg-gray-900/50 border border-gray-600/50 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all resize-none text-base"
-                disabled={loading}
-              />
+    <div className="relative flex h-auto min-h-screen w-full flex-col">
+      {/* Header */}
+      <div className="w-full border-b border-solid border-border-dark bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="flex justify-center w-full">
+          <div className="flex max-w-[1280px] w-full items-center justify-between px-6 py-4 lg:px-10">
+            <Link href="/" className="flex items-center gap-3 text-white cursor-pointer group">
+              <div className="size-9 flex items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
+                <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>auto_awesome</span>
+              </div>
+              <h2 className="text-xl font-bold leading-tight tracking-tight">VisualMe</h2>
+            </Link>
+            <div className="hidden md:flex items-center gap-8">
+              <a className="text-sm font-medium text-slate-300 hover:text-primary transition-colors" href="#pricing">Pricing</a>
+              <a className="text-sm font-medium text-slate-300 hover:text-primary transition-colors" href="#gallery">Gallery</a>
+              <a className="text-sm font-medium text-slate-300 hover:text-primary transition-colors" href="#community">Community</a>
             </div>
-
-            {/* Sample Prompts */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-gray-400 self-center font-medium">
-                Quick start:
-              </span>
-              {samplePrompts.map((prompt, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setInput(prompt)}
-                  disabled={loading}
-                  className="text-xs px-3 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-lg transition-all border border-gray-600/30 hover:border-gray-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {prompt.length > 40
-                    ? prompt.substring(0, 40) + "..."
-                    : prompt}
-                </button>
-              ))}
+            <div className="flex gap-3">
+              <Link href="/sign-in" className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 hover:bg-border-dark transition-all text-sm font-bold tracking-wide text-slate-300">
+                <span className="truncate">Log In</span>
+              </Link>
+              <Link href="/dashboard" className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-5 bg-primary hover:bg-blue-600 transition-all text-white text-sm font-bold tracking-wide shadow-lg shadow-primary/25 hover:shadow-primary/40 transform active:scale-95">
+                <span className="truncate">Get Started</span>
+              </Link>
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="submit"
-                disabled={loading || !input.trim()}
-                className="flex-1 px-8 py-4 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-purple-500/25 text-base"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-3">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    {loadingStep === 'analyzing' && 'Analyzing your input...'}
-                    {loadingStep === 'generating' && 'Generating visualization...'}
-                    {loadingStep === 'finalizing' && 'Almost done...'}
-                    {!loadingStep && 'Processing...'}
-                  </span>
-                ) : (
-                  "Generate Visualization ✨"
-                )}
-              </button>
-
-              {(result || error) && (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  disabled={loading}
-                  className="px-8 py-4 bg-gray-700/50 hover:bg-gray-600/50 text-white font-semibold rounded-xl transition-all border border-gray-600/30 hover:border-gray-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </form>
-        </motion.div>
-
-        {/* Error Message */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="bg-red-900/20 backdrop-blur-sm border border-red-500/50 text-red-200 px-6 py-5 rounded-xl mb-8 shadow-lg"
-            >
-              <div className="flex items-start gap-3">
-                <svg
-                  className="w-6 h-6 mt-0.5 flex-shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <div>
-                  <p className="font-bold text-base">Error</p>
-                  <p className="text-sm mt-1">{error}</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Loading Progress Card */}
-        <AnimatePresence>
-          {loading && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="bg-gradient-to-r from-purple-900/20 to-cyan-900/20 backdrop-blur-sm border border-purple-500/30 rounded-xl p-8 shadow-2xl"
-            >
-              <div className="flex items-center gap-4 mb-6">
-                <svg className="animate-spin h-8 w-8 text-purple-400" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <h3 className="text-xl font-bold text-white">Creating Your Visualization</h3>
-              </div>
-
-              <div className="space-y-4">
-                {/* Step 1 */}
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    loadingStep === 'analyzing' ? 'bg-purple-500 text-white animate-pulse' :
-                    loadingStep === 'generating' || loadingStep === 'finalizing' ? 'bg-purple-500/20 text-purple-400' :
-                    'bg-gray-700 text-gray-500'
-                  }`}>
-                    {(loadingStep === 'generating' || loadingStep === 'finalizing') ? '✓' : '1'}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-medium ${loadingStep === 'analyzing' ? 'text-white' : 'text-gray-400'}`}>
-                      Analyzing your input & selecting optimal format
-                    </p>
-                  </div>
-                </div>
-
-                {/* Step 2 */}
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    loadingStep === 'generating' ? 'bg-cyan-500 text-white animate-pulse' :
-                    loadingStep === 'finalizing' ? 'bg-cyan-500/20 text-cyan-400' :
-                    'bg-gray-700 text-gray-500'
-                  }`}>
-                    {loadingStep === 'finalizing' ? '✓' : '2'}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-medium ${loadingStep === 'generating' ? 'text-white' : 'text-gray-400'}`}>
-                      Generating visualization data with AI
-                    </p>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    loadingStep === 'finalizing' ? 'bg-emerald-500 text-white animate-pulse' :
-                    'bg-gray-700 text-gray-500'
-                  }`}>
-                    3
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-medium ${loadingStep === 'finalizing' ? 'text-white' : 'text-gray-400'}`}>
-                      Finalizing and rendering
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-black/20 rounded-lg border border-white/5">
-                <p className="text-sm text-gray-300">
-                  <span className="font-semibold text-cyan-400">💡 Pro tip:</span> Complex topics generate richer, more detailed visualizations
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Visualization Result */}
-        <AnimatePresence mode="wait">
-          {result && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="space-y-6"
-            >
-              {/* Controls Card */}
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-5 border border-gray-700/50 shadow-lg">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 text-blue-300 rounded-lg text-sm font-bold">
-                        {result.type === "network_graph"
-                          ? "🕸️ Network Graph"
-                          : "🧠 Mind Map"}
-                      </span>
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium">
-                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                        Interactive
-                      </span>
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed">
-                      {result.reason}
-                    </p>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* Format Switcher */}
-                    <div className="flex gap-2 p-1.5 bg-gray-900/50 rounded-lg border border-gray-700/50">
-                      <button
-                        onClick={() => handleFormatSwitch("network_graph")}
-                        disabled={result.type === "network_graph" || loading}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
-                          result.type === "network_graph"
-                            ? "bg-blue-500 text-white shadow-lg shadow-blue-500/25"
-                            : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        title="Switch to Network Graph"
-                      >
-                        🕸️ Network
-                      </button>
-                      <button
-                        onClick={() => handleFormatSwitch("mind_map")}
-                        disabled={result.type === "mind_map" || loading}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
-                          result.type === "mind_map"
-                            ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
-                            : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        title="Switch to Mind Map"
-                      >
-                        🧠 Mind Map
-                      </button>
-                    </div>
-
-                    {/* Save Button */}
-                    {isSignedIn && (
-                      <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className={`px-5 py-2.5 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg ${
-                          isSaved
-                            ? "bg-green-600 hover:bg-green-700 shadow-green-500/25"
-                            : "bg-purple-600 hover:bg-purple-700 shadow-purple-500/25"
-                        }`}
-                        title={isSaved ? "Update saved visualization with latest changes" : "Save Visualization"}
-                      >
-                        {saving ? (
-                          <>
-                            <svg
-                              className="animate-spin h-4 w-4"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                                fill="none"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              />
-                            </svg>
-                            {isSaved ? "Updating..." : "Saving..."}
-                          </>
-                        ) : isSaved ? (
-                          <>
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                              />
-                            </svg>
-                            Update
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                              />
-                            </svg>
-                            Save
-                          </>
-                        )}
-                      </button>
-                    )}
-
-                    {/* Export Dropdown Menu */}
-                    <div className="relative" ref={exportMenuRef}>
-                      <button
-                        onClick={() => setShowExportMenu(!showExportMenu)}
-                        disabled={exporting}
-                        className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-green-500/25"
-                        title="Export Options"
-                      >
-                        {exporting ? (
-                          <>
-                            <svg
-                              className="animate-spin h-4 w-4"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                                fill="none"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              />
-                            </svg>
-                            Exporting...
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                              />
-                            </svg>
-                            Export
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 9l-7 7-7-7"
-                              />
-                            </svg>
-                          </>
-                        )}
-                      </button>
-
-                      {/* Export Dropdown */}
-                      {showExportMenu && !exporting && (
-                        <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50">
-                          <div className="py-1">
-                            {/* PNG Export with submenu */}
-                            <button
-                              onClick={() => handleExportPNG(2)}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
-                            >
-                              <span className="text-blue-400">📷</span>
-                              <div>
-                                <div className="font-semibold">PNG Image</div>
-                                <div className="text-xs text-gray-400">
-                                  High quality 2x
-                                </div>
-                              </div>
-                            </button>
-
-                            {/* SVG Export */}
-                            <button
-                              onClick={handleExportSVG}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
-                            >
-                              <span className="text-purple-400">🎨</span>
-                              <div>
-                                <div className="font-semibold">SVG Vector</div>
-                                <div className="text-xs text-gray-400">
-                                  Scalable format
-                                </div>
-                              </div>
-                            </button>
-
-                            {/* PDF Export */}
-                            <button
-                              onClick={handleExportPDF}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
-                            >
-                              <span className="text-red-400">📄</span>
-                              <div>
-                                <div className="font-semibold">
-                                  PDF Document
-                                </div>
-                                <div className="text-xs text-gray-400">
-                                  With metadata
-                                </div>
-                              </div>
-                            </button>
-
-                            <div className="border-t border-gray-700 my-1"></div>
-
-                            {/* JSON Export */}
-                            <button
-                              onClick={() => handleExportData("json")}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
-                            >
-                              <span className="text-green-400">📊</span>
-                              <div>
-                                <div className="font-semibold">JSON Data</div>
-                                <div className="text-xs text-gray-400">
-                                  Raw data export
-                                </div>
-                              </div>
-                            </button>
-
-                            {/* CSV Export */}
-                            <button
-                              onClick={() => handleExportData("csv")}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
-                            >
-                              <span className="text-green-400">📋</span>
-                              <div>
-                                <div className="font-semibold">CSV Data</div>
-                                <div className="text-xs text-gray-400">
-                                  Table format
-                                </div>
-                              </div>
-                            </button>
-
-                            <div className="border-t border-gray-700 my-1"></div>
-
-                            {/* Share Link */}
-                            <button
-                              onClick={handleShareLink}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
-                            >
-                              <span className="text-yellow-400">🔗</span>
-                              <div>
-                                <div className="font-semibold">Share Link</div>
-                                <div className="text-xs text-gray-400">
-                                  Coming soon
-                                </div>
-                              </div>
-                            </button>
-
-                            {/* Interactive HTML */}
-                            <button
-                              onClick={handleExportHTML}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-3"
-                            >
-                              <span className="text-orange-400">🌐</span>
-                              <div>
-                                <div className="font-semibold">
-                                  Interactive HTML
-                                </div>
-                                <div className="text-xs text-gray-400">
-                                  Coming soon
-                                </div>
-                              </div>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Visualization */}
-              <div>
-                {result.type === "network_graph" && (
-                  // STEP 4: Use the Dynamic Component Here
-                  <DynamicNetworkGraph
-                    ref={networkGraphRef}
-                    data={result.data as NetworkGraphData}
-                    onExpand={handleExpandNode}
-                    visualizationKey={input.substring(0, 100)}
-                  />
-                )}
-                {result.type === "mind_map" && (
-                  <MindMapVisualization
-                    ref={mindMapRef}
-                    data={result.data as MindMapData}
-                    onExpand={handleExpandMindMapNode}
-                    visualizationKey={input.substring(0, 100)}
-                  />
-                )}
-              </div>
-
-              {/* Tips */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="bg-blue-900/10 backdrop-blur-sm border border-blue-500/30 rounded-xl p-6"
-              >
-                <div className="flex items-start gap-4">
-                  <svg
-                    className="w-6 h-6 text-blue-400 flex-shrink-0 mt-0.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <div className="text-sm text-blue-100">
-                    <p className="font-bold mb-2 text-base">
-                      💡 Interactive Tips
-                    </p>
-                    <ul className="space-y-1.5 text-blue-200/90">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                        Drag to pan around the visualization
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                        Scroll or pinch to zoom in/out
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                        Click any node to view detailed information
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                        Extendable nodes (double border) can be explored deeper with AI
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                        Use the format switcher to try different views
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Features Section - Only show when no visualization */}
-        {!result && !loading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="grid md:grid-cols-2 gap-6 mt-12"
-          >
-            <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 hover:border-blue-500/50 transition-all group">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <span className="text-3xl">🕸️</span>
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">
-                Network Graphs
-              </h3>
-              <p className="text-gray-400 mb-4 leading-relaxed">
-                Visualize concepts, relationships, dependencies, and knowledge
-                structures with interactive network graphs.
-              </p>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">✓</span>
-                  Interactive nodes with smooth animations
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">✓</span>
-                  AI-powered node expansion for deeper exploration
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">✓</span>
-                  Detailed info panels with key insights
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">✓</span>
-                  Pan, zoom, and drag functionality
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">✓</span>
-                  Color-coded categories with glow effects
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-8 border border-gray-700/50 hover:border-purple-500/50 transition-all group">
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <span className="text-3xl">🧠</span>
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Mind Maps</h3>
-              <p className="text-gray-400 mb-4 leading-relaxed">
-                Organize ideas, brainstorm concepts, and create hierarchical
-                structures with beautiful mind maps.
-              </p>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li className="flex items-center gap-2">
-                  <span className="text-purple-400">✓</span>
-                  Hierarchical tree structure
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-purple-400">✓</span>
-                  Expand/collapse branches
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-purple-400">✓</span>
-                  Depth-based color coding
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-purple-400">✓</span>
-                  Smooth animations
-                </li>
-              </ul>
-            </div>
-          </motion.div>
-        )}
+          </div>
+        </div>
       </div>
+
+      {/* Hero Section */}
+      <div className="flex flex-col w-full justify-center items-center py-16 lg:py-24 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+        <div className="absolute bottom-0 right-0 w-[600px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+
+        <div className="flex flex-col max-w-[960px] w-full px-6 lg:px-10 gap-10 z-10">
+          <div className="flex flex-col gap-8 items-center text-center">
+            <div className="flex flex-col gap-6 max-w-4xl">
+              <div className="inline-flex mx-auto items-center gap-2 px-3 py-1 rounded-full bg-blue-900/20 border border-blue-800 text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                Now available for Teams
+              </div>
+
+              <h1 className="text-5xl md:text-7xl font-black leading-[1] tracking-tight text-white">
+                Visualize Anything. <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">In Seconds.</span>
+              </h1>
+
+              <h2 className="text-slate-300 text-lg md:text-xl font-normal leading-relaxed max-w-2xl mx-auto">
+                Transform ideas, raw data, or unstructured notes into professional diagrams. A refined workspace where your words become visuals instantly.
+              </h2>
+            </div>
+
+            <Link href="/dashboard" className="flex flex-col h-16 w-full max-w-[640px] shadow-2xl shadow-primary/10 rounded-2xl transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 mt-2">
+              <div className="flex w-full flex-1 items-center rounded-2xl h-full border border-border-dark bg-surface-dark overflow-hidden hover:ring-2 hover:ring-primary/50 hover:border-primary transition-all p-1">
+                <div className="text-slate-400 flex items-center justify-center pl-4 pr-2">
+                  <span className="material-symbols-outlined">edit_note</span>
+                </div>
+                <div className="flex w-full min-w-0 flex-1 bg-transparent text-slate-400 h-full px-2 text-base font-medium items-center">
+                  Draft a user flow for a coffee shop app...
+                </div>
+                <div className="pr-1">
+                  <div className="flex items-center justify-center rounded-xl h-12 px-6 bg-primary hover:bg-blue-600 text-white text-base font-bold transition-all shadow-md">
+                    <span>Create</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            <div className="flex flex-wrap justify-center gap-3 w-full max-w-[800px] mt-2">
+              <p className="w-full text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Try an example</p>
+              <Link href="/dashboard?example=roadmap" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-border-dark bg-surface-dark/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
+                <span className="material-symbols-outlined text-purple-500 text-[16px]">timeline</span>
+                <span className="text-xs font-medium text-slate-300">Project Roadmap</span>
+              </Link>
+              <Link href="/dashboard?example=revenue" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-border-dark bg-surface-dark/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
+                <span className="material-symbols-outlined text-blue-500 text-[16px]">pie_chart</span>
+                <span className="text-xs font-medium text-slate-300">Revenue Dashboard</span>
+              </Link>
+              <Link href="/dashboard?example=org" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-border-dark bg-surface-dark/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
+                <span className="material-symbols-outlined text-emerald-500 text-[16px]">account_tree</span>
+                <span className="text-xs font-medium text-slate-300">Org Structure</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 19 Ways to Visualize Section */}
+      <div className="flex flex-col items-center py-16 px-6 bg-surface-dark/20 border-y border-border-dark">
+        <div className="max-w-[1100px] w-full flex flex-col gap-10">
+          <div className="flex flex-col md:flex-row items-end justify-between gap-4">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-white">19 Ways to Visualize</h2>
+              <p className="text-slate-400 max-w-lg text-lg">Don&apos;t limit yourself. From simple flowcharts to complex data dashboards, we support the formats you use every day.</p>
+            </div>
+            <a className="group text-white text-sm font-bold flex items-center gap-2 border border-border-dark px-4 py-2 rounded-lg hover:bg-surface-dark transition-all" href="#types">
+              View All Types
+              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-[280px]">
+            {/* Featured Card */}
+            <div className="md:col-span-2 md:row-span-2 rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-600/20"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+              <div className="absolute bottom-0 left-0 p-8">
+                <div className="inline-flex items-center gap-2 mb-3 px-2 py-1 bg-blue-600/90 rounded text-white text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
+                  <span className="material-symbols-outlined text-[14px]">star</span> Featured
+                </div>
+                <h3 className="text-white text-3xl font-bold mb-2">Interactive Dashboards</h3>
+                <p className="text-slate-200 text-base max-w-md">Turn spreadsheets or database exports into full executive dashboards instantly. No coding required.</p>
+              </div>
+            </div>
+
+            {/* Small Cards */}
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-emerald-800/20"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
+              <div className="absolute bottom-0 left-0 p-6">
+                <div className="flex items-center gap-2 mb-1 text-emerald-400">
+                  <span className="material-symbols-outlined text-lg">share</span>
+                </div>
+                <h3 className="text-white text-lg font-bold">Mind Maps</h3>
+                <p className="text-slate-400 text-xs mt-1">Brainstorming sessions visualized.</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-purple-800/20"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
+              <div className="absolute bottom-0 left-0 p-6">
+                <div className="flex items-center gap-2 mb-1 text-purple-400">
+                  <span className="material-symbols-outlined text-lg">account_tree</span>
+                </div>
+                <h3 className="text-white text-lg font-bold">User Flows</h3>
+                <p className="text-slate-400 text-xs mt-1">Map customer journeys.</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-600/20 to-orange-800/20"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
+              <div className="absolute bottom-0 left-0 p-6">
+                <div className="flex items-center gap-2 mb-1 text-orange-400">
+                  <span className="material-symbols-outlined text-lg">corporate_fare</span>
+                </div>
+                <h3 className="text-white text-lg font-bold">Org Charts</h3>
+                <p className="text-slate-400 text-xs mt-1">Visualize team structures.</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark flex flex-col items-center justify-center p-6 text-center hover:bg-border-dark transition-colors">
+              <div className="size-16 rounded-full bg-white/5 text-slate-400 flex items-center justify-center mb-4 shadow-sm">
+                <span className="material-symbols-outlined text-3xl">apps</span>
+              </div>
+              <h3 className="text-white text-lg font-bold">Explore Library</h3>
+              <p className="text-slate-500 text-xs mt-2 max-w-[120px]">Gantt, Sequence, ERD, and 12 more types.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Three Steps Section */}
+      <div className="flex flex-col items-center py-20 px-6 bg-background-dark">
+        <div className="max-w-[960px] w-full">
+          <div className="flex flex-col gap-4 mb-16 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">Clarity in Three Steps</h2>
+            <p className="text-slate-400 text-lg">No drag-and-drop fatigue. Just results.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-border-dark to-transparent -z-10"></div>
+
+            <div className="flex flex-col items-center text-center gap-6 group">
+              <div className="size-20 rounded-2xl bg-surface-dark border border-border-dark shadow-sm flex items-center justify-center text-primary group-hover:scale-110 group-hover:border-primary/30 group-hover:shadow-primary/10 group-hover:shadow-lg transition-all duration-300">
+                <span className="material-symbols-outlined text-4xl">keyboard</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-3 text-white">1. Describe</h3>
+                <p className="text-sm text-slate-400 leading-relaxed px-4">Type a prompt, paste raw data, or upload a document. We interpret the context instantly.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-6 group">
+              <div className="size-20 rounded-2xl bg-surface-dark border border-border-dark shadow-sm flex items-center justify-center text-purple-500 group-hover:scale-110 group-hover:border-purple-500/30 group-hover:shadow-purple-500/10 group-hover:shadow-lg transition-all duration-300">
+                <span className="material-symbols-outlined text-4xl">auto_fix_high</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-3 text-white">2. Generate</h3>
+                <p className="text-sm text-slate-400 leading-relaxed px-4">Our engine selects the best visualization type and constructs it in real-time.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-6 group">
+              <div className="size-20 rounded-2xl bg-surface-dark border border-border-dark shadow-sm flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:border-emerald-500/30 group-hover:shadow-emerald-500/10 group-hover:shadow-lg transition-all duration-300">
+                <span className="material-symbols-outlined text-4xl">ios_share</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-3 text-white">3. Export</h3>
+                <p className="text-sm text-slate-400 leading-relaxed px-4">Fine-tune the style, then export as high-res PNG, SVG, or editable code.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Testimonials Section */}
+      <div className="py-20 px-6 bg-background-dark">
+        <div className="max-w-[1080px] w-full mx-auto flex flex-col gap-12">
+          <h2 className="text-3xl font-bold tracking-tight text-center text-white">Trusted by Creators</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+              <div className="flex text-yellow-400 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className="material-symbols-outlined text-sm">star</span>
+                ))}
+              </div>
+              <p className="text-slate-300 leading-relaxed mb-6">&quot;VisualMe has completely changed how I present data to stakeholders. I used to spend hours in PowerPoint, now I just type what I need.&quot;</p>
+              <div className="mt-auto flex items-center gap-3">
+                <div className="size-10 rounded-full bg-blue-900 flex items-center justify-center text-blue-300 font-bold">SJ</div>
+                <div>
+                  <p className="text-sm font-bold text-white">Sarah Jenkins</p>
+                  <p className="text-xs text-slate-500">Product Manager</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+              <div className="flex text-yellow-400 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className="material-symbols-outlined text-sm">star</span>
+                ))}
+              </div>
+              <p className="text-slate-300 leading-relaxed mb-6">&quot;The ability to turn my messy meeting notes into a coherent flowchart instantly is basically magic. It&apos;s become an essential tool for our team.&quot;</p>
+              <div className="mt-auto flex items-center gap-3">
+                <div className="size-10 rounded-full bg-purple-900 flex items-center justify-center text-purple-300 font-bold">MT</div>
+                <div>
+                  <p className="text-sm font-bold text-white">Mike Torres</p>
+                  <p className="text-xs text-slate-500">Tech Lead</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+              <div className="flex text-yellow-400 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className="material-symbols-outlined text-sm">star</span>
+                ))}
+              </div>
+              <p className="text-slate-300 leading-relaxed mb-6">&quot;I was skeptical about AI visualization, but the control you have over the output is amazing. The exported code is clean and usable.&quot;</p>
+              <div className="mt-auto flex items-center gap-3">
+                <div className="size-10 rounded-full bg-emerald-900 flex items-center justify-center text-emerald-300 font-bold">ER</div>
+                <div>
+                  <p className="text-sm font-bold text-white">Elena Rodriguez</p>
+                  <p className="text-xs text-slate-500">UX Designer</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="w-full border-t border-border-dark bg-background-dark py-12">
+        <div className="flex flex-col items-center justify-center px-6">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="size-8 flex items-center justify-center rounded-lg bg-primary text-white">
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>auto_awesome</span>
+            </div>
+            <span className="text-xl font-bold text-white">VisualMe</span>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-8 mb-8 text-sm font-medium text-slate-400">
+            <a className="hover:text-primary transition-colors" href="#pricing">Pricing</a>
+            <a className="hover:text-primary transition-colors" href="#gallery">Gallery</a>
+            <a className="hover:text-primary transition-colors" href="#api">API Docs</a>
+            <a className="hover:text-primary transition-colors" href="#community">Community</a>
+            <a className="hover:text-primary transition-colors" href="#support">Support</a>
+          </div>
+
+          <div className="flex gap-6 mb-8">
+            <a className="text-slate-400 hover:text-primary transition-colors" href="#"><span className="material-symbols-outlined">public</span></a>
+            <a className="text-slate-400 hover:text-primary transition-colors" href="#"><span className="material-symbols-outlined">mail</span></a>
+          </div>
+
+          <p className="text-xs text-slate-500">© 2023 VisualMe AI Inc. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }
