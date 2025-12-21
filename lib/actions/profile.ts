@@ -3,8 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/database/mongodb";
 import { UserModel, VisualizationModel, UserUsageModel } from "@/lib/database/models";
-import { checkDeleteRateLimit } from "@/lib/database/redis";
-import { validateObjectId, sanitizeError } from "@/lib/utils/validation";
+import { validateObjectId, sanitizeError, getTokenCosts } from "@/lib/utils/validation";
+import { getTokenBalance } from "@/lib/utils/tokens";
 import type { SavedVisualization } from "@/lib/types/visualization";
 
 export interface UserProfile {
@@ -117,20 +117,6 @@ export async function deleteVisualization(visualizationId: string): Promise<{ su
 
     await connectToDatabase();
 
-    // SECURITY: Get user tier for rate limiting
-    const userUsage = await UserUsageModel.findOne({ userId });
-    const tier = userUsage?.tier || 'free';
-
-    // SECURITY: Check delete rate limit
-    const rateLimit = await checkDeleteRateLimit(userId, tier);
-    if (!rateLimit.allowed) {
-      const resetDate = new Date(rateLimit.resetAt);
-      return {
-        success: false,
-        error: `Delete limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
-      };
-    }
-
     // Delete the visualization
     const result = await VisualizationModel.findOneAndDelete({
       _id: visualizationId,
@@ -216,5 +202,72 @@ export async function getVisualizationById(visualizationId: string): Promise<{ s
   } catch (error) {
     console.error('Error fetching visualization:', error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch visualization') };
+  }
+}
+
+/**
+ * Get user's token limits and current usage
+ */
+export async function getUserLimits(): Promise<{
+  success: boolean;
+  data?: {
+    tokens: {
+      used: number;
+      limit: number;
+      remaining: number;
+      resetDate: string;
+      percentageUsed: number;
+    };
+    tier: 'free' | 'pro' | 'enterprise';
+    costs: {
+      generateVisualization: number;
+      expandNode: number;
+      exportVisualization: number;
+      saveVisualization: number;
+      deleteVisualization: number;
+    };
+    estimatedOperations: {
+      visualizations: number;
+      expansions: number;
+      exports: number;
+    };
+  };
+  error?: string;
+}> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Get token balance
+    const balance = await getTokenBalance(userId);
+    const costs = getTokenCosts();
+
+    // Calculate how many operations they can still do
+    const estimatedOperations = {
+      visualizations: Math.floor(balance.tokensRemaining / costs.generateVisualization),
+      expansions: Math.floor(balance.tokensRemaining / costs.expandNode),
+      exports: Math.floor(balance.tokensRemaining / costs.exportVisualization),
+    };
+
+    return {
+      success: true,
+      data: {
+        tokens: {
+          used: balance.tokensUsed,
+          limit: balance.tokensLimit,
+          remaining: balance.tokensRemaining,
+          resetDate: balance.resetDate.toISOString(),
+          percentageUsed: balance.percentageUsed,
+        },
+        tier: balance.tier,
+        costs,
+        estimatedOperations,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching user limits:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to fetch user limits') };
   }
 }

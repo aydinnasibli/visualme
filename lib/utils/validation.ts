@@ -15,22 +15,66 @@ export const VALIDATION_LIMITS = {
 };
 
 /**
- * Rate limiting configuration
+ * Token-based economy system
+ *
+ * Economics:
+ * - Pro tier: $9.99/month
+ * - Target 50% profit margin = ~$5 for AI costs
+ * - AI cost per generation: ~$0.05-0.15
+ * - AI cost per expansion: ~$0.02-0.05
+ *
+ * Token allocation ensures profitability while providing value
  */
-export const RATE_LIMITS = {
-  GENERATION_FREE: 5,
-  GENERATION_PRO: 100,
-  EXPANSION_FREE: 10,
-  EXPANSION_PRO: 100,
-  SAVE_FREE: 5,
-  SAVE_PRO: 50,
-  DELETE_FREE: 10,
-  DELETE_PRO: 100,
-  EXPORT_FREE: 5,
-  EXPORT_PRO: 50,
-  SHARE_FREE: 5,
-  SHARE_PRO: 25,
+
+export const TOKEN_LIMITS = {
+  // Monthly token allocation
+  FREE_TIER_MONTHLY_TOKENS: 100,      // ~10 visualizations OR ~20 expansions
+  PRO_TIER_MONTHLY_TOKENS: 2000,      // ~200 visualizations OR ~400 expansions
+  ENTERPRISE_TIER_MONTHLY_TOKENS: 10000, // ~1000 visualizations OR ~2000 expansions
 };
+
+export const TOKEN_COSTS = {
+  // AI operations (expensive)
+  GENERATE_VISUALIZATION: 10,  // Full AI generation with GPT-4
+  EXPAND_NODE: 5,             // AI expansion of existing nodes
+
+  // Database operations (cheap/free)
+  SAVE_VISUALIZATION: 0,      // Just database write
+  DELETE_VISUALIZATION: 0,    // Just database delete
+  EXPORT_VISUALIZATION: 1,    // Minor processing cost
+  SHARE_VISUALIZATION: 0,     // Just database update
+
+  // Query operations (free)
+  GET_VISUALIZATIONS: 0,
+  GET_VISUALIZATION: 0,
+};
+
+/**
+ * Token refresh schedule
+ */
+export const TOKEN_REFRESH = {
+  INTERVAL: 'monthly' as const,
+  DAY_OF_MONTH: 1, // Refresh on 1st of each month
+};
+
+/**
+ * Get token cost breakdown
+ */
+export function getTokenCosts(): {
+  generateVisualization: number;
+  expandNode: number;
+  exportVisualization: number;
+  saveVisualization: number;
+  deleteVisualization: number;
+} {
+  return {
+    generateVisualization: TOKEN_COSTS.GENERATE_VISUALIZATION,
+    expandNode: TOKEN_COSTS.EXPAND_NODE,
+    exportVisualization: TOKEN_COSTS.EXPORT_VISUALIZATION,
+    saveVisualization: TOKEN_COSTS.SAVE_VISUALIZATION,
+    deleteVisualization: TOKEN_COSTS.DELETE_VISUALIZATION,
+  };
+}
 
 /**
  * Validate MongoDB ObjectId format

@@ -1,5 +1,6 @@
 import mongoose, { Schema, Model } from 'mongoose';
 import type { UserUsage } from '@/lib/types/visualization';
+import { TOKEN_LIMITS } from '@/lib/utils/validation';
 
 const UserUsageSchema = new Schema<UserUsage>(
   {
@@ -20,8 +21,27 @@ const UserUsageSchema = new Schema<UserUsage>(
     },
     tier: {
       type: String,
-      enum: ['free', 'pro'],
+      enum: ['free', 'pro', 'enterprise'],
       default: 'free',
+    },
+    // Token-based usage tracking
+    tokensUsed: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    tokensLimit: {
+      type: Number,
+      default: TOKEN_LIMITS.FREE_TIER_MONTHLY_TOKENS,
+      min: 0,
+    },
+    tokenResetDate: {
+      type: Date,
+      default: () => {
+        // Set to first day of next month
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      },
     },
   },
   {

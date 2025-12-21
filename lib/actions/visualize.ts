@@ -5,14 +5,7 @@ import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
 import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
-import {
-  checkRateLimit,
-  checkExpansionRateLimit,
-  checkSaveRateLimit,
-  checkDeleteRateLimit,
-  cacheGet,
-  cacheSet
-} from '@/lib/database/redis';
+import { cacheGet, cacheSet } from '@/lib/database/redis';
 import { generateCacheKey, calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 import {
@@ -22,8 +15,10 @@ import {
   validateArraySize,
   validateTitle,
   sanitizeError,
-  VALIDATION_LIMITS
+  VALIDATION_LIMITS,
+  TOKEN_COSTS
 } from '@/lib/utils/validation';
+import { checkTokenBalance, deductTokens, getTokenBalance } from '@/lib/utils/tokens';
 import type {
   VisualizationType,
   VisualizationResponse,
@@ -31,11 +26,6 @@ import type {
   VisualizationMetadata,
   MindMapNode,
 } from '@/lib/types/visualization';
-
-const RATE_LIMITS = {
-  free: parseInt(process.env.RATE_LIMIT_FREE_TIER || '5'),
-  pro: parseInt(process.env.RATE_LIMIT_PRO_TIER || '100'),
-};
 
 /**
  * Generate a new visualization from user input
@@ -75,30 +65,16 @@ export async function generateVisualization(
     // Connect to database
     await connectToDatabase();
 
-    // Get user usage and check rate limits
-    let userUsage = await UserUsageModel.findOne({ userId });
-    if (!userUsage) {
-      userUsage = await UserUsageModel.create({
-        userId,
-        visualizationsCreated: 0,
-        lastResetDate: new Date(),
-        tier: 'free',
-      });
-    }
+    // TOKEN SYSTEM: Check if user has enough tokens
+    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
 
-    const rateLimit = await checkRateLimit(
-      userId,
-      userUsage.tier === 'pro' ? RATE_LIMITS.pro : RATE_LIMITS.free
-    );
-
-    if (!rateLimit.allowed) {
-      const resetDate = new Date(rateLimit.resetAt);
+    if (!tokenCheck.allowed) {
       return {
         success: false,
         type: 'network_graph',
         data: {} as VisualizationData,
         reason: '',
-        error: `Rate limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`,
+        error: tokenCheck.error || 'Insufficient tokens',
       };
     }
 
@@ -150,6 +126,9 @@ export async function generateVisualization(
     // Cache the result (1 hour TTL)
     await cacheSet(cacheKey, response, 3600);
 
+    // TOKEN SYSTEM: Deduct tokens for successful generation
+    await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
+
     // Update user usage
     await UserUsageModel.updateOne(
       { userId },
@@ -196,22 +175,20 @@ export async function expandNodeAction(
 
     await connectToDatabase();
 
-    // SECURITY: Get user tier for rate limiting
-    const userUsage = await UserUsageModel.findOne({ userId });
-    const tier = userUsage?.tier || 'free';
-
-    // SECURITY: Check expansion rate limit
-    const rateLimit = await checkExpansionRateLimit(userId, tier);
-    if (!rateLimit.allowed) {
-      const resetDate = new Date(rateLimit.resetAt);
+    // TOKEN SYSTEM: Check if user has enough tokens
+    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.EXPAND_NODE);
+    if (!tokenCheck.allowed) {
       return {
         success: false,
-        error: `Expansion limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
+        error: tokenCheck.error || 'Insufficient tokens'
       };
     }
 
     // Call the AI service to get new nodes
     const newData = await expandNetworkNode(nodeLabel, nodeId, originalInput, existingNodeLabels);
+
+    // TOKEN SYSTEM: Deduct tokens for successful expansion
+    await deductTokens(userId, TOKEN_COSTS.EXPAND_NODE);
 
     // Track expansion count
     await UserUsageModel.updateOne(
@@ -257,22 +234,20 @@ export async function expandMindMapNodeAction(
 
     await connectToDatabase();
 
-    // SECURITY: Get user tier for rate limiting
-    const userUsage = await UserUsageModel.findOne({ userId });
-    const tier = userUsage?.tier || 'free';
-
-    // SECURITY: Check expansion rate limit
-    const rateLimit = await checkExpansionRateLimit(userId, tier);
-    if (!rateLimit.allowed) {
-      const resetDate = new Date(rateLimit.resetAt);
+    // TOKEN SYSTEM: Check if user has enough tokens
+    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.EXPAND_NODE);
+    if (!tokenCheck.allowed) {
       return {
         success: false,
-        error: `Expansion limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
+        error: tokenCheck.error || 'Insufficient tokens'
       };
     }
 
     // Call the AI service to get new child nodes
     const newNodes = await expandMindMapNode(nodeContent, nodeId, originalInput, existingNodeIds);
+
+    // TOKEN SYSTEM: Deduct tokens for successful expansion
+    await deductTokens(userId, TOKEN_COSTS.EXPAND_NODE);
 
     // Track expansion count
     await UserUsageModel.updateOne(
@@ -328,19 +303,9 @@ export async function saveVisualization(
 
     await connectToDatabase();
 
-    // SECURITY: Get user tier for rate limiting
+    // Get user tier for storage limits
     const userUsage = await UserUsageModel.findOne({ userId });
     const tier = userUsage?.tier || 'free';
-
-    // SECURITY: Check save rate limit
-    const rateLimit = await checkSaveRateLimit(userId, tier);
-    if (!rateLimit.allowed) {
-      const resetDate = new Date(rateLimit.resetAt);
-      return {
-        success: false,
-        error: `Save limit exceeded. Resets at ${resetDate.toLocaleTimeString()}`
-      };
-    }
 
     // Check for existing visualization with same title and type
     const existingVisualization = await VisualizationModel.findOne({
@@ -472,6 +437,7 @@ export async function deleteVisualization(visualizationId: string) {
 
 /**
  * Get user usage statistics
+ * @deprecated Use getUserLimits from profile.ts instead
  */
 export async function getUserUsage() {
   try {
@@ -481,30 +447,18 @@ export async function getUserUsage() {
       return { success: false, error: 'Authentication required', data: null };
     }
 
-    await connectToDatabase();
-
-    let userUsage = await UserUsageModel.findOne({ userId }).lean();
-
-    if (!userUsage) {
-      userUsage = await UserUsageModel.create({
-        userId,
-        visualizationsCreated: 0,
-        lastResetDate: new Date(),
-        tier: 'free',
-      });
-    }
-
-    const rateLimit = await checkRateLimit(
-      userId,
-      userUsage.tier === 'pro' ? RATE_LIMITS.pro : RATE_LIMITS.free
-    );
+    // Get token balance
+    const balance = await getTokenBalance(userId);
 
     return {
       success: true,
       data: {
-        ...userUsage,
-        remaining: rateLimit.remaining,
-        resetAt: new Date(rateLimit.resetAt),
+        userId,
+        tier: balance.tier,
+        tokensUsed: balance.tokensUsed,
+        tokensLimit: balance.tokensLimit,
+        tokensRemaining: balance.tokensRemaining,
+        resetAt: balance.resetDate,
       },
     };
   } catch (error) {
