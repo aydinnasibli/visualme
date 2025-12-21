@@ -2,9 +2,9 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col">
+    <div className="relative flex h-auto min-h-screen w-full flex-col bg-[#0f1419]">
       {/* Header */}
-      <div className="w-full border-b border-solid border-border-dark bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+      <div className="w-full border-b border-solid border-[#282e39] bg-[#101622]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex justify-center w-full">
           <div className="flex max-w-[1280px] w-full items-center justify-between px-6 py-4 lg:px-10">
             <Link href="/" className="flex items-center gap-3 text-white cursor-pointer group">
@@ -92,7 +92,7 @@ export default function HomePage() {
       </div>
 
       {/* 19 Ways to Visualize Section */}
-      <div className="flex flex-col items-center py-16 px-6 bg-surface-dark/20 border-y border-border-dark">
+      <div className="flex flex-col items-center py-16 px-6 bg-[#1c1f27]/20 border-y border-[#282e39]">
         <div className="max-w-[1100px] w-full flex flex-col gap-10">
           <div className="flex flex-col md:flex-row items-end justify-between gap-4">
             <div>
@@ -120,7 +120,7 @@ export default function HomePage() {
             </div>
 
             {/* Small Cards */}
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-emerald-800/20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
@@ -132,7 +132,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-purple-800/20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
@@ -144,7 +144,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-orange-600/20 to-orange-800/20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
@@ -156,7 +156,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-border-dark bg-surface-dark flex flex-col items-center justify-center p-6 text-center hover:bg-border-dark transition-colors">
+            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] flex flex-col items-center justify-center p-6 text-center hover:bg-[#282e39] transition-colors">
               <div className="size-16 rounded-full bg-white/5 text-slate-400 flex items-center justify-center mb-4 shadow-sm">
                 <span className="material-symbols-outlined text-3xl">apps</span>
               </div>
@@ -168,7 +168,7 @@ export default function HomePage() {
       </div>
 
       {/* Three Steps Section */}
-      <div className="flex flex-col items-center py-20 px-6 bg-background-dark">
+      <div className="flex flex-col items-center py-20 px-6 bg-[#101622]">
         <div className="max-w-[960px] w-full">
           <div className="flex flex-col gap-4 mb-16 text-center">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">Clarity in Three Steps</h2>
@@ -212,12 +212,12 @@ export default function HomePage() {
       </div>
 
       {/* Testimonials Section */}
-      <div className="py-20 px-6 bg-background-dark">
+      <div className="py-20 px-6 bg-[#0f1419]">
         <div className="max-w-[1080px] w-full mx-auto flex flex-col gap-12">
           <h2 className="text-3xl font-bold tracking-tight text-center text-white">Trusted by Creators</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
               <div className="flex text-yellow-400 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="material-symbols-outlined text-sm">star</span>
@@ -233,7 +233,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
               <div className="flex text-yellow-400 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="material-symbols-outlined text-sm">star</span>
@@ -249,7 +249,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex flex-col p-8 rounded-2xl bg-surface-dark border border-border-dark">
+            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
               <div className="flex text-yellow-400 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="material-symbols-outlined text-sm">star</span>
@@ -269,7 +269,7 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="w-full border-t border-border-dark bg-background-dark py-12">
+      <footer className="w-full border-t border-[#282e39] bg-[#101622] py-12">
         <div className="flex flex-col items-center justify-center px-6">
           <div className="flex items-center gap-2 mb-6">
             <div className="size-8 flex items-center justify-center rounded-lg bg-primary text-white">
