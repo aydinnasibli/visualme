@@ -113,8 +113,8 @@ export default function Home() {
       // Step 1: Analyzing & generating (combined in single AI call)
       setLoadingStep('analyzing');
 
-      // After 500ms, show generating step
-      const generatingTimer = setTimeout(() => setLoadingStep('generating'), 500);
+      // After 200ms, show generating step (optimized for speed)
+      const generatingTimer = setTimeout(() => setLoadingStep('generating'), 200);
 
       const data = await generateVisualization(input.trim());
       clearTimeout(generatingTimer);
@@ -126,7 +126,7 @@ export default function Home() {
 
       // Step 2: Finalizing
       setLoadingStep('finalizing');
-      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for smooth UX
+      await new Promise(resolve => setTimeout(resolve, 150)); // Faster transition for snappier UX
 
       setResult(data);
     } catch (err) {
