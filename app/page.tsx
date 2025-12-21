@@ -65,6 +65,7 @@ export default function Home() {
   const { isSignedIn } = useAuth();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<'analyzing' | 'generating' | 'finalizing' | null>(null);
   const [result, setResult] = useState<VisualizationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -109,12 +110,23 @@ export default function Home() {
     setIsSaved(false);
 
     try {
+      // Step 1: Analyzing & generating (combined in single AI call)
+      setLoadingStep('analyzing');
+
+      // After 500ms, show generating step
+      const generatingTimer = setTimeout(() => setLoadingStep('generating'), 500);
+
       const data = await generateVisualization(input.trim());
+      clearTimeout(generatingTimer);
 
       if (!data.success) {
         setError(data.error || "Failed to generate visualization");
         return;
       }
+
+      // Step 2: Finalizing
+      setLoadingStep('finalizing');
+      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for smooth UX
 
       setResult(data);
     } catch (err) {
@@ -122,6 +134,7 @@ export default function Home() {
       console.error("Error:", err);
     } finally {
       setLoading(false);
+      setLoadingStep(null);
     }
   };
 
@@ -582,7 +595,10 @@ export default function Home() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Generating...
+                    {loadingStep === 'analyzing' && 'Analyzing your input...'}
+                    {loadingStep === 'generating' && 'Generating visualization...'}
+                    {loadingStep === 'finalizing' && 'Almost done...'}
+                    {!loadingStep && 'Processing...'}
                   </span>
                 ) : (
                   "Generate Visualization ✨"
@@ -630,6 +646,93 @@ export default function Home() {
                   <p className="font-bold text-base">Error</p>
                   <p className="text-sm mt-1">{error}</p>
                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Loading Progress Card */}
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="bg-gradient-to-r from-purple-900/20 to-cyan-900/20 backdrop-blur-sm border border-purple-500/30 rounded-xl p-8 shadow-2xl"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <svg className="animate-spin h-8 w-8 text-purple-400" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <h3 className="text-xl font-bold text-white">Creating Your Visualization</h3>
+              </div>
+
+              <div className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    loadingStep === 'analyzing' ? 'bg-purple-500 text-white animate-pulse' :
+                    loadingStep === 'generating' || loadingStep === 'finalizing' ? 'bg-purple-500/20 text-purple-400' :
+                    'bg-gray-700 text-gray-500'
+                  }`}>
+                    {(loadingStep === 'generating' || loadingStep === 'finalizing') ? '✓' : '1'}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-medium ${loadingStep === 'analyzing' ? 'text-white' : 'text-gray-400'}`}>
+                      Analyzing your input & selecting optimal format
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    loadingStep === 'generating' ? 'bg-cyan-500 text-white animate-pulse' :
+                    loadingStep === 'finalizing' ? 'bg-cyan-500/20 text-cyan-400' :
+                    'bg-gray-700 text-gray-500'
+                  }`}>
+                    {loadingStep === 'finalizing' ? '✓' : '2'}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-medium ${loadingStep === 'generating' ? 'text-white' : 'text-gray-400'}`}>
+                      Generating visualization data with AI
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    loadingStep === 'finalizing' ? 'bg-emerald-500 text-white animate-pulse' :
+                    'bg-gray-700 text-gray-500'
+                  }`}>
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-medium ${loadingStep === 'finalizing' ? 'text-white' : 'text-gray-400'}`}>
+                      Finalizing and rendering
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-black/20 rounded-lg border border-white/5">
+                <p className="text-sm text-gray-300">
+                  <span className="font-semibold text-cyan-400">💡 Pro tip:</span> Complex topics generate richer, more detailed visualizations
+                </p>
               </div>
             </motion.div>
           )}
