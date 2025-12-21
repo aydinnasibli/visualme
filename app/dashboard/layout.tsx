@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth, UserButton, SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { useUser, SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -10,6 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user } = useUser();
 
   return (
     <div className="h-screen flex overflow-hidden bg-[#0f1419]">
@@ -79,11 +80,15 @@ export default function DashboardLayout({
           <SignedIn>
             <div className="flex items-center gap-3 px-2 py-2">
               <div className="size-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                AM
+                {user?.firstName?.[0]?.toUpperCase() || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className="flex flex-col min-w-0">
-                <p className="text-sm font-medium truncate text-white">Alex Morgan</p>
-                <p className="text-xs text-gray-500">Pro Plan</p>
+                <p className="text-sm font-medium truncate text-white">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.username || user?.emailAddresses?.[0]?.emailAddress || 'User'}
+                </p>
+                <p className="text-xs text-gray-500">Free Plan</p>
               </div>
             </div>
           </SignedIn>
