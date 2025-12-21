@@ -956,6 +956,7 @@ export default function Home() {
                     ref={networkGraphRef}
                     data={result.data as NetworkGraphData}
                     onExpand={handleExpandNode}
+                    visualizationKey={input.substring(0, 100)}
                   />
                 )}
                 {result.type === "mind_map" && (
@@ -963,6 +964,7 @@ export default function Home() {
                     ref={mindMapRef}
                     data={result.data as MindMapData}
                     onExpand={handleExpandMindMapNode}
+                    visualizationKey={input.substring(0, 100)}
                   />
                 )}
               </div>

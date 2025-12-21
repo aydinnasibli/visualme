@@ -76,7 +76,13 @@ export async function checkRateLimit(
   window: number = 3600
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
   if (!redis) {
-    return { allowed: true, remaining: limit, resetAt: Date.now() + window * 1000 };
+    // SECURITY FIX: Fail closed when Redis unavailable
+    console.error('⚠️  Redis unavailable - failing closed for security');
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: Date.now() + window * 1000
+    };
   }
 
   try {
@@ -107,10 +113,69 @@ export async function checkRateLimit(
     await redis.incr(key);
     return { allowed: true, remaining: limit - count - 1, resetAt };
   } catch (error) {
-    console.error('Rate limit check error:', error);
-    // On error, allow the request
-    return { allowed: true, remaining: limit, resetAt: Date.now() + window * 1000 };
+    console.error('⚠️  Rate limit check error - failing closed for security:', error);
+    // SECURITY FIX: Fail closed on error
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: Date.now() + window * 1000
+    };
   }
+}
+
+/**
+ * Specialized rate limiting for node expansion operations
+ */
+export async function checkExpansionRateLimit(
+  userId: string,
+  tier: 'free' | 'pro' | 'enterprise'
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const limit = tier === 'free' ? 10 : tier === 'pro' ? 100 : 200;
+  return checkRateLimit(`expansion:${userId}`, limit, 3600);
+}
+
+/**
+ * Specialized rate limiting for save operations
+ */
+export async function checkSaveRateLimit(
+  userId: string,
+  tier: 'free' | 'pro' | 'enterprise'
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const limit = tier === 'free' ? 5 : tier === 'pro' ? 50 : 100;
+  return checkRateLimit(`save:${userId}`, limit, 3600);
+}
+
+/**
+ * Specialized rate limiting for delete operations
+ */
+export async function checkDeleteRateLimit(
+  userId: string,
+  tier: 'free' | 'pro' | 'enterprise'
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const limit = tier === 'free' ? 10 : tier === 'pro' ? 100 : 200;
+  return checkRateLimit(`delete:${userId}`, limit, 3600);
+}
+
+/**
+ * Specialized rate limiting for export operations
+ */
+export async function checkExportRateLimit(
+  userId: string,
+  tier: 'free' | 'pro' | 'enterprise'
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const limit = tier === 'free' ? 5 : tier === 'pro' ? 50 : 100;
+  return checkRateLimit(`export:${userId}`, limit, 3600);
+}
+
+/**
+ * Specialized rate limiting for share link creation
+ */
+export async function checkShareRateLimit(
+  userId: string,
+  tier: 'free' | 'pro' | 'enterprise'
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const limit = tier === 'free' ? 5 : tier === 'pro' ? 25 : 50;
+  return checkRateLimit(`share:${userId}`, limit, 3600);
 }
 
 export default redis;

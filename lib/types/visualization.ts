@@ -400,7 +400,12 @@ export interface UserUsage {
   userId: string;
   visualizationsCreated: number;
   lastResetDate: Date;
-  tier: 'free' | 'pro';
+  tier: 'free' | 'pro' | 'enterprise';
+
+  // Token-based usage tracking
+  tokensUsed: number;        // Tokens used this billing period
+  tokensLimit: number;       // Monthly token limit based on tier
+  tokenResetDate: Date;      // When tokens will refresh
 }
 
 // ============================================================================
