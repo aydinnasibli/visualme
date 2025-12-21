@@ -703,7 +703,7 @@ CRITICAL RULES:
 - Mark complex nodes as "extendable: true"
 - Include metadata (keyPoints, relatedConcepts) for extendable nodes
 
-RESPONSE FORMAT:
+RESPONSE FORMAT (return valid JSON):
 {
   "format": "chosen_format_name",
   "reason": "1-2 sentence explanation of why this format was chosen",
@@ -711,7 +711,9 @@ RESPONSE FORMAT:
     // Complete data structure for the chosen format
     // Follow the exact schema for that format
   }
-}`;
+}
+
+IMPORTANT: You must respond with valid JSON matching this exact structure.`;
 
   const userMessage = preferredFormat
     ? `${userInput}\n\nNote: User prefers ${preferredFormat} format if suitable.`
