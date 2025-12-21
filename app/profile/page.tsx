@@ -8,10 +8,11 @@ import {
   getUserProfile,
   getUserVisualizations,
   deleteVisualization,
+  getUserLimits,
   type UserProfile,
 } from "@/lib/actions/profile";
 import type { SavedVisualization } from "@/lib/types/visualization";
-import { Trash2, Calendar, Eye, Sparkles } from "lucide-react";
+import { Trash2, Calendar, Eye, Sparkles, Zap, TrendingUp, RefreshCw } from "lucide-react";
 import VisualizationModal from "../components/VisualizationModal";
 
 export default function ProfilePage() {
@@ -19,6 +20,7 @@ export default function ProfilePage() {
   const { isSignedIn, isLoaded } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
+  const [limits, setLimits] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -40,9 +42,10 @@ export default function ProfilePage() {
     setError(null);
 
     try {
-      const [profileResult, visualizationsResult] = await Promise.all([
+      const [profileResult, visualizationsResult, limitsResult] = await Promise.all([
         getUserProfile(),
         getUserVisualizations(),
+        getUserLimits(),
       ]);
 
       if (profileResult.success && profileResult.data) {
@@ -53,6 +56,10 @@ export default function ProfilePage() {
 
       if (visualizationsResult.success && visualizationsResult.data) {
         setVisualizations(visualizationsResult.data);
+      }
+
+      if (limitsResult.success && limitsResult.data) {
+        setLimits(limitsResult.data);
       }
     } catch (err) {
       setError("An error occurred while loading your profile");
@@ -148,6 +155,99 @@ export default function ProfilePage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Token Usage Dashboard */}
+        {limits && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-r from-purple-900/20 to-cyan-900/20 border border-zinc-800 rounded-2xl p-8 mb-8 backdrop-blur-sm"
+          >
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <Zap className="w-6 h-6 text-yellow-400" />
+              Token Usage This Month
+            </h2>
+
+            {/* Progress Bar */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-zinc-400">
+                  {limits.tokens.used} / {limits.tokens.limit} tokens used
+                </span>
+                <span className="text-sm font-bold text-purple-400">
+                  {limits.tokens.percentageUsed}%
+                </span>
+              </div>
+              <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(limits.tokens.percentageUsed, 100)}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className={`h-full rounded-full ${
+                    limits.tokens.percentageUsed > 90
+                      ? "bg-gradient-to-r from-red-500 to-orange-500"
+                      : limits.tokens.percentageUsed > 70
+                      ? "bg-gradient-to-r from-yellow-500 to-orange-500"
+                      : "bg-gradient-to-r from-purple-500 to-cyan-500"
+                  }`}
+                />
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-xs text-zinc-500">
+                  {limits.tokens.remaining} tokens remaining
+                </span>
+                <span className="text-xs text-zinc-500 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" />
+                  Resets {new Date(limits.tokens.resetDate).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Estimated Operations */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+                <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Visualizations Left</p>
+                <p className="text-3xl font-bold text-purple-400 mb-1">
+                  ~{limits.estimatedOperations.visualizations}
+                </p>
+                <p className="text-xs text-zinc-500">{limits.costs.generateVisualization} tokens each</p>
+              </div>
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+                <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Expansions Left</p>
+                <p className="text-3xl font-bold text-cyan-400 mb-1">
+                  ~{limits.estimatedOperations.expansions}
+                </p>
+                <p className="text-xs text-zinc-500">{limits.costs.expandNode} tokens each</p>
+              </div>
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+                <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Exports Left</p>
+                <p className="text-3xl font-bold text-emerald-400 mb-1">
+                  ~{limits.estimatedOperations.exports}
+                </p>
+                <p className="text-xs text-zinc-500">{limits.costs.exportVisualization} token each</p>
+              </div>
+            </div>
+
+            {/* Upgrade Prompt for Free Users */}
+            {limits.tier === 'free' && limits.tokens.percentageUsed > 70 && (
+              <div className="bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border border-purple-500/50 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-white font-bold mb-1">Running low on tokens?</h3>
+                    <p className="text-zinc-300 text-sm mb-3">
+                      Upgrade to Pro and get 2000 tokens/month (20x more) for just $9.99!
+                    </p>
+                    <button className="px-4 py-2 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-lg transition font-medium text-sm">
+                      Upgrade to Pro
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Saved Visualizations */}
         <div className="mb-6">
