@@ -78,18 +78,18 @@ export default function DashboardPage() {
       {/* Main Split View */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Input */}
-        <div className="w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-800 overflow-y-auto bg-white/50 dark:bg-background-dark/50">
+        <div className="w-1/2 flex flex-col border-r border-[#1e2128] overflow-y-auto bg-[#141922]">
           <div className="p-8 max-w-2xl mx-auto w-full flex flex-col gap-6">
             <header>
-              <h2 className="text-xl font-bold mb-1">Input Data &amp; Prompts</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h2 className="text-xl font-bold mb-1 text-white">Input Data &amp; Prompts</h2>
+              <p className="text-sm text-gray-400">
                 Describe your story or upload raw data to begin.
               </p>
             </header>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center justify-between">
+                <label className="text-sm font-medium flex items-center justify-between text-white">
                   Data Story Prompt
                   <button
                     type="button"
@@ -103,13 +103,13 @@ export default function DashboardPage() {
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    className="w-full h-40 bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-body leading-relaxed placeholder:text-gray-400"
+                    className="w-full h-40 bg-[#1a1f28] border border-[#2a2f38] rounded-xl p-4 text-sm text-gray-300 focus:ring-2 focus:ring-primary focus:border-primary resize-none leading-relaxed placeholder:text-gray-500"
                     placeholder="Example: Create a breakdown of quarterly sales by region for 2023, emphasizing the growth in the Asia-Pacific market..."
                   />
                   <div className="absolute bottom-3 right-3 flex gap-2">
                     <button
                       type="button"
-                      className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 transition-colors"
+                      className="p-1.5 rounded-md hover:bg-[#2a2f38] text-gray-500 transition-colors"
                       title="Voice Input"
                     >
                       <span className="material-symbols-outlined text-lg">mic</span>
@@ -119,10 +119,10 @@ export default function DashboardPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Source Data</label>
-                <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 flex flex-col items-center justify-center gap-3 bg-gray-50/50 dark:bg-surface-dark/30 hover:bg-gray-50 dark:hover:bg-surface-dark transition-colors cursor-pointer group">
-                  <div className="size-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-gray-500">upload_file</span>
+                <label className="text-sm font-medium text-white">Source Data</label>
+                <div className="border-2 border-dashed border-[#2a2f38] rounded-xl p-8 flex flex-col items-center justify-center gap-3 bg-[#1a1f28]/30 hover:bg-[#1a1f28] transition-colors cursor-pointer group">
+                  <div className="size-10 rounded-full bg-[#2a2f38] flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-gray-400">upload_file</span>
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-medium text-primary">Click to upload</p>
@@ -131,33 +131,33 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <details className="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark overflow-hidden">
-                <summary className="flex cursor-pointer items-center justify-between gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <details className="group rounded-xl border border-[#2a2f38] bg-[#1a1f28] overflow-hidden">
+                <summary className="flex cursor-pointer items-center justify-between gap-4 p-4 hover:bg-[#1e2329] transition-colors">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-gray-500">tune</span>
-                    <span className="text-sm font-medium">Advanced Parameters</span>
+                    <span className="material-symbols-outlined text-gray-400">tune</span>
+                    <span className="text-sm font-medium text-white">Advanced Parameters</span>
                   </div>
-                  <span className="material-symbols-outlined text-gray-500 transition group-open:rotate-180">
+                  <span className="material-symbols-outlined text-gray-400 transition group-open:rotate-180">
                     expand_more
                   </span>
                 </summary>
-                <div className="p-4 pt-0 border-t border-gray-200 dark:border-gray-700 mt-2">
+                <div className="p-4 pt-0 border-t border-[#2a2f38] mt-2">
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                      <label className="text-xs font-medium text-gray-400 mb-1 block">
                         Color Scheme
                       </label>
-                      <select className="w-full bg-gray-50 dark:bg-background-dark border border-gray-200 dark:border-gray-600 rounded-lg text-sm p-2">
+                      <select className="w-full bg-[#0f1419] border border-[#2a2f38] rounded-lg text-sm p-2 text-gray-300">
                         <option>Modern Dark</option>
                         <option>Classic Light</option>
                         <option>Vibrant</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                      <label className="text-xs font-medium text-gray-400 mb-1 block">
                         Data Density
                       </label>
-                      <select className="w-full bg-gray-50 dark:bg-background-dark border border-gray-200 dark:border-gray-600 rounded-lg text-sm p-2">
+                      <select className="w-full bg-[#0f1419] border border-[#2a2f38] rounded-lg text-sm p-2 text-gray-300">
                         <option>Balanced</option>
                         <option>High</option>
                         <option>Simplified</option>
@@ -200,11 +200,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Panel - Visualization Output */}
-        <div className="w-1/2 flex flex-col bg-gray-50 dark:bg-surface-dark overflow-hidden relative">
-          <div className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 bg-white dark:bg-surface-dark shrink-0 z-10">
-            <h2 className="font-bold">Visualization Output</h2>
+        <div className="w-1/2 flex flex-col bg-[#0f1419] overflow-hidden relative">
+          <div className="h-16 border-b border-[#1e2128] flex items-center justify-between px-6 bg-[#0f1419] shrink-0 z-10">
+            <h2 className="font-bold text-white">Visualization Output</h2>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/30">
                 <span className="material-symbols-outlined text-primary text-sm">smart_toy</span>
                 <span className="text-xs font-bold text-primary">AI Auto-Select</span>
                 <label className="relative inline-flex items-center cursor-pointer ml-2">
@@ -214,14 +214,14 @@ export default function DashboardPage() {
                     onChange={(e) => setAutoSelect(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  <div className="w-9 h-5 bg-[#2a2f38] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-[#2a2f38] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                 </label>
               </div>
-              <div className="flex bg-gray-100 dark:bg-background-dark rounded-lg p-1">
-                <button className="p-1.5 rounded bg-white dark:bg-surface-dark shadow-sm text-primary">
+              <div className="flex bg-[#1a1f28] rounded-lg p-1">
+                <button className="p-1.5 rounded bg-[#2a2f38] shadow-sm text-primary">
                   <span className="material-symbols-outlined text-sm">grid_view</span>
                 </button>
-                <button className="p-1.5 rounded text-gray-500 hover:text-gray-900 dark:hover:text-white">
+                <button className="p-1.5 rounded text-gray-500 hover:text-white">
                   <span className="material-symbols-outlined text-sm">preview</span>
                 </button>
               </div>
@@ -241,37 +241,37 @@ export default function DashboardPage() {
             ) : (
               <div className="mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">
-                  Recommended by AI
+                  RECOMMENDED BY AI
                 </h3>
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="relative group cursor-pointer bg-white dark:bg-background-dark rounded-xl p-4 border-2 border-primary shadow-lg shadow-primary/10 transition-all hover:-translate-y-1">
+                  <div className="relative group cursor-pointer bg-[#141922] rounded-xl p-4 border-2 border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/10 transition-all hover:-translate-y-1">
                     <div className="absolute top-3 right-3">
                       <span className="size-2 rounded-full bg-primary animate-pulse"></span>
                     </div>
-                    <div className="aspect-video rounded-lg bg-gradient-to-tr from-primary/10 to-purple-500/10 mb-3 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-4xl text-primary">
+                    <div className="aspect-video rounded-lg bg-gradient-to-tr from-primary/20 to-blue-600/20 mb-3 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-5xl text-primary">
                         bar_chart
                       </span>
                     </div>
-                    <h4 className="font-bold text-sm">Grouped Bar Chart</h4>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <h4 className="font-bold text-sm text-white">Grouped Bar Chart</h4>
+                    <p className="text-xs text-gray-400 mt-1">
                       Best for comparing categories over time.
                     </p>
                   </div>
 
-                  <div className="group cursor-pointer bg-white dark:bg-background-dark rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-primary/50 transition-all hover:-translate-y-1">
-                    <div className="aspect-video rounded-lg bg-gray-100 dark:bg-surface-dark mb-3 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-4xl text-gray-400 group-hover:text-primary transition-colors">
+                  <div className="group cursor-pointer bg-[#141922] rounded-xl p-4 border border-[#2a2f38] hover:border-primary/50 transition-all hover:-translate-y-1">
+                    <div className="aspect-video rounded-lg bg-[#1a1f28] mb-3 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-5xl text-gray-500 group-hover:text-primary transition-colors">
                         show_chart
                       </span>
                     </div>
-                    <h4 className="font-bold text-sm">Multi-Line Series</h4>
-                    <p className="text-xs text-gray-500 mt-1">Ideal for trend analysis.</p>
+                    <h4 className="font-bold text-sm text-white">Multi-Line Series</h4>
+                    <p className="text-xs text-gray-400 mt-1">Ideal for trend analysis.</p>
                   </div>
                 </div>
 
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">
-                  All Visualizations (19)
+                  ALL VISUALIZATIONS (19)
                 </h3>
                 <div className="grid grid-cols-3 gap-3">
                   {[
@@ -287,12 +287,12 @@ export default function DashboardPage() {
                   ].map((item) => (
                     <div
                       key={item.label}
-                      className="bg-white dark:bg-background-dark p-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-primary cursor-pointer transition-colors flex flex-col items-center text-center gap-2 group"
+                      className="bg-[#141922] p-3 rounded-lg border border-[#2a2f38] hover:border-primary cursor-pointer transition-colors flex flex-col items-center text-center gap-2 group"
                     >
                       <span className="material-symbols-outlined text-gray-400 group-hover:text-primary">
                         {item.icon}
                       </span>
-                      <span className="text-xs font-medium">{item.label}</span>
+                      <span className="text-xs font-medium text-gray-300">{item.label}</span>
                     </div>
                   ))}
                 </div>
@@ -303,11 +303,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Panel - Recent Generations */}
-      <div className="h-48 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-surface-dark flex flex-col shrink-0 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
+      <div className="h-48 border-t border-[#1e2128] bg-[#0a0d11] flex flex-col shrink-0 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
         <div className="px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-gray-400 text-lg">history</span>
-            <h3 className="text-sm font-bold">Recent Generations</h3>
+            <span className="material-symbols-outlined text-gray-500 text-lg">history</span>
+            <h3 className="text-sm font-bold text-white">Recent Generations</h3>
           </div>
           <button className="text-xs text-primary font-medium hover:underline">
             View All Library
@@ -319,12 +319,12 @@ export default function DashboardPage() {
             (title, i) => (
               <div
                 key={i}
-                className="flex-shrink-0 w-48 h-28 rounded-lg bg-gray-100 dark:bg-background-dark border border-gray-200 dark:border-gray-700 relative group cursor-pointer overflow-hidden"
+                className="flex-shrink-0 w-48 h-28 rounded-lg bg-[#141922] border border-[#2a2f38] relative group cursor-pointer overflow-hidden hover:border-primary/50 transition-all"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-purple-500/10 opacity-50 group-hover:opacity-70 transition-opacity"></div>
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-blue-600/20 opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
                   <p className="text-xs text-white font-medium truncate">{title}</p>
-                  <p className="text-[10px] text-gray-300">
+                  <p className="text-[10px] text-gray-400">
                     {i === 0 ? '2 mins ago' : i === 1 ? '1 hour ago' : 'Yesterday'}
                   </p>
                 </div>
