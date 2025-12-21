@@ -5,8 +5,7 @@ import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
 import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
-import { cacheGet, cacheSet } from '@/lib/database/redis';
-import { generateCacheKey, calculateCost } from '@/lib/utils/helpers';
+import { calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 import {
   validateInputLength,
@@ -78,14 +77,6 @@ export async function generateVisualization(
       };
     }
 
-    // Check cache
-    const cacheKey = generateCacheKey(input, preferredFormat);
-    const cached = await cacheGet<VisualizationResponse>(cacheKey);
-    if (cached) {
-      console.log('✅ Cache hit for visualization');
-      return { ...cached, success: true };
-    }
-
     // Step 1: Analyze input and select format
     const formatSelection = await selectVisualizationFormat(input, preferredFormat);
 
@@ -122,9 +113,6 @@ export async function generateVisualization(
       reason: formatSelection.reason,
       metadata,
     };
-
-    // Cache the result (1 hour TTL)
-    await cacheSet(cacheKey, response, 3600);
 
     // TOKEN SYSTEM: Deduct tokens for successful generation
     await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
