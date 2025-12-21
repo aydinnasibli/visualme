@@ -108,7 +108,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-[280px]">
             {/* Featured Card */}
             <div className="md:col-span-2 md:row-span-2 rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-600/20"></div>
+              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDus-G8AatxW31wfMxnry99kVSdB2-MYZ6FGPZPNd42tafG6FEV6t1jFEPg8uqssv92b7vSTQCu-p1pfyhwoe42zD4BuzBEkM0PoiIsxSkiyalAthok2dAQl4IquNikOUXYyS0m3n41pU9mUs_KFF68-AhnTeopOWRQUe_r0IEYm0Uco-JKM9TCxhCyxfBCcZZRN12O9fC8Uk9NaGcYFd2F93pTe77eUlkU2oACZBSXpet5eiG3-Hz1JyKAnzdPMLS4izDzDsNhSSKV")'}}></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
               <div className="absolute bottom-0 left-0 p-8">
                 <div className="inline-flex items-center gap-2 mb-3 px-2 py-1 bg-blue-600/90 rounded text-white text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
@@ -121,7 +121,7 @@ export default function HomePage() {
 
             {/* Small Cards */}
             <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-emerald-800/20"></div>
+              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCsUF98mFXhID8n4oWKk-cu7QXif3MP_fkSMbXvvTsLhOy08ZomWBh_k7Fh-HitGXgPUYtUs897fgICcEzJVF2p--nD0q9BJ_3gJvgOKDS-9J5FdovBISZlW2c1Xg0-kHFmjCqj4CkRPN6_vIpR5VTK5zs0iJvDNyV9m-2TzUN_vhqbXIzCo_2xHDLP9Suf1-K4NAn4OmMygiAcabKYZRgaQKUaQL85XgINCCsnMoTVTwJZxnwX0bnOw-Xtt12I8o_pzY2-MZZIGe71")'}}></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
                 <div className="flex items-center gap-2 mb-1 text-emerald-400">
@@ -133,7 +133,7 @@ export default function HomePage() {
             </div>
 
             <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-purple-800/20"></div>
+              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAIIPEZI8ycPvxCXkZr6EfGa-smMsVcj23joyyql2rdQrGQqYkUSo2A6XF1cN_r9vi50tVuc9pnQG77D4QyBykCm9kr9T5uTn_jqlrKgdJkYPMDz-ULRLA2ofnJhK0Mj_dwjmGeeezvkWh0d2seD-PYau8yUYrntq_ldlgEp10A469VUizbr-BaLTKwXf0PKUvxH04GaRWCAibPcRnQmQGBM5bUHL-LWZNSA-Br35xbNGQuPMupu_It90DBjPoECDu1g3fomE8UyLy3")'}}></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
                 <div className="flex items-center gap-2 mb-1 text-purple-400">
@@ -145,7 +145,7 @@ export default function HomePage() {
             </div>
 
             <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-600/20 to-orange-800/20"></div>
+              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDIjWfks2lCpLXYvvSkvK02FqNT2OV0phaxV2yOYNkI-yWryxOtjtb4dtE9Wwgf-OEiwPNLzgZGNA59c8G1iFRUxEy1X7YB88VZ1CgYUeMulBH6K8sTMtKkJ5s1jjeG9dy32EZSSNLolKwYLjy2iJ8aHP6iWTCmX78fYUYZxbqBOWRWSYclsI7VNjAGg4athbzjrRiMbT6YS6Z-8namwDIvsTEgtRW5ZCxeTgjO4rQjyamn9oMaQk2DHJOPKG6LIMiRGIKzAuu3wOQn")'}}></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
               <div className="absolute bottom-0 left-0 p-6">
                 <div className="flex items-center gap-2 mb-1 text-orange-400">
@@ -233,9 +233,11 @@ export default function HomePage() {
             </div>
             <div className="flex-1 w-full relative">
               <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full opacity-20"></div>
-              <div className="relative w-full h-[400px] rounded-2xl shadow-2xl border border-[#282e39] bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[120px] text-primary/40">bar_chart</span>
-              </div>
+              <img
+                alt="Dashboard Example"
+                className="relative w-full rounded-2xl shadow-2xl border border-[#282e39] transform transition-transform hover:scale-[1.02]"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDus-G8AatxW31wfMxnry99kVSdB2-MYZ6FGPZPNd42tafG6FEV6t1jFEPg8uqssv92b7vSTQCu-p1pfyhwoe42zD4BuzBEkM0PoiIsxSkiyalAthok2dAQl4IquNikOUXYyS0m3n41pU9mUs_KFF68-AhnTeopOWRQUe_r0IEYm0Uco-JKM9TCxhCyxfBCcZZRN12O9fC8Uk9NaGcYFd2F93pTe77eUlkU2oACZBSXpet5eiG3-Hz1JyKAnzdPMLS4izDzDsNhSSKV"
+              />
             </div>
           </div>
 
@@ -253,9 +255,11 @@ export default function HomePage() {
             </div>
             <div className="flex-1 w-full relative">
               <div className="absolute inset-0 bg-purple-500/20 blur-3xl rounded-full opacity-20"></div>
-              <div className="relative w-full h-[400px] rounded-2xl shadow-2xl border border-[#282e39] bg-gradient-to-br from-purple-600/20 to-blue-600/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[120px] text-purple-400/40">hub</span>
-              </div>
+              <img
+                alt="Architecture Example"
+                className="relative w-full rounded-2xl shadow-2xl border border-[#282e39] transform transition-transform hover:scale-[1.02]"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsUF98mFXhID8n4oWKk-cu7QXif3MP_fkSMbXvvTsLhOy08ZomWBh_k7Fh-HitGXgPUYtUs897fgICcEzJVF2p--nD0q9BJ_3gJvgOKDS-9J5FdovBISZlW2c1Xg0-kHFmjCqj4CkRPN6_vIpR5VTK5zs0iJvDNyV9m-2TzUN_vhqbXIzCo_2xHDLP9Suf1-K4NAn4OmMygiAcabKYZRgaQKUaQL85XgINCCsnMoTVTwJZxnwX0bnOw-Xtt12I8o_pzY2-MZZIGe71"
+              />
             </div>
           </div>
         </div>
