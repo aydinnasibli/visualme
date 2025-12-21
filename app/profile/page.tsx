@@ -11,7 +11,6 @@ import {
   getUserLimits,
   type UserProfile,
 } from "@/lib/actions/profile";
-import { upgradeTierForTesting } from "@/lib/actions/admin";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { Trash2, Calendar, Eye, Sparkles, Zap, TrendingUp, RefreshCw } from "lucide-react";
 import VisualizationModal from "../components/VisualizationModal";
@@ -82,16 +81,6 @@ export default function ProfilePage() {
       alert(result.error || "Failed to delete visualization");
     }
     setDeletingId(null);
-  };
-
-  const handleUpgradeTier = async (tier: 'free' | 'pro' | 'enterprise') => {
-    const result = await upgradeTierForTesting(tier);
-    if (result.success) {
-      alert(result.message);
-      loadProfileData(); // Reload to show updated limits
-    } else {
-      alert(result.error || "Failed to upgrade tier");
-    }
   };
 
   if (!isLoaded || loading) {
@@ -175,34 +164,10 @@ export default function ProfilePage() {
             transition={{ delay: 0.1 }}
             className="bg-gradient-to-r from-purple-900/20 to-cyan-900/20 border border-zinc-800 rounded-2xl p-8 mb-8 backdrop-blur-sm"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Zap className="w-6 h-6 text-yellow-400" />
-                Token Usage This Month
-              </h2>
-
-              {/* TESTING ONLY - Remove before production */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleUpgradeTier('free')}
-                  className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-xs transition"
-                >
-                  Test: Free
-                </button>
-                <button
-                  onClick={() => handleUpgradeTier('pro')}
-                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs transition"
-                >
-                  Test: Pro
-                </button>
-                <button
-                  onClick={() => handleUpgradeTier('enterprise')}
-                  className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs transition"
-                >
-                  Test: Enterprise
-                </button>
-              </div>
-            </div>
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <Zap className="w-6 h-6 text-yellow-400" />
+              Token Usage This Month
+            </h2>
 
             {/* Progress Bar */}
             <div className="mb-6">
@@ -274,7 +239,10 @@ export default function ProfilePage() {
                     <p className="text-zinc-300 text-sm mb-3">
                       Upgrade to Pro and get 2000 tokens/month (20x more) for just $9.99!
                     </p>
-                    <button className="px-4 py-2 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-lg transition font-medium text-sm">
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      className="px-4 py-2 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-lg transition font-medium text-sm"
+                    >
                       Upgrade to Pro
                     </button>
                   </div>
