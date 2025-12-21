@@ -66,6 +66,7 @@ export default function VisualizationModal({
               <DynamicNetworkGraph
                 ref={networkGraphRef}
                 data={visualization.data as any}
+                readOnly={true}
               />
             )}
 
@@ -73,6 +74,7 @@ export default function VisualizationModal({
               <MindMapVisualization
                 ref={mindMapRef}
                 data={visualization.data as any}
+                readOnly={true}
               />
             )}
           </div>

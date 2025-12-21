@@ -61,6 +61,7 @@ const seededRandom = (seed: string) => {
 interface NetworkGraphProps {
   data: NetworkGraphData;
   onExpand?: (nodeId: string, nodeLabel: string) => Promise<void>;
+  readOnly?: boolean;
 }
 
 export interface NetworkGraphHandle {
@@ -86,7 +87,7 @@ interface SelectedNodeInfo {
 /* -------------------------------------------------------------------------- */
 
 const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
-  ({ data, onExpand }, ref) => {
+  ({ data, onExpand, readOnly = false }, ref) => {
     const cyRef = useRef<Core | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(
@@ -797,7 +798,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
                     )}
 
                   {/* Extend Button */}
-                  {selectedNode.extendable && onExpand && (
+                  {selectedNode.extendable && onExpand && !readOnly && (
                     isNodeExtended(selectedNode.id) ? (
                       <div
                         className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg"

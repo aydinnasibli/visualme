@@ -219,31 +219,37 @@ export async function saveVisualization(
       type,
     });
 
+    let visualization;
+
     if (existingVisualization) {
-      return {
-        success: false,
-        error: 'A visualization with this title already exists. Please modify your input to save a new version.'
-      };
-    }
+      // Update existing visualization with new data (e.g., after extending nodes)
+      existingVisualization.data = data;
+      existingVisualization.metadata = metadata;
+      existingVisualization.isPublic = isPublic;
+      existingVisualization.updatedAt = new Date();
+      await existingVisualization.save();
 
-    // Create visualization
-    const visualization = await VisualizationModel.create({
-      userId,
-      title,
-      type,
-      data,
-      metadata,
-      isPublic,
-    });
+      visualization = existingVisualization;
+    } else {
+      // Create new visualization
+      visualization = await VisualizationModel.create({
+        userId,
+        title,
+        type,
+        data,
+        metadata,
+        isPublic,
+      });
 
-    // Update user's saved visualizations
-    const user = await UserModel.findOrCreate(userId);
-    const visualizationIdStr = visualization._id.toString();
-    const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
+      // Update user's saved visualizations for new visualization only
+      const user = await UserModel.findOrCreate(userId);
+      const visualizationIdStr = visualization._id.toString();
+      const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
 
-    if (!exists) {
-      user.savedVisualizations.push(visualization._id as any);
-      await user.save();
+      if (!exists) {
+        user.savedVisualizations.push(visualization._id as any);
+        await user.save();
+      }
     }
 
     return { success: true, id: visualization._id.toString() };

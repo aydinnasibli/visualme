@@ -131,11 +131,6 @@ export default function Home() {
       return;
     }
 
-    if (isSaved) {
-      setError("This visualization is already saved");
-      return;
-    }
-
     setSaving(true);
     setError(null);
 
@@ -158,8 +153,9 @@ export default function Home() {
         return;
       }
 
+      const wasAlreadySaved = isSaved;
       setIsSaved(true);
-      alert("Visualization saved successfully!");
+      alert(wasAlreadySaved ? "Visualization updated successfully!" : "Visualization saved successfully!");
     } catch (err) {
       setError("Failed to save visualization");
       console.error("Save error:", err);
@@ -702,13 +698,13 @@ export default function Home() {
                     {isSignedIn && (
                       <button
                         onClick={handleSave}
-                        disabled={saving || isSaved}
+                        disabled={saving}
                         className={`px-5 py-2.5 text-white text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg ${
                           isSaved
-                            ? "bg-green-600 shadow-green-500/25"
+                            ? "bg-green-600 hover:bg-green-700 shadow-green-500/25"
                             : "bg-purple-600 hover:bg-purple-700 shadow-purple-500/25"
                         }`}
-                        title={isSaved ? "Already Saved" : "Save Visualization"}
+                        title={isSaved ? "Update saved visualization with latest changes" : "Save Visualization"}
                       >
                         {saving ? (
                           <>
@@ -731,7 +727,7 @@ export default function Home() {
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                               />
                             </svg>
-                            Saving...
+                            {isSaved ? "Updating..." : "Saving..."}
                           </>
                         ) : isSaved ? (
                           <>
@@ -745,10 +741,10 @@ export default function Home() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M5 13l4 4L19 7"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                               />
                             </svg>
-                            Saved
+                            Update
                           </>
                         ) : (
                           <>
