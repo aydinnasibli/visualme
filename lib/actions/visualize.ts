@@ -77,21 +77,23 @@ export async function generateVisualization(
       };
     }
 
-    // PERFORMANCE OPTIMIZATION: Single AI call for format selection + data generation
-    // This reduces generation time by 30-50% compared to two separate API calls
-    const result = await generateVisualizationCombined(input, preferredFormat);
+    // Step 1: Analyze input and select format
+    const formatSelection = await selectVisualizationFormat(input, preferredFormat);
 
-    if (!result.format || !result.data) {
+    if (!formatSelection.visualizable || formatSelection.format === 'none') {
       return {
         success: false,
         type: 'network_graph',
         data: {} as VisualizationData,
-        reason: result.reason || 'Could not determine visualization format',
+        reason: formatSelection.reason,
         error: 'This content is not suitable for visualization',
       };
     }
 
-    const { format, data, reason } = result;
+    // Step 2: Generate visualization data
+    const data = await generateVisualizationData(formatSelection.format, input);
+    const format = formatSelection.format;
+    const reason = formatSelection.reason;
 
     // Calculate metadata
     const processingTime = Date.now() - startTime;
