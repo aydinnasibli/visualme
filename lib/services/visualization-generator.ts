@@ -675,37 +675,29 @@ export async function generateVisualizationCombined(
   // OPTIMIZED PROMPT: Reduced by 50% to save tokens while maintaining quality
   const systemPrompt = `Expert visualization AI: Select optimal format AND generate data in ONE response.
 
-FORMATS (19 options):
-1. network_graph - Concepts, relationships, knowledge (BEST for education)
-2. mind_map - Hierarchical topics, brainstorming
-3. tree_diagram - Hierarchies, org charts
-4. force_directed_graph - Complex networks
-5. timeline - Events, milestones
-6. gantt_chart - Project schedules
-7. animated_timeline - Evolution steps
-8. flowchart - Processes, algorithms
-9. sankey_diagram - Flow magnitudes
-10. swimlane_diagram - Cross-functional
-11. line_chart - Trends
-12. bar_chart - Comparisons
-13. scatter_plot - Correlations
-14. heatmap - Density patterns
-15. radar_chart - Multi-dimensional
-16. pie_chart - Proportions
-17. comparison_table - Features
-18. parallel_coordinates - Multi-metric
-19. word_cloud - Text frequency
-20. syntax_diagram - Grammar/code syntax
+CRITICAL: Only use network_graph or mind_map formats - all other types are under development!
+
+AVAILABLE FORMATS (2 working):
+1. network_graph - Concepts, relationships, knowledge graphs, educational content, complex topics
+   - BEST for most content: ideas, processes, systems, comparisons, categories
+   - Shows connections and relationships between concepts
+   - Highly interactive with expandable nodes
+
+2. mind_map - Hierarchical topics, brainstorming, structured outlines
+   - BEST for hierarchical data: outlines, categories, taxonomies
+   - Tree-like structure with parent-child relationships
+   - Good for organizing thoughts and breaking down topics
 
 RULES:
-- Almost ALL content visualizable (default YES)
-- Educational → network_graph/mind_map
+- ONLY use network_graph or mind_map - no exceptions!
+- Default to network_graph for most content (80% of cases)
+- Use mind_map only for clearly hierarchical content
 - Generate 10-20 nodes with 3-5 sentence descriptions
 - Mark complex nodes "extendable: true" with metadata
 
 Return valid JSON:
 {
-  "format": "format_name",
+  "format": "network_graph" or "mind_map",
   "reason": "why chosen",
   "data": { /* complete schema for format */ }
 }`;
