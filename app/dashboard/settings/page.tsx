@@ -1,13 +1,33 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getUserProfile } from '@/lib/actions/profile';
 
 export default function SettingsPage() {
   const { user } = useUser();
   const [fullName, setFullName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('Data visualization enthusiast and product designer.');
+  const [plan, setPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const result = await getUserProfile();
+      if (result.success && result.data) {
+        setPlan(result.data.plan);
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   return (
     <div className="flex-1 overflow-y-auto bg-[#0f1419]">
@@ -131,32 +151,6 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* API & Integrations Section */}
-        <section>
-          <div className="flex items-start justify-between border-b border-[#282e39] pb-4 mb-6">
-            <h3 className="text-lg font-semibold text-white">API & Integrations</h3>
-          </div>
-          <div className="flex flex-col gap-6">
-            <div className="bg-[#1c1f27] p-6 rounded-xl border border-[#282e39]">
-              <h4 className="text-base font-medium text-white mb-4">API Keys</h4>
-              <p className="text-sm text-gray-400 mb-4">Use this key to authenticate your requests to the VisualMe API. Treat this key like a password.</p>
-              <div className="flex gap-3">
-                <div className="relative flex-1">
-                  <input className="w-full bg-[#111318] border border-[#3b4354] rounded-lg px-4 py-3 text-gray-400 font-mono text-sm focus:outline-none" readOnly type="text" value="vm_live_8392849284928492..." />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-                    <button className="p-2 text-gray-400 hover:text-white rounded-md hover:bg-[#282e39] transition-colors" title="Copy">
-                      <span className="material-symbols-outlined text-[20px]">content_copy</span>
-                    </button>
-                  </div>
-                </div>
-                <button className="px-4 py-2 rounded-lg border border-[#282e39] text-white text-sm font-medium hover:bg-[#282e39] transition-colors flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px]">refresh</span>
-                  Regenerate
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Billing Section */}
         <section className="mb-20">
@@ -165,32 +159,84 @@ export default function SettingsPage() {
           </div>
           <div className="bg-gradient-to-br from-[#1c1f27] to-[#111318] p-6 rounded-xl border border-[#282e39] relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h4 className="text-2xl font-bold text-white">Free Plan</h4>
-                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-primary/20 text-primary border border-primary/30">CURRENT</span>
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h4 className="text-2xl font-bold text-white">
+                      {plan === 'free' && 'Free Plan'}
+                      {plan === 'pro' && 'Pro Plan'}
+                      {plan === 'enterprise' && 'Enterprise Plan'}
+                    </h4>
+                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-primary/20 text-primary border border-primary/30">CURRENT</span>
+                  </div>
+                  <p className="text-gray-400 mb-4">
+                    {plan === 'free' && 'You are currently on the free plan.'}
+                    {plan === 'pro' && 'You are currently on the pro plan with unlimited features.'}
+                    {plan === 'enterprise' && 'You are currently on the enterprise plan with all features unlocked.'}
+                  </p>
+                  <div className="flex items-center gap-4 text-sm flex-wrap">
+                    <div className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                      {plan === 'free' && '5 Visualizations/month'}
+                      {plan === 'pro' && 'Unlimited Visualizations'}
+                      {plan === 'enterprise' && 'Unlimited Visualizations'}
+                    </div>
+                    <div className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                      All 20 Types
+                    </div>
+                    {(plan === 'pro' || plan === 'enterprise') && (
+                      <>
+                        <div className="flex items-center gap-2 text-white">
+                          <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                          Priority Support
+                        </div>
+                        <div className="flex items-center gap-2 text-white">
+                          <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                          Advanced Analytics
+                        </div>
+                      </>
+                    )}
+                    {plan === 'enterprise' && (
+                      <div className="flex items-center gap-2 text-white">
+                        <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                        Custom Integrations
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p className="text-gray-400 mb-4">You are currently on the free plan.</p>
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-white">
-                    <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                    5 Visualizations/month
+                <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                  <div className="text-right mb-2">
+                    <span className="text-3xl font-bold text-white">
+                      {plan === 'free' && '$0'}
+                      {plan === 'pro' && '$29'}
+                      {plan === 'enterprise' && '$99'}
+                    </span>
+                    <span className="text-gray-400">/month</span>
                   </div>
-                  <div className="flex items-center gap-2 text-white">
-                    <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                    All 19 Types
-                  </div>
+                  {plan === 'free' && (
+                    <button className="w-full md:w-auto px-6 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-primary/30">
+                      Upgrade to Pro
+                    </button>
+                  )}
+                  {plan === 'pro' && (
+                    <button className="w-full md:w-auto px-6 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-primary/30">
+                      Upgrade to Enterprise
+                    </button>
+                  )}
+                  {plan === 'enterprise' && (
+                    <button className="w-full md:w-auto px-6 py-2 rounded-lg border border-[#282e39] text-gray-400 text-sm font-medium hover:bg-[#1c1f27] hover:text-white transition-colors">
+                      Manage Subscription
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                <div className="text-right mb-2">
-                  <span className="text-3xl font-bold text-white">$0</span>
-                  <span className="text-gray-400">/month</span>
-                </div>
-                <button className="w-full md:w-auto px-6 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-primary/30">Upgrade to Pro</button>
-              </div>
-            </div>
+            )}
           </div>
         </section>
       </div>
