@@ -305,6 +305,24 @@ export default function DashboardPage() {
               {result.type === 'mind_map' && (
                 <DynamicMindMap data={result.data as MindMapData} />
               )}
+              {result.type !== 'network_graph' && result.type !== 'mind_map' && (
+                <div className="flex flex-col items-center justify-center py-16 px-4 min-h-[500px] bg-[#1a1f28] rounded-xl border border-[#282e39]">
+                  <span className="material-symbols-outlined text-6xl text-gray-600 mb-4">construction</span>
+                  <h3 className="text-xl font-bold text-white mb-2">{result.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} - Coming Soon</h3>
+                  <p className="text-gray-400 text-center max-w-md mb-4">
+                    This visualization type is currently under development. Try using Network Graph or Mind Map for now.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setResult(null);
+                      setInput('');
+                    }}
+                    className="px-6 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Try Another Visualization
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (
