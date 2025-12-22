@@ -71,6 +71,14 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSave = async () => {
+    if (!result) return;
+
+    // TODO: Implement save functionality to database
+    console.log('Saving visualization:', result);
+    alert('Visualization saved successfully!');
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#0f1419]">
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -215,6 +223,13 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Your Visualization</h2>
               <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white transition-colors flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">save</span>
+                  <span className="text-sm font-medium">Save</span>
+                </button>
                 <button className="px-4 py-2 rounded-lg bg-[#1a1f28] border border-[#2a2f38] text-white hover:bg-[#1e2329] transition-colors flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm">download</span>
                   <span className="text-sm font-medium">Export</span>
@@ -236,64 +251,57 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="bg-[#141922] rounded-2xl border border-[#282e39] p-8">
-            <div className="mb-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">
-                RECOMMENDED VISUALIZATIONS
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                {autoSelect ? 'AI WILL SELECT THE BEST VISUALIZATION' : 'CHOOSE A VISUALIZATION TYPE (19)'}
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { icon: 'bar_chart', label: 'Bar Chart', desc: 'Compare categories' },
-                  { icon: 'show_chart', label: 'Line Chart', desc: 'Show trends' },
-                  { icon: 'pie_chart', label: 'Pie Chart', desc: 'Show proportions' },
-                  { icon: 'scatter_plot', label: 'Scatter Plot', desc: 'Find correlations' },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className={`group cursor-pointer bg-[#1a1f28] rounded-xl p-5 border transition-all hover:-translate-y-1 ${
-                      idx === 0
-                        ? 'border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/10'
-                        : 'border-[#2a2f38] hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="aspect-square rounded-lg bg-gradient-to-tr from-primary/20 to-blue-600/20 mb-3 flex items-center justify-center">
-                      <span className={`material-symbols-outlined text-4xl ${idx === 0 ? 'text-primary' : 'text-gray-500 group-hover:text-primary'}`}>
-                        {item.icon}
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-sm text-white mb-1">{item.label}</h4>
-                    <p className="text-xs text-gray-400">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
+              {autoSelect && (
+                <span className="text-xs text-gray-500 italic">Disable AI Auto-Select to manually choose</span>
+              )}
             </div>
-
-            <div className="border-t border-[#282e39] pt-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">
-                ALL VISUALIZATIONS (19)
-              </h3>
-              <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-9 gap-3">
-                {[
-                  { icon: 'donut_small', label: 'Donut' },
-                  { icon: 'hub', label: 'Network' },
-                  { icon: 'bubble_chart', label: 'Bubble' },
-                  { icon: 'account_tree', label: 'Sankey' },
-                  { icon: 'candlestick_chart', label: 'Candlestick' },
-                  { icon: 'blur_on', label: 'Heatmap' },
-                  { icon: 'forest', label: 'Treemap' },
-                  { icon: 'radar', label: 'Radar' },
-                  { icon: 'waterfall_chart', label: 'Waterfall' },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="bg-[#1a1f28] p-3 rounded-lg border border-[#2a2f38] hover:border-primary cursor-pointer transition-all flex flex-col items-center text-center gap-2 group"
-                  >
-                    <span className="material-symbols-outlined text-2xl text-gray-400 group-hover:text-primary transition-colors">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {[
+                { icon: 'bar_chart', label: 'Bar Chart', desc: 'Compare categories' },
+                { icon: 'show_chart', label: 'Line Chart', desc: 'Show trends' },
+                { icon: 'pie_chart', label: 'Pie Chart', desc: 'Show proportions' },
+                { icon: 'scatter_plot', label: 'Scatter Plot', desc: 'Find correlations' },
+                { icon: 'donut_small', label: 'Donut Chart', desc: 'Part-to-whole' },
+                { icon: 'hub', label: 'Network Graph', desc: 'Relationships' },
+                { icon: 'bubble_chart', label: 'Bubble Chart', desc: 'Three variables' },
+                { icon: 'account_tree', label: 'Sankey', desc: 'Flow diagram' },
+                { icon: 'candlestick_chart', label: 'Candlestick', desc: 'Price movements' },
+                { icon: 'blur_on', label: 'Heatmap', desc: 'Intensity map' },
+                { icon: 'forest', label: 'Treemap', desc: 'Hierarchical data' },
+                { icon: 'radar', label: 'Radar Chart', desc: 'Multivariate' },
+                { icon: 'waterfall_chart', label: 'Waterfall', desc: 'Cumulative effect' },
+                { icon: 'stacked_bar_chart', label: 'Area Chart', desc: 'Trends over time' },
+                { icon: 'filter_alt', label: 'Funnel Chart', desc: 'Process stages' },
+                { icon: 'view_timeline', label: 'Gantt Chart', desc: 'Project timeline' },
+                { icon: 'analytics', label: 'Box Plot', desc: 'Distribution' },
+                { icon: 'graphic_eq', label: 'Violin Plot', desc: 'Data density' },
+                { icon: 'trip_origin', label: 'Polar Chart', desc: 'Circular data' },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className={`bg-[#1a1f28] rounded-xl p-4 border transition-all flex flex-col items-center text-center gap-2 group ${
+                    autoSelect
+                      ? 'opacity-50 cursor-not-allowed border-[#2a2f38]'
+                      : 'cursor-pointer border-[#2a2f38] hover:border-primary hover:-translate-y-1'
+                  }`}
+                  onClick={(e) => autoSelect && e.preventDefault()}
+                >
+                  <div className="size-12 rounded-lg bg-gradient-to-tr from-primary/10 to-blue-600/10 flex items-center justify-center">
+                    <span className={`material-symbols-outlined text-2xl ${
+                      autoSelect ? 'text-gray-600' : 'text-gray-400 group-hover:text-primary'
+                    } transition-colors`}>
                       {item.icon}
                     </span>
-                    <span className="text-xs font-medium text-gray-300">{item.label}</span>
                   </div>
-                ))}
-              </div>
+                  <span className={`text-xs font-medium ${autoSelect ? 'text-gray-600' : 'text-gray-300'}`}>
+                    {item.label}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
