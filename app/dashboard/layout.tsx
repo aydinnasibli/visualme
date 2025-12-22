@@ -28,9 +28,9 @@ export default function DashboardLayout({
 
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
           <Link
-            href="/profile"
+            href="/my-visualizations"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-              pathname === '/profile'
+              pathname === '/my-visualizations'
                 ? 'bg-[#1e2128] text-white'
                 : 'text-gray-400 hover:bg-[#1e2128]/50 hover:text-white'
             }`}

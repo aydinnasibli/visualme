@@ -1,37 +1,62 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { getUserVisualizations } from '@/lib/actions/profile';
+import type { SavedVisualization } from '@/lib/types/visualization';
+import { FORMAT_INFO } from '@/lib/types/visualization';
 
-export default function ProfilePage() {
+export default function MyVisualizationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const visualizations = [
-    { title: 'Q3 Sales Performance', type: 'Bar Chart', badge: 'bar_chart', color: 'blue', edited: '2h ago', date: new Date('2024-12-22') },
-    { title: 'User Click Density', type: 'Heatmap', badge: 'blur_on', color: 'purple', edited: 'Yesterday', date: new Date('2024-12-21') },
-    { title: 'Social Connections', type: 'Network', badge: 'hub', color: 'green', edited: 'Oct 24, 2023', date: new Date('2023-10-24') },
-    { title: 'Market Share Distribution', type: 'Pie Chart', badge: 'pie_chart', color: 'orange', edited: 'Oct 20, 2023', date: new Date('2023-10-20') },
-    { title: 'Crypto Volatility Index', type: 'Scatter', badge: 'scatter_plot', color: 'pink', edited: 'Oct 18, 2023', date: new Date('2023-10-18') },
-    { title: 'Product Review Sentiment', type: 'Word Cloud', badge: 'cloud', color: 'teal', edited: 'Oct 15, 2023', date: new Date('2023-10-15') },
-  ];
+  useEffect(() => {
+    loadVisualizations();
+  }, []);
+
+  const loadVisualizations = async () => {
+    try {
+      setLoading(true);
+      const result = await getUserVisualizations();
+      if (result.success && result.data) {
+        setVisualizations(result.data);
+      } else {
+        setError(result.error || 'Failed to load visualizations');
+      }
+    } catch (err) {
+      setError('An error occurred while loading visualizations');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const badgeColors: Record<string, string> = {
-    blue: 'bg-blue-100 text-blue-800 dark:bg-primary/20 dark:text-blue-200',
-    purple: 'bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-200',
-    green: 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-200',
-    orange: 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-200',
-    pink: 'bg-pink-100 text-pink-800 dark:bg-pink-500/20 dark:text-pink-200',
-    teal: 'bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-200',
+    network_graph: 'bg-blue-100 text-blue-800 dark:bg-primary/20 dark:text-blue-200',
+    mind_map: 'bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-200',
+    tree_diagram: 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-200',
+    force_directed_graph: 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-200',
+    timeline: 'bg-pink-100 text-pink-800 dark:bg-pink-500/20 dark:text-pink-200',
+    gantt_chart: 'bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-200',
+    flowchart: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200',
+    sankey_diagram: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-200',
+    line_chart: 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-200',
+    bar_chart: 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-200',
+    pie_chart: 'bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-200',
+    heatmap: 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200',
+    word_cloud: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-200',
   };
 
   // Get unique visualization types for filter dropdown
   const vizTypes = useMemo(() => {
     return Array.from(new Set(visualizations.map(v => v.type)));
-  }, []);
+  }, [visualizations]);
 
   // Filter visualizations based on search query and filters
   const filteredVisualizations = useMemo(() => {
@@ -49,7 +74,7 @@ export default function ProfilePage() {
       // Date filter
       if (dateFilter !== 'all') {
         const now = new Date();
-        const vizDate = viz.date;
+        const vizDate = new Date(viz.createdAt);
 
         if (dateFilter === 'today') {
           const isToday = vizDate.toDateString() === now.toDateString();
@@ -68,7 +93,20 @@ export default function ProfilePage() {
 
       return true;
     });
-  }, [searchQuery, typeFilter, dateFilter]);
+  }, [visualizations, searchQuery, typeFilter, dateFilter]);
+
+  const getRelativeTime = (date: string | Date) => {
+    const now = new Date();
+    const vizDate = new Date(date);
+    const diffInSeconds = Math.floor((now.getTime() - vizDate.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+
+    return vizDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0f1419]">
@@ -90,9 +128,9 @@ export default function ProfilePage() {
             <div className="flex-1 lg:flex-none lg:min-w-[160px] flex flex-col gap-1 rounded-xl p-4 bg-[#1a1f28] border border-[#282e39] shadow-sm">
               <div className="flex items-center gap-2 text-purple-500">
                 <span className="material-symbols-outlined text-[20px]">cloud</span>
-                <p className="text-xs font-bold uppercase tracking-wide">Storage</p>
+                <p className="text-xs font-bold uppercase tracking-wide">All Time</p>
               </div>
-              <p className="text-2xl font-bold text-white">120MB</p>
+              <p className="text-2xl font-bold text-white">{visualizations.length}</p>
             </div>
           </div>
         </div>
@@ -121,11 +159,11 @@ export default function ProfilePage() {
                   }}
                   className="flex items-center gap-2 h-9 px-4 rounded-lg bg-[#1a1f28] hover:bg-[#282e39] border border-[#282e39] text-gray-300 text-sm font-medium transition-colors whitespace-nowrap"
                 >
-                  <span>{typeFilter === 'all' ? 'Type' : typeFilter}</span>
+                  <span>{typeFilter === 'all' ? 'Type' : FORMAT_INFO[typeFilter as keyof typeof FORMAT_INFO]?.name || typeFilter}</span>
                   <span className="material-symbols-outlined text-[16px]">expand_more</span>
                 </button>
                 {showTypeDropdown && (
-                  <div className="absolute top-full mt-2 left-0 w-48 bg-[#1a1f28] border border-[#282e39] rounded-lg shadow-lg z-50 py-2">
+                  <div className="absolute top-full mt-2 left-0 w-48 bg-[#1a1f28] border border-[#282e39] rounded-lg shadow-lg z-50 py-2 max-h-64 overflow-y-auto">
                     <button
                       onClick={() => {
                         setTypeFilter('all');
@@ -148,7 +186,7 @@ export default function ProfilePage() {
                           typeFilter === type ? 'text-primary font-medium' : 'text-gray-300'
                         }`}
                       >
-                        {type}
+                        {FORMAT_INFO[type as keyof typeof FORMAT_INFO]?.name || type}
                       </button>
                     ))}
                   </div>
@@ -220,8 +258,23 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-900/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl flex items-center gap-3">
+            <span className="material-symbols-outlined">error</span>
+            {error}
+          </div>
+        )}
+
         {/* No Results Message */}
-        {filteredVisualizations.length === 0 && (
+        {!loading && !error && filteredVisualizations.length === 0 && visualizations.length > 0 && (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <span className="material-symbols-outlined text-6xl text-gray-600 mb-4">search_off</span>
             <h3 className="text-xl font-bold text-white mb-2">No visualizations found</h3>
@@ -229,55 +282,66 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Empty State */}
+        {!loading && !error && visualizations.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <span className="material-symbols-outlined text-6xl text-gray-600 mb-4">add_chart</span>
+            <h3 className="text-xl font-bold text-white mb-2">No visualizations yet</h3>
+            <p className="text-gray-400 text-center mb-4">Create your first visualization to get started</p>
+            <a
+              href="/dashboard"
+              className="px-6 py-3 bg-primary hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+            >
+              Create Visualization
+            </a>
+          </div>
+        )}
+
         {/* Visualization Grid */}
-        {filteredVisualizations.length > 0 && (
+        {!loading && !error && filteredVisualizations.length > 0 && (
           <div className={viewMode === 'grid'
             ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             : "flex flex-col gap-4"
           }>
-            {filteredVisualizations.map((viz, idx) => (
-              <div key={idx} className={`group relative flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} rounded-xl bg-[#1a1f28] border border-[#282e39] overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/5`}>
-                <div className={`relative ${viewMode === 'list' ? 'w-48' : 'aspect-[4/3] w-full'} bg-gradient-to-br from-[#282e39] to-[#1a1f28] overflow-hidden flex items-center justify-center`}>
-                  <span className="material-symbols-outlined text-6xl text-white/10 group-hover:scale-110 transition-transform duration-500">{viz.badge}</span>
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="size-8 flex items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-primary transition-colors">
-                      <span className="material-symbols-outlined text-[18px]">more_vert</span>
-                    </button>
-                  </div>
-                  <div className="absolute top-3 left-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium backdrop-blur-md ${badgeColors[viz.color]}`}>
-                      {viz.type}
-                    </span>
-                  </div>
-                </div>
-                <div className={`flex flex-col p-4 gap-2 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                  <h3 className="text-lg font-bold text-white leading-tight group-hover:text-primary transition-colors cursor-pointer">{viz.title}</h3>
-                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-[#282e39]/50">
-                    <span className="text-xs text-gray-500">Edited {viz.edited}</span>
-                    <div className="flex items-center gap-2">
-                      <button className="text-gray-400 hover:text-primary transition-colors" title="Download">
-                        <span className="material-symbols-outlined text-[18px]">download</span>
+            {filteredVisualizations.map((viz) => {
+              const formatInfo = FORMAT_INFO[viz.type as keyof typeof FORMAT_INFO];
+              const color = badgeColors[viz.type] || badgeColors.network_graph;
+
+              return (
+                <div key={viz._id} className={`group relative flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} rounded-xl bg-[#1a1f28] border border-[#282e39] overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/5`}>
+                  <div className={`relative ${viewMode === 'list' ? 'w-48' : 'aspect-[4/3] w-full'} bg-gradient-to-br from-[#282e39] to-[#1a1f28] overflow-hidden flex items-center justify-center`}>
+                    <span className="text-6xl text-white/10 group-hover:scale-110 transition-transform duration-500">{formatInfo?.icon || '📊'}</span>
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="size-8 flex items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-primary transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">more_vert</span>
                       </button>
-                      <button className="text-gray-400 hover:text-primary transition-colors" title="Share">
-                        <span className="material-symbols-outlined text-[18px]">share</span>
-                      </button>
+                    </div>
+                    <div className="absolute top-3 left-3">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium backdrop-blur-md ${color}`}>
+                        {formatInfo?.name || viz.type}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`flex flex-col p-4 gap-2 ${viewMode === 'list' ? 'flex-1' : ''}`}>
+                    <h3 className="text-lg font-bold text-white leading-tight group-hover:text-primary transition-colors cursor-pointer">{viz.title}</h3>
+                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-[#282e39]/50">
+                      <span className="text-xs text-gray-500">Edited {getRelativeTime(viz.updatedAt)}</span>
+                      <div className="flex items-center gap-2">
+                        <button className="text-gray-400 hover:text-primary transition-colors" title="Download">
+                          <span className="material-symbols-outlined text-[18px]">download</span>
+                        </button>
+                        <button className="text-gray-400 hover:text-primary transition-colors" title="Share">
+                          <span className="material-symbols-outlined text-[18px]">share</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {/* Load More */}
-        {filteredVisualizations.length > 0 && (
-          <div className="flex justify-center mt-8 pb-12">
-            <button className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#1a1f28] border border-[#282e39] text-white hover:bg-primary hover:border-primary transition-all text-sm font-bold">
-              <span>Load More</span>
-              <span className="material-symbols-outlined text-[18px]">expand_more</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/database/mongodb";
 import { UserModel, VisualizationModel, UserUsageModel } from "@/lib/database/models";
 import { validateObjectId, sanitizeError, getTokenCosts } from "@/lib/utils/validation";
@@ -31,8 +31,24 @@ export async function getUserProfile(): Promise<{ success: boolean; data?: UserP
       return { success: false, error: 'Authentication required' };
     }
 
+    // Fetch full user data from Clerk
+    const clerkUser = await currentUser();
+    if (!clerkUser) {
+      return { success: false, error: 'User not found in Clerk' };
+    }
+
     await connectToDatabase();
-    const user = await UserModel.findOrCreate(userId);
+
+    // Sync Clerk user data with MongoDB
+    const userData = {
+      email: clerkUser.emailAddresses[0]?.emailAddress,
+      username: clerkUser.username || undefined,
+      firstName: clerkUser.firstName || undefined,
+      lastName: clerkUser.lastName || undefined,
+      imageUrl: clerkUser.imageUrl || undefined,
+    };
+
+    const user = await UserModel.findOrCreate(userId, userData);
 
     if (!user) {
       return { success: false, error: 'User not found' };
