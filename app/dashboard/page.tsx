@@ -253,7 +253,7 @@ export default function DashboardPage() {
           <div className="bg-[#141922] rounded-2xl border border-[#282e39] p-8">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                {autoSelect ? 'AI WILL SELECT THE BEST VISUALIZATION' : 'CHOOSE A VISUALIZATION TYPE (19)'}
+                {autoSelect ? 'AI WILL SELECT THE BEST VISUALIZATION' : 'CHOOSE A VISUALIZATION TYPE (20)'}
               </h3>
               {autoSelect && (
                 <span className="text-xs text-gray-500 italic">Disable AI Auto-Select to manually choose</span>
@@ -261,25 +261,32 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {[
-                { icon: 'bar_chart', label: 'Bar Chart', desc: 'Compare categories' },
-                { icon: 'show_chart', label: 'Line Chart', desc: 'Show trends' },
-                { icon: 'pie_chart', label: 'Pie Chart', desc: 'Show proportions' },
-                { icon: 'scatter_plot', label: 'Scatter Plot', desc: 'Find correlations' },
-                { icon: 'donut_small', label: 'Donut Chart', desc: 'Part-to-whole' },
-                { icon: 'hub', label: 'Network Graph', desc: 'Relationships' },
-                { icon: 'bubble_chart', label: 'Bubble Chart', desc: 'Three variables' },
-                { icon: 'account_tree', label: 'Sankey', desc: 'Flow diagram' },
-                { icon: 'candlestick_chart', label: 'Candlestick', desc: 'Price movements' },
-                { icon: 'blur_on', label: 'Heatmap', desc: 'Intensity map' },
-                { icon: 'forest', label: 'Treemap', desc: 'Hierarchical data' },
-                { icon: 'radar', label: 'Radar Chart', desc: 'Multivariate' },
-                { icon: 'waterfall_chart', label: 'Waterfall', desc: 'Cumulative effect' },
-                { icon: 'stacked_bar_chart', label: 'Area Chart', desc: 'Trends over time' },
-                { icon: 'filter_alt', label: 'Funnel Chart', desc: 'Process stages' },
+                // Category 1: Relationships & Networks
+                { icon: 'hub', label: 'Network Graph', desc: 'Concepts & relationships' },
+                { icon: 'account_tree', label: 'Mind Map', desc: 'Hierarchical ideas' },
+                { icon: 'device_hub', label: 'Tree Diagram', desc: 'Hierarchical structures' },
+                { icon: 'scatter_plot', label: 'Force Graph', desc: 'Physics-based network' },
+                // Category 2: Time & Sequence
+                { icon: 'timeline', label: 'Timeline', desc: 'Events over time' },
                 { icon: 'view_timeline', label: 'Gantt Chart', desc: 'Project timeline' },
-                { icon: 'analytics', label: 'Box Plot', desc: 'Distribution' },
-                { icon: 'graphic_eq', label: 'Violin Plot', desc: 'Data density' },
-                { icon: 'trip_origin', label: 'Polar Chart', desc: 'Circular data' },
+                { icon: 'play_circle', label: 'Animated Timeline', desc: 'Step-by-step progression' },
+                // Category 3: Processes & Flows
+                { icon: 'account_tree', label: 'Flowchart', desc: 'Process flows' },
+                { icon: 'waterfall_chart', label: 'Sankey Diagram', desc: 'Flow magnitudes' },
+                { icon: 'table_chart', label: 'Swimlane Diagram', desc: 'Cross-functional flows' },
+                // Category 4: Numerical Data
+                { icon: 'show_chart', label: 'Line Chart', desc: 'Trends over time' },
+                { icon: 'bar_chart', label: 'Bar Chart', desc: 'Categorical comparisons' },
+                { icon: 'bubble_chart', label: 'Scatter Plot', desc: 'Correlations' },
+                { icon: 'blur_on', label: 'Heatmap', desc: 'Density patterns' },
+                { icon: 'radar', label: 'Radar Chart', desc: 'Multi-dimensional' },
+                { icon: 'pie_chart', label: 'Pie Chart', desc: 'Proportions' },
+                // Category 5: Comparisons
+                { icon: 'table_rows', label: 'Comparison Table', desc: 'Feature comparison' },
+                { icon: 'horizontal_split', label: 'Parallel Coordinates', desc: 'Multi-dimensional data' },
+                // Category 6: Text & Content
+                { icon: 'cloud', label: 'Word Cloud', desc: 'Text frequency' },
+                { icon: 'code', label: 'Syntax Diagram', desc: 'Grammar rules' },
               ].map((item, idx) => (
                 <div
                   key={idx}
