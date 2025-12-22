@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { getUserVisualizations } from '@/lib/actions/profile';
+import { getUserVisualizations, deleteVisualization } from '@/lib/actions/profile';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 
@@ -15,6 +15,9 @@ export default function MyVisualizationsPage() {
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadVisualizations();
@@ -36,6 +39,40 @@ export default function MyVisualizationsPage() {
       setLoading(false);
     }
   };
+
+  const handleDelete = async (vizId: string) => {
+    try {
+      setDeleting(true);
+      const result = await deleteVisualization(vizId);
+      if (result.success) {
+        // Remove from local state
+        setVisualizations(prev => prev.filter(v => v._id !== vizId));
+        setDeleteConfirmId(null);
+        setActiveMenuId(null);
+      } else {
+        setError(result.error || 'Failed to delete visualization');
+      }
+    } catch (err) {
+      setError('An error occurred while deleting');
+      console.error(err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setActiveMenuId(null);
+      setShowTypeDropdown(false);
+      setShowDateDropdown(false);
+    };
+
+    if (activeMenuId || showTypeDropdown || showDateDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [activeMenuId, showTypeDropdown, showDateDropdown]);
 
   const badgeColors: Record<string, string> = {
     network_graph: 'bg-blue-100 text-blue-800 dark:bg-primary/20 dark:text-blue-200',
@@ -312,9 +349,53 @@ export default function MyVisualizationsPage() {
                   <div className={`relative ${viewMode === 'list' ? 'w-48' : 'aspect-[4/3] w-full'} bg-gradient-to-br from-[#282e39] to-[#1a1f28] overflow-hidden flex items-center justify-center`}>
                     <span className="text-6xl text-white/10 group-hover:scale-110 transition-transform duration-500">{formatInfo?.icon || '📊'}</span>
                     <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="size-8 flex items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-primary transition-colors">
-                        <span className="material-symbols-outlined text-[18px]">more_vert</span>
-                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuId(activeMenuId === viz._id ? null : viz._id || null);
+                          }}
+                          className="size-8 flex items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-primary transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">more_vert</span>
+                        </button>
+                        {activeMenuId === viz._id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute top-full right-0 mt-2 w-48 bg-[#1a1f28] border border-[#282e39] rounded-lg shadow-xl z-50 py-2"
+                          >
+                            <button
+                              onClick={() => {
+                                window.location.href = `/dashboard?viz=${viz._id}`;
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#282e39] transition-colors flex items-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">visibility</span>
+                              View
+                            </button>
+                            <button
+                              onClick={() => {
+                                // TODO: Implement download
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#282e39] transition-colors flex items-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">download</span>
+                              Download
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeleteConfirmId(viz._id || null);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="absolute top-3 left-3">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium backdrop-blur-md ${color}`}>
@@ -339,6 +420,51 @@ export default function MyVisualizationsPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmId && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1a1f28] border border-[#282e39] rounded-xl p-6 max-w-md w-full shadow-2xl">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-shrink-0 size-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-red-500 text-2xl">delete</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-1">Delete Visualization</h3>
+                  <p className="text-sm text-gray-400">
+                    Are you sure you want to delete this visualization? This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-lg border border-[#282e39] text-gray-300 text-sm font-medium hover:bg-[#282e39] transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(deleteConfirmId)}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
