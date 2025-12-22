@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [result, setResult] = useState<VisualizationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autoSelect, setAutoSelect] = useState(true);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [colorScheme, setColorScheme] = useState('modern-dark');
   const [dataDensity, setDataDensity] = useState('balanced');
@@ -287,28 +288,37 @@ export default function DashboardPage() {
                 // Category 6: Text & Content
                 { icon: 'cloud', label: 'Word Cloud', desc: 'Text frequency' },
                 { icon: 'code', label: 'Syntax Diagram', desc: 'Grammar rules' },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`bg-[#1a1f28] rounded-xl p-4 border transition-all flex flex-col items-center text-center gap-2 group ${
-                    autoSelect
-                      ? 'opacity-50 cursor-not-allowed border-[#2a2f38]'
-                      : 'cursor-pointer border-[#2a2f38] hover:border-primary hover:-translate-y-1'
-                  }`}
-                  onClick={(e) => autoSelect && e.preventDefault()}
-                >
-                  <div className="size-12 rounded-lg bg-gradient-to-tr from-primary/10 to-blue-600/10 flex items-center justify-center">
-                    <span className={`material-symbols-outlined text-2xl ${
-                      autoSelect ? 'text-gray-600' : 'text-gray-400 group-hover:text-primary'
-                    } transition-colors`}>
-                      {item.icon}
+              ].map((item, idx) => {
+                const isSelected = !autoSelect && selectedType === item.label;
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-[#1a1f28] rounded-xl p-4 border transition-all flex flex-col items-center text-center gap-2 group ${
+                      autoSelect
+                        ? 'opacity-50 cursor-not-allowed border-[#2a2f38]'
+                        : isSelected
+                        ? 'border-primary ring-2 ring-primary/30 shadow-lg shadow-primary/20'
+                        : 'cursor-pointer border-[#2a2f38] hover:border-primary hover:-translate-y-1'
+                    }`}
+                    onClick={() => {
+                      if (!autoSelect) {
+                        setSelectedType(item.label);
+                      }
+                    }}
+                  >
+                    <div className="size-12 rounded-lg bg-gradient-to-tr from-primary/10 to-blue-600/10 flex items-center justify-center">
+                      <span className={`material-symbols-outlined text-2xl ${
+                        autoSelect ? 'text-gray-600' : isSelected ? 'text-primary' : 'text-gray-400 group-hover:text-primary'
+                      } transition-colors`}>
+                        {item.icon}
+                      </span>
+                    </div>
+                    <span className={`text-xs font-medium ${autoSelect ? 'text-gray-600' : isSelected ? 'text-primary' : 'text-gray-300'}`}>
+                      {item.label}
                     </span>
                   </div>
-                  <span className={`text-xs font-medium ${autoSelect ? 'text-gray-600' : 'text-gray-300'}`}>
-                    {item.label}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
