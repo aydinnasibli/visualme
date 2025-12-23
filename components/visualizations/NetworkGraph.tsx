@@ -94,7 +94,6 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
     const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(
       null
     );
-    const [isReady, setIsReady] = useState(false);
     const [isExpanding, setIsExpanding] = useState(false);
     const { addExtendedNode, isNodeExtended } = useExtendedNodes();
     const [hoveredNode, setHoveredNode] = useState<{
@@ -354,9 +353,6 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       const resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-            if (!isReady) {
-              setIsReady(true);
-            }
             requestAnimationFrame(() => {
               if (cyRef.current) {
                 cyRef.current.resize();
@@ -372,11 +368,11 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       });
       resizeObserver.observe(containerRef.current);
       return () => resizeObserver.disconnect();
-    }, [isReady]);
+    }, []);
 
     // Re-run layout when data changes (e.g., after expansion)
     useEffect(() => {
-      if (!cyRef.current || !isReady) return;
+      if (!cyRef.current) return;
 
       // Skip the first run since initial layout is handled by CytoscapeComponent
       if (layoutRunCountRef.current === 0) {
@@ -411,7 +407,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       layoutInstance.run();
 
       layoutRunCountRef.current++;
-    }, [elements, isReady]);
+    }, [elements]);
 
     const setupListeners = (cy: Core) => {
       cyRef.current = cy;
@@ -518,7 +514,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
     return (
       <div
         ref={containerRef}
-        className="relative w-full h-[800px] bg-linear-to-br from-zinc-950 via-slate-900 to-zinc-950 rounded-3xl border border-zinc-800/50 shadow-2xl overflow-hidden group"
+        className="w-full h-[800px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl group"
       >
         {/* Ambient glow effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -554,34 +550,16 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
         </div>
 
         {/* The Graph */}
-        {isReady && (
-          <CytoscapeComponent
-            elements={elements}
-            style={{ width: "100%", height: "100%" }}
-            stylesheet={stylesheet}
-            layout={layout}
-            cy={setupListeners}
-            wheelSensitivity={0.1}
-            minZoom={0.1}
-            maxZoom={3}
-          />
-        )}
-
-        {/* Loading State */}
-        {!isReady && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-              <div
-                className="absolute inset-0 w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin animation-delay-150"
-                style={{ animationDirection: "reverse" }}
-              />
-            </div>
-            <span className="mt-6 text-sm font-semibold uppercase tracking-widest text-zinc-500">
-              Initializing Graph...
-            </span>
-          </div>
-        )}
+        <CytoscapeComponent
+          elements={elements}
+          style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}
+          stylesheet={stylesheet}
+          layout={layout}
+          cy={setupListeners}
+          wheelSensitivity={0.1}
+          minZoom={0.1}
+          maxZoom={3}
+        />
 
         {/* Hover Tooltip */}
         <AnimatePresence>

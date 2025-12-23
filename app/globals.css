@@ -56,3 +56,105 @@
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
+
+/* Timeline Styles */
+.vis-timeline {
+  border: none;
+  font-family: 'Inter', sans-serif;
+  color: #e4e4e7;
+}
+.vis-time-axis .vis-text {
+  color: #a1a1aa;
+}
+.vis-time-axis .vis-grid.vis-minor {
+  border-color: #27272a;
+}
+.vis-time-axis .vis-grid.vis-major {
+  border-color: #3f3f46;
+}
+.vis-labelset .vis-label {
+  color: #e4e4e7;
+  border-bottom: 1px solid #27272a;
+}
+
+/* Timeline Items */
+.custom-timeline-item {
+  background-color: #2563eb;
+  border-color: #1d4ed8;
+  color: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+.vis-item.vis-selected {
+  background-color: #4f46e5;
+  border-color: #4338ca;
+  z-index: 2;
+  box-shadow: 0 0 0 2px #c7d2fe;
+}
+.vis-item.vis-range {
+  background: linear-gradient(to right, #2563eb, #3b82f6);
+}
+.vis-item.vis-point {
+  background-color: transparent;
+}
+.vis-item.vis-dot {
+  border-color: #fbbf24;
+  background-color: #fbbf24;
+}
+.vis-item .vis-item-content {
+  padding: 6px 10px;
+}
+.vis-current-time {
+  background-color: #ef4444;
+}
+
+/* Tree Diagram Styles */
+.custom-link {
+  stroke: #a1a1aa !important; /* zinc-400 */
+  stroke-width: 2px;
+}
+
+/* Global Visualization Container */
+.visualization-container {
+  width: 100%;
+  height: 100%;
+  min-height: 750px; /* Ensure visibility when parent height is auto */
+  background-color: #0f1419; /* Matches app theme */
+  border-radius: 1rem; /* rounded-2xl */
+  border: 1px solid rgba(39, 39, 42, 0.5); /* border-zinc-800/50 */
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mind Map Styles */
+.floating-edges .react-flow__handle {
+  opacity: 0;
+}
+.react-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.react-flow__edge.animated path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+@keyframes dashdraw {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* Network Graph Shimmer */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

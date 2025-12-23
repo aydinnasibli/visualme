@@ -11,6 +11,12 @@ import type { SavedVisualization } from "@/lib/types/visualization";
 const DynamicNetworkGraph = dynamic(() => import("./NetworkGraph"), {
   ssr: false,
 });
+const DynamicTreeDiagram = dynamic(() => import("./TreeDiagram"), {
+  ssr: false,
+});
+const DynamicTimeline = dynamic(() => import("./Timeline"), {
+  ssr: false,
+});
 
 interface VisualizationModalProps {
   visualization: SavedVisualization | null;
@@ -73,6 +79,20 @@ export default function VisualizationModal({
             {visualization.type === "mind_map" && (
               <MindMapVisualization
                 ref={mindMapRef}
+                data={visualization.data as any}
+                readOnly={true}
+              />
+            )}
+
+            {visualization.type === "tree_diagram" && (
+              <DynamicTreeDiagram
+                data={visualization.data as any}
+                readOnly={true}
+              />
+            )}
+
+            {visualization.type === "timeline" && (
+              <DynamicTimeline
                 data={visualization.data as any}
                 readOnly={true}
               />

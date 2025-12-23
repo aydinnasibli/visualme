@@ -29,8 +29,8 @@ import {
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
 import { Sparkles, X } from "lucide-react";
-import FloatingEdge from "./FloatingEdge";
-import FloatingConnectionLine from "./FloatingConnectionLine";
+import FloatingEdge from "./utils/FloatingEdge";
+import FloatingConnectionLine from "./utils/FloatingConnectionLine";
 import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
 
 interface MindMapProps {
@@ -353,7 +353,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     );
 
     return (
-      <div className="relative w-full h-[750px]  rounded-2xl border border-zinc-800/50 shadow-2xl overflow-hidden floating-edges">
+      <div className="w-full h-[750px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl floating-edges">
         <style>{`
           .floating-edges .react-flow__handle {
             opacity: 0;
@@ -409,6 +409,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             nodesDraggable
             nodesConnectable={false}
             elementsSelectable
+            style={{ width: '100%', height: '100%' }}
           >
             <Background gap={16} size={1} color="#27272a" />
             <Panel position="top-right" className="flex gap-2">

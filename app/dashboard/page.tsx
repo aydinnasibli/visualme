@@ -3,25 +3,33 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@clerk/nextjs';
-import { generateVisualization, saveVisualization } from '@/lib/actions/visualize';
-import type { VisualizationResponse, NetworkGraphData, MindMapData } from '@/lib/types/visualization';
+import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction } from '@/lib/actions/visualize';
+import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData } from '@/lib/types/visualization';
 
-const DynamicNetworkGraph = dynamic(() => import('@/app/components/NetworkGraph'), {
+const LoadingPlaceholder = () => (
+  <div className="w-full h-full bg-[#1a1f28] rounded-2xl flex items-center justify-center border border-[#282e39] animate-pulse">
+    <span className="text-gray-500 font-medium text-sm">Loading visualization...</span>
+  </div>
+);
+
+const DynamicNetworkGraph = dynamic(() => import('@/components/visualizations/NetworkGraph'), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-full bg-[#1a1f28] rounded-2xl flex items-center justify-center border border-[#282e39] animate-pulse">
-      <span className="text-gray-500 font-medium text-sm">Loading visualization...</span>
-    </div>
-  ),
+  loading: LoadingPlaceholder,
 });
 
-const DynamicMindMap = dynamic(() => import('@/app/components/MindMap'), {
+const DynamicMindMap = dynamic(() => import('@/components/visualizations/MindMap'), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-full bg-[#1a1f28] rounded-2xl flex items-center justify-center border border-[#282e39] animate-pulse">
-      <span className="text-gray-500 font-medium text-sm">Loading visualization...</span>
-    </div>
-  ),
+  loading: LoadingPlaceholder,
+});
+
+const DynamicTreeDiagram = dynamic(() => import('@/components/visualizations/TreeDiagram'), {
+  ssr: false,
+  loading: LoadingPlaceholder,
+});
+
+const DynamicTimeline = dynamic(() => import('@/components/visualizations/Timeline'), {
+  ssr: false,
+  loading: LoadingPlaceholder,
 });
 
 export default function DashboardPage() {
@@ -39,6 +47,164 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
+  // Helper to recursively find and update a node in the Mind Map tree
+  const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
+    if (root.id === nodeId) {
+      return { ...root, children: [...(root.children || []), ...newChildren] };
+    }
+    if (root.children) {
+      return {
+        ...root,
+        children: root.children.map(child => updateMindMapNode(child, nodeId, newChildren))
+      };
+    }
+    return root;
+  };
+
+  const handleExpand = async (nodeId: string, nodeLabel: string) => {
+    if (!result) return;
+
+    try {
+      if (result.type === 'network_graph') {
+        const currentData = result.data as NetworkGraphData;
+        const existingNodeLabels = currentData.nodes.map(n => n.label);
+        
+        const response = await expandNodeAction(nodeId, nodeLabel, input, existingNodeLabels);
+        
+        if (response.success && response.data) {
+          const newData = response.data as NetworkGraphData;
+          setResult(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              data: {
+                ...currentData,
+                nodes: [...currentData.nodes, ...newData.nodes],
+                edges: [...currentData.edges, ...newData.edges]
+              }
+            };
+          });
+        }
+      } else if (result.type === 'mind_map') {
+        const currentData = result.data as MindMapData;
+        // Collect all existing IDs to avoid duplicates (simplified)
+        const getAllIds = (node: MindMapNode): string[] => {
+          const ids = [node.id];
+          if (node.children) {
+            node.children.forEach(child => ids.push(...getAllIds(child)));
+          }
+          return ids;
+        };
+        const existingNodeIds = getAllIds(currentData.root);
+
+        const response = await expandMindMapNodeAction(nodeId, nodeLabel, input, existingNodeIds);
+
+        if (response.success && response.data) {
+          const newChildren = response.data as MindMapNode[];
+          setResult(prev => {
+            if (!prev) return null;
+            const prevData = prev.data as MindMapData;
+            return {
+              ...prev,
+              data: {
+                ...prevData,
+                root: updateMindMapNode(prevData.root, nodeId, newChildren)
+              }
+            };
+          });
+        }
+      } else if (result.type === 'force_directed_graph') {
+        const currentData = result.data as ForceDirectedGraphData;
+        const existingNodeLabels = currentData.nodes.map(n => n.name);
+        
+        // Reuse network expansion logic but map result
+        const response = await expandNodeAction(nodeId, nodeLabel, input, existingNodeLabels);
+        
+        if (response.success && response.data) {
+          const newData = response.data as NetworkGraphData;
+          // Map NetworkGraphData (nodes/edges) to ForceDirectedGraphData (nodes/links)
+          const newForceNodes = newData.nodes.map(n => ({
+            id: n.id,
+            name: n.label,
+            group: n.category ? n.category.length : 1, // Simple mapping
+            val: 10
+          }));
+          const newForceLinks = newData.edges.map(e => ({
+            source: e.source,
+            target: e.target,
+            value: 2
+          }));
+
+          setResult(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              data: {
+                ...currentData,
+                nodes: [...currentData.nodes, ...newForceNodes],
+                links: [...currentData.links, ...newForceLinks]
+              }
+            };
+          });
+        }
+      } else if (result.type === 'tree_diagram') {
+        // Reuse mind map expansion logic
+        // TreeDiagram data IS the root node structure roughly
+        // Let's assume we can just pass names as existing IDs? No.
+        // Let's just pass empty list for now or try to extract if possible.
+        const existingIds: string[] = []; // TODO: traverse tree to get names/IDs
+
+        const response = await expandMindMapNodeAction(nodeId, nodeLabel, input, existingIds);
+
+        if (response.success && response.data) {
+          const newMindMapNodes = response.data as MindMapNode[];
+          // Map MindMapNode to TreeDiagramData
+          const newTreeNodes = newMindMapNodes.map(n => ({
+            name: n.content,
+            attributes: {
+              description: n.description,
+              extendable: n.extendable
+            },
+            children: []
+          }));
+
+          // Recursive update for TreeDiagram
+          const updateTree = (node: any): any => {
+            // react-d3-tree adds __rd3t.id, but we might rely on matching name if ID not stable?
+            // Actually our CustomNode passes nodeDatum.__rd3t.id as nodeId.
+            // But our data doesn't have __rd3t until rendered.
+            // Wait, we are updating the raw data.
+            // We need to find the node by ID. But raw data doesn't have IDs from react-d3-tree.
+            // We should use 'name' for matching if ID is not available?
+            // Or we generated 'id' in our TreeDiagramData? 
+            // Our generator produces { name, children }. No ID.
+            // So we can't easily match by ID unless we inject IDs.
+            
+            // Fallback: match by name (nodeLabel).
+            if (node.name === nodeLabel) {
+               return { ...node, children: [...(node.children || []), ...newTreeNodes] };
+            }
+            if (node.children) {
+              return { ...node, children: node.children.map(updateTree) };
+            }
+            return node;
+          };
+
+          setResult(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              data: updateTree(prev.data)
+            };
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error expanding node:', err);
+      // Optionally show an error toast
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -55,7 +221,10 @@ export default function DashboardPage() {
       setLoadingStep('analyzing');
       const generatingTimer = setTimeout(() => setLoadingStep('generating'), 200);
 
-      const data = await generateVisualization(input.trim());
+      const data = await generateVisualization(
+        input.trim(),
+        (!autoSelect && selectedType) ? (selectedType as VisualizationType) : undefined
+      );
       clearTimeout(generatingTimer);
 
       if (!data.success) {
@@ -299,12 +468,32 @@ export default function DashboardPage() {
               </div>
             </div>
             {result.type === 'network_graph' && (
-              <DynamicNetworkGraph data={result.data as NetworkGraphData} />
+              <DynamicNetworkGraph 
+                data={result.data as NetworkGraphData} 
+                onExpand={handleExpand}
+              />
             )}
             {result.type === 'mind_map' && (
-              <DynamicMindMap data={result.data as MindMapData} />
+              <DynamicMindMap 
+                data={result.data as MindMapData} 
+                onExpand={handleExpand}
+              />
             )}
-            {result.type !== 'network_graph' && result.type !== 'mind_map' && (
+            {result.type === 'tree_diagram' && (
+              <DynamicTreeDiagram
+                data={result.data as TreeDiagramData}
+                onExpand={handleExpand}
+              />
+            )}
+            {result.type === 'timeline' && (
+              <DynamicTimeline
+                data={result.data as TimelineData}
+              />
+            )}
+            {result.type !== 'network_graph' && 
+             result.type !== 'mind_map' && 
+             result.type !== 'tree_diagram' && 
+             result.type !== 'timeline' && (
               <div className="flex flex-col items-center justify-center py-16 px-4 min-h-[500px] bg-[#1a1f28] rounded-xl border border-[#282e39]">
                 <span className="material-symbols-outlined text-6xl text-gray-600 mb-4">construction</span>
                 <h3 className="text-xl font-bold text-white mb-2">{result.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} - Coming Soon</h3>
@@ -336,33 +525,32 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {[
                 // Category 1: Relationships & Networks
-                { icon: 'hub', label: 'Network Graph', desc: 'Concepts & relationships' },
-                { icon: 'account_tree', label: 'Mind Map', desc: 'Hierarchical ideas' },
-                { icon: 'device_hub', label: 'Tree Diagram', desc: 'Hierarchical structures' },
-                { icon: 'scatter_plot', label: 'Force Graph', desc: 'Physics-based network' },
+                { id: 'network_graph', icon: 'hub', label: 'Network Graph', desc: 'Concepts & relationships' },
+                { id: 'mind_map', icon: 'account_tree', label: 'Mind Map', desc: 'Hierarchical ideas' },
+                { id: 'tree_diagram', icon: 'device_hub', label: 'Tree Diagram', desc: 'Hierarchical structures' },
                 // Category 2: Time & Sequence
-                { icon: 'timeline', label: 'Timeline', desc: 'Events over time' },
-                { icon: 'view_timeline', label: 'Gantt Chart', desc: 'Project timeline' },
-                { icon: 'play_circle', label: 'Animated Timeline', desc: 'Step-by-step progression' },
+                { id: 'timeline', icon: 'timeline', label: 'Timeline', desc: 'Events over time' },
+                { id: 'gantt_chart', icon: 'view_timeline', label: 'Gantt Chart', desc: 'Project timeline' },
+                { id: 'animated_timeline', icon: 'play_circle', label: 'Animated Timeline', desc: 'Step-by-step progression' },
                 // Category 3: Processes & Flows
-                { icon: 'account_tree', label: 'Flowchart', desc: 'Process flows' },
-                { icon: 'waterfall_chart', label: 'Sankey Diagram', desc: 'Flow magnitudes' },
-                { icon: 'table_chart', label: 'Swimlane Diagram', desc: 'Cross-functional flows' },
+                { id: 'flowchart', icon: 'account_tree', label: 'Flowchart', desc: 'Process flows' },
+                { id: 'sankey_diagram', icon: 'waterfall_chart', label: 'Sankey Diagram', desc: 'Flow magnitudes' },
+                { id: 'swimlane_diagram', icon: 'table_chart', label: 'Swimlane Diagram', desc: 'Cross-functional flows' },
                 // Category 4: Numerical Data
-                { icon: 'show_chart', label: 'Line Chart', desc: 'Trends over time' },
-                { icon: 'bar_chart', label: 'Bar Chart', desc: 'Categorical comparisons' },
-                { icon: 'bubble_chart', label: 'Scatter Plot', desc: 'Correlations' },
-                { icon: 'blur_on', label: 'Heatmap', desc: 'Density patterns' },
-                { icon: 'radar', label: 'Radar Chart', desc: 'Multi-dimensional' },
-                { icon: 'pie_chart', label: 'Pie Chart', desc: 'Proportions' },
+                { id: 'line_chart', icon: 'show_chart', label: 'Line Chart', desc: 'Trends over time' },
+                { id: 'bar_chart', icon: 'bar_chart', label: 'Bar Chart', desc: 'Categorical comparisons' },
+                { id: 'scatter_plot', icon: 'bubble_chart', label: 'Scatter Plot', desc: 'Correlations' },
+                { id: 'heatmap', icon: 'blur_on', label: 'Heatmap', desc: 'Density patterns' },
+                { id: 'radar_chart', icon: 'radar', label: 'Radar Chart', desc: 'Multi-dimensional' },
+                { id: 'pie_chart', icon: 'pie_chart', label: 'Pie Chart', desc: 'Proportions' },
                 // Category 5: Comparisons
-                { icon: 'table_rows', label: 'Comparison Table', desc: 'Feature comparison' },
-                { icon: 'horizontal_split', label: 'Parallel Coordinates', desc: 'Multi-dimensional data' },
+                { id: 'comparison_table', icon: 'table_rows', label: 'Comparison Table', desc: 'Feature comparison' },
+                { id: 'parallel_coordinates', icon: 'horizontal_split', label: 'Parallel Coordinates', desc: 'Multi-dimensional data' },
                 // Category 6: Text & Content
-                { icon: 'cloud', label: 'Word Cloud', desc: 'Text frequency' },
-                { icon: 'code', label: 'Syntax Diagram', desc: 'Grammar rules' },
+                { id: 'word_cloud', icon: 'cloud', label: 'Word Cloud', desc: 'Text frequency' },
+                { id: 'syntax_diagram', icon: 'code', label: 'Syntax Diagram', desc: 'Grammar rules' },
               ].map((item, idx) => {
-                const isSelected = !autoSelect && selectedType === item.label;
+                const isSelected = !autoSelect && selectedType === item.id;
                 return (
                   <div
                     key={idx}
@@ -375,7 +563,7 @@ export default function DashboardPage() {
                     }`}
                     onClick={() => {
                       if (!autoSelect) {
-                        setSelectedType(item.label);
+                        setSelectedType(item.id);
                       }
                     }}
                   >

@@ -242,23 +242,35 @@ JSON Format - Return ONLY an array of nodes:
 }
 
 export async function generateTreeDiagram(userInput: string): Promise<TreeDiagramData> {
-  const systemPrompt = `Convert text into a hierarchical tree diagram structure.
+  const systemPrompt = `Convert text into a hierarchical tree diagram structure with rich attributes.
 
 Rules:
 - Root node with children
-- Each node: name (required), children (optional array), value (optional number)
+- Each node must have:
+  * name: brief label (required)
+  * attributes: object containing:
+    - description: comprehensive 2-3 sentence description (required)
+    - extendable: boolean (true if concept can be explored deeper)
+  * children: array of child nodes (optional)
 - Represent clear hierarchy
 - Maximum 5 levels deep
 
 JSON format:
 {
   "name": "Root",
+  "attributes": {
+    "description": "Description of root...",
+    "extendable": true
+  },
   "children": [
     {
       "name": "Child 1",
-      "children": [{"name": "Grandchild 1"}, {"name": "Grandchild 2"}]
-    },
-    {"name": "Child 2"}
+      "attributes": {
+        "description": "Description of child 1...",
+        "extendable": false
+      },
+      "children": [{"name": "Grandchild 1"}]
+    }
   ]
 }`;
 
@@ -266,18 +278,27 @@ JSON format:
 }
 
 export async function generateForceDirectedGraph(userInput: string): Promise<ForceDirectedGraphData> {
-  const systemPrompt = `Create a force-directed graph for complex network visualization.
+  const systemPrompt = `Create a complex, interconnected force-directed graph visualization.
 
 Rules:
-- nodes: array of {id, name, group (number for clustering), val (size)}
-- links: array of {source (node id), target (node id), value (strength)}
-- Groups cluster related nodes
-- Value determines node size/link strength
+- Generate 15-30 nodes representing key entities/concepts
+- Generate dense connections (20-40 links) to show complexity
+- nodes: {id, name, group (1-10), val (size 5-20)}
+- links: {source (node id), target (node id), value (1-5)}
+- Cluster related nodes into groups (color coding)
+- Use 'val' to indicate importance/centrality
 
 JSON format:
 {
-  "nodes": [{"id": "1", "name": "Node 1", "group": 1, "val": 10}],
-  "links": [{"source": "1", "target": "2", "value": 5}]
+  "nodes": [
+    {"id": "n1", "name": "Central Concept", "group": 1, "val": 20},
+    {"id": "n2", "name": "Related Node", "group": 1, "val": 10},
+    {"id": "n3", "name": "Other Cluster", "group": 2, "val": 15}
+  ],
+  "links": [
+    {"source": "n1", "target": "n2", "value": 5},
+    {"source": "n1", "target": "n3", "value": 2}
+  ]
 }`;
 
   return await callOpenAI<ForceDirectedGraphData>(systemPrompt, userInput, 'gpt-4o-mini');
@@ -288,20 +309,25 @@ JSON format:
 // ============================================================================
 
 export async function generateTimeline(userInput: string): Promise<TimelineData> {
-  const systemPrompt = `Create timeline data for temporal visualization.
+  const systemPrompt = `Create a rich historical or project timeline.
 
 Rules:
-- items: array of {id, content, start (ISO date), end (optional), group (optional), type: 'point'|'range'}
-- groups (optional): array of {id, content}
-- Use ISO date format: "2024-01-15" or "2024-01-15T10:00:00"
+- Generate 10-20 timeline items covering the scope of the topic
+- items: {id, content, start (ISO date), end (optional), group (optional), type: 'point'|'range'}
+- groups: Define 2-4 groups if the topic has parallel tracks (e.g. "Technology", "Politics")
+- Use 'range' type for periods, 'point' for specific events
+- Dates MUST be YYYY-MM-DD format
 
 JSON format:
 {
   "items": [
-    {"id": "1", "content": "Event 1", "start": "2024-01-15", "type": "point"},
-    {"id": "2", "content": "Period", "start": "2024-02-01", "end": "2024-03-01", "type": "range"}
+    {"id": "1", "content": "Invention of X", "start": "1995-05-20", "type": "point", "group": "tech"},
+    {"id": "2", "content": "Golden Era", "start": "1998-01-01", "end": "2005-12-31", "type": "range", "group": "era"}
   ],
-  "groups": [{"id": "g1", "content": "Group 1"}]
+  "groups": [
+    {"id": "tech", "content": "Technology"},
+    {"id": "era", "content": "Eras"}
+  ]
 }`;
 
   return await callOpenAI<TimelineData>(systemPrompt, userInput, 'gpt-4o-mini');

@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
-import { expandNetworkNode, expandMindMapNode, generateVisualizationData, generateVisualizationCombined } from '@/lib/services/visualization-generator';
+import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
 import { calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 import {
@@ -23,7 +23,6 @@ import type {
   VisualizationResponse,
   VisualizationData,
   VisualizationMetadata,
-  MindMapNode,
 } from '@/lib/types/visualization';
 
 /**
@@ -77,23 +76,31 @@ export async function generateVisualization(
       };
     }
 
-    // Step 1: Analyze input and select format
-    const formatSelection = await selectVisualizationFormat(input, preferredFormat);
+    let format: VisualizationType;
+    let reason: string;
 
-    if (!formatSelection.visualizable || formatSelection.format === 'none') {
-      return {
-        success: false,
-        type: 'network_graph',
-        data: {} as VisualizationData,
-        reason: formatSelection.reason,
-        error: 'This content is not suitable for visualization',
-      };
+    if (preferredFormat) {
+      format = preferredFormat;
+      reason = 'User selected this format manually';
+    } else {
+      // Step 1: Analyze input and select format
+      const formatSelection = await selectVisualizationFormat(input);
+
+      if (!formatSelection.visualizable || formatSelection.format === 'none') {
+        return {
+          success: false,
+          type: 'network_graph',
+          data: {} as VisualizationData,
+          reason: formatSelection.reason,
+          error: 'This content is not suitable for visualization',
+        };
+      }
+      format = formatSelection.format;
+      reason = formatSelection.reason;
     }
 
     // Step 2: Generate visualization data
-    const data = await generateVisualizationData(formatSelection.format, input);
-    const format = formatSelection.format;
-    const reason = formatSelection.reason;
+    const data = await generateVisualizationData(format, input);
 
     // Calculate metadata
     const processingTime = Date.now() - startTime;

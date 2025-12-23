@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { getUserVisualizations, deleteVisualization } from '@/lib/actions/profile';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import { FORMAT_INFO } from '@/lib/types/visualization';
+import VisualizationModal from '@/components/visualizations/VisualizationModal';
 
 export default function MyVisualizationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,6 +19,7 @@ export default function MyVisualizationsPage() {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedViz, setSelectedViz] = useState<SavedVisualization | null>(null);
 
   useEffect(() => {
     loadVisualizations();
@@ -186,7 +188,7 @@ export default function MyVisualizationsPage() {
               />
             </div>
             <div className="hidden sm:block w-px h-8 bg-[#282e39] mx-2"></div>
-            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap pb-2 sm:pb-0">
               {/* Type Filter Dropdown */}
               <div className="relative">
                 <button
@@ -345,7 +347,11 @@ export default function MyVisualizationsPage() {
               const color = badgeColors[viz.type] || badgeColors.network_graph;
 
               return (
-                <div key={viz._id} className={`group relative flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} rounded-xl bg-[#1a1f28] border border-[#282e39] overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/5`}>
+                <div 
+                  key={viz._id} 
+                  onClick={() => setSelectedViz(viz)}
+                  className={`group relative flex ${viewMode === 'list' ? 'flex-row' : 'flex-col'} rounded-xl bg-[#1a1f28] border border-[#282e39] overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/5 cursor-pointer`}
+                >
                   <div className={`relative ${viewMode === 'list' ? 'w-48' : 'aspect-[4/3] w-full'} bg-gradient-to-br from-[#282e39] to-[#1a1f28] overflow-hidden flex items-center justify-center`}>
                     <span className="text-6xl text-white/10 group-hover:scale-110 transition-transform duration-500">{formatInfo?.icon || '📊'}</span>
                     <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -366,7 +372,8 @@ export default function MyVisualizationsPage() {
                           >
                             <button
                               onClick={() => {
-                                window.location.href = `/dashboard?viz=${viz._id}`;
+                                setSelectedViz(viz);
+                                setActiveMenuId(null);
                               }}
                               className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#282e39] transition-colors flex items-center gap-2"
                             >
@@ -424,6 +431,11 @@ export default function MyVisualizationsPage() {
         )}
 
         {/* Delete Confirmation Modal */}
+        <VisualizationModal
+          visualization={selectedViz}
+          onClose={() => setSelectedViz(null)}
+        />
+
         {deleteConfirmId && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-[#1a1f28] border border-[#282e39] rounded-xl p-6 max-w-md w-full shadow-2xl">
