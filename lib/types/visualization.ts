@@ -3,11 +3,10 @@
 // ============================================================================
 
 export type VisualizationType =
-  // Category 1: Relationships & Networks (4 formats)
+  // Category 1: Relationships & Networks (3 formats)
   | 'network_graph'
   | 'mind_map'
   | 'tree_diagram'
-  | 'force_directed_graph'
   // Category 2: Time & Sequence (3 formats)
   | 'timeline'
   | 'gantt_chart'
@@ -97,24 +96,6 @@ export interface TreeDiagramData {
   name: string;
   children?: TreeDiagramData[];
   value?: number;
-}
-
-export interface ForceGraphNode {
-  id: string;
-  name: string;
-  group?: number;
-  val?: number;
-}
-
-export interface ForceGraphLink {
-  source: string;
-  target: string;
-  value?: number;
-}
-
-export interface ForceDirectedGraphData {
-  nodes: ForceGraphNode[];
-  links: ForceGraphLink[];
 }
 
 // ============================================================================
@@ -328,7 +309,6 @@ export type VisualizationData =
   | NetworkGraphData
   | MindMapData
   | TreeDiagramData
-  | ForceDirectedGraphData
   | TimelineData
   | GanttChartData
   | AnimatedTimelineData
@@ -477,16 +457,6 @@ export const FORMAT_INFO: Record<VisualizationType, FormatInfo> = {
     bestFor: ['hierarchies', 'JSON structures', 'file systems', 'org charts'],
     icon: '🌳',
     estimatedCost: 0.12,
-  },
-  force_directed_graph: {
-    id: 'force_directed_graph',
-    name: 'Force-Directed Graph',
-    description: 'Physics-based network visualization',
-    category: 'relationships_networks',
-    library: 'react-force-graph',
-    bestFor: ['complex networks', 'social graphs', 'clustered relationships'],
-    icon: '⚡',
-    estimatedCost: 0.18,
   },
   timeline: {
     id: 'timeline',

@@ -23,7 +23,6 @@ const FormatSelectionSchema = z.object({
     'network_graph',
     'mind_map',
     'tree_diagram',
-    'force_directed_graph',
     'timeline',
     'gantt_chart',
     'animated_timeline',
@@ -79,7 +78,6 @@ CATEGORY 1: RELATIONSHIPS & NETWORKS (BEST FOR EDUCATIONAL CONTENT)
 1. network_graph - Interactive node-based graphs for concepts, org structures, dependencies, knowledge graphs
 2. mind_map - Hierarchical mind maps for brainstorming, note hierarchies, idea organization, EXPLAINING TOPICS
 3. tree_diagram - Tree structures for hierarchies, JSON structures, file systems, org charts
-4. force_directed_graph - Physics-based network visualization for complex networks, social graphs, clustered relationships
 
 CATEGORY 2: TIME & SEQUENCE
 5. timeline - Interactive timelines for historical events, project milestones, data over time

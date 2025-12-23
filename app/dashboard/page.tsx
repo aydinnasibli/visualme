@@ -113,40 +113,6 @@ export default function DashboardPage() {
             };
           });
         }
-      } else if (result.type === 'force_directed_graph') {
-        const currentData = result.data as ForceDirectedGraphData;
-        const existingNodeLabels = currentData.nodes.map(n => n.name);
-        
-        // Reuse network expansion logic but map result
-        const response = await expandNodeAction(nodeId, nodeLabel, input, existingNodeLabels);
-        
-        if (response.success && response.data) {
-          const newData = response.data as NetworkGraphData;
-          // Map NetworkGraphData (nodes/edges) to ForceDirectedGraphData (nodes/links)
-          const newForceNodes = newData.nodes.map(n => ({
-            id: n.id,
-            name: n.label,
-            group: n.category ? n.category.length : 1, // Simple mapping
-            val: 10
-          }));
-          const newForceLinks = newData.edges.map(e => ({
-            source: e.source,
-            target: e.target,
-            value: 2
-          }));
-
-          setResult(prev => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              data: {
-                ...currentData,
-                nodes: [...currentData.nodes, ...newForceNodes],
-                links: [...currentData.links, ...newForceLinks]
-              }
-            };
-          });
-        }
       } else if (result.type === 'tree_diagram') {
         // Reuse mind map expansion logic
         // TreeDiagram data IS the root node structure roughly
