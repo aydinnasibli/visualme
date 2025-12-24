@@ -695,22 +695,20 @@ AVAILABLE FORMATS & RULES:
 19. syntax_diagram - Grammar rules, language syntax
 
 CRITICAL RULES:
-- Select the MOST suitable format for the user's input.
-- Default to 'network_graph' if unsure or if the content is generic.
+${preferredFormat ? `- You MUST use the format '${preferredFormat}' as requested by the user. Do not select any other format.` : `- Select the MOST suitable format for the user's input.
+- Default to 'network_graph' if unsure or if the content is generic.`}
 - For Charts (bar, line, etc.), ensure data has numeric values.
 - For Timelines, ensure data has valid dates (YYYY-MM-DD).
 - Return valid JSON matching the schema for the selected format.
 
 Return valid JSON:
 {
-  "format": "selected_format_id",
+  "format": "${preferredFormat || 'selected_format_id'}",
   "reason": "Why this format is best for the content",
-  "data": { /* complete data matching schema for selected format */ }
+  "data": { /* complete data matching schema for selected format. IMPORTANT: If 'mind_map', 'root' is required. If 'network_graph', 'nodes' and 'edges' are required. */ }
 }`;
 
-  const userMessage = preferredFormat
-    ? `${userInput}\n\nNote: User prefers ${preferredFormat} format if suitable.`
-    : userInput;
+  const userMessage = userInput;
 
   try {
     const client = getOpenAIClient();
