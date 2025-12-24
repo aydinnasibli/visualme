@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { GanttChartData, GanttTask } from "@/lib/types/visualization";
-import VisualizationContainer from "./VisualizationContainer";
+import { X, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 
 interface GanttChartProps {
   data: GanttChartData;
@@ -14,6 +14,8 @@ type ViewMode = "Day" | "Week" | "Month" | "Year";
 export default function GanttChart({ data, readOnly = false }: GanttChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("Week");
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<GanttTask | null>(null);
+  const [zoom, setZoom] = useState(1);
 
   // Calculate time scale based on view mode
   const { startDate, endDate, totalDays, columnWidth, columns } = useMemo(() => {
@@ -44,13 +46,13 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    // Calculate column width based on view mode
+    // Calculate column width based on view mode and zoom
     let colWidth = 40;
     let cols: { date: Date; label: string }[] = [];
 
     switch (viewMode) {
       case "Day":
-        colWidth = 50;
+        colWidth = 50 * zoom;
         for (let i = 0; i < diffDays; i++) {
           const d = new Date(start);
           d.setDate(d.getDate() + i);
@@ -64,7 +66,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         }
         break;
       case "Week":
-        colWidth = 80;
+        colWidth = 80 * zoom;
         const weeks = Math.ceil(diffDays / 7);
         for (let i = 0; i < weeks; i++) {
           const d = new Date(start);
@@ -76,7 +78,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         }
         break;
       case "Month":
-        colWidth = 100;
+        colWidth = 100 * zoom;
         const months = Math.ceil(diffDays / 30);
         for (let i = 0; i < months; i++) {
           const d = new Date(start);
@@ -88,7 +90,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         }
         break;
       case "Year":
-        colWidth = 120;
+        colWidth = 120 * zoom;
         const years = Math.ceil(diffDays / 365);
         for (let i = 0; i < years; i++) {
           const d = new Date(start);
@@ -105,7 +107,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
       columnWidth: colWidth,
       columns: cols,
     };
-  }, [data.tasks, viewMode]);
+  }, [data.tasks, viewMode, zoom]);
 
   const getTaskPosition = (task: GanttTask) => {
     const taskStart = new Date(task.start);
@@ -161,45 +163,163 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     return map;
   }, [data.tasks]);
 
+  // Calculate today position
+  const getTodayPosition = () => {
+    const today = new Date();
+    const todayDiff = Math.abs(today.getTime() - startDate.getTime());
+    const todayDays = Math.ceil(todayDiff / (1000 * 60 * 60 * 24));
+
+    switch (viewMode) {
+      case "Day":
+        return todayDays * columnWidth;
+      case "Week":
+        return (todayDays / 7) * columnWidth;
+      case "Month":
+        return (todayDays / 30) * columnWidth;
+      case "Year":
+        return (todayDays / 365) * columnWidth;
+      default:
+        return 0;
+    }
+  };
+
   const rowHeight = 50;
   const headerHeight = 60;
+  const taskNameWidth = 200;
   const chartHeight = data.tasks.length * rowHeight + headerHeight + 20;
-  const chartWidth = Math.max(columns.length * columnWidth, 800);
+  const chartWidth = Math.max(columns.length * columnWidth, 600);
+
+  const handleReset = () => {
+    setViewMode("Week");
+    setZoom(1);
+    setSelectedTask(null);
+  };
 
   return (
-    <VisualizationContainer
-      onReset={() => {
-        setViewMode("Week");
-      }}
-    >
-      <div className="flex flex-col h-full w-full bg-[#0f1419]">
-        {/* Controls */}
-        <div className="flex justify-end px-4 py-2 border-b border-zinc-800 bg-[#141922]">
-          <div className="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-700">
+    <div className="w-full h-[800px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl">
+      {/* Ambient glow effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
+      </div>
+
+      {/* Header with Controls */}
+      <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-[#141922]">
+        <div className="flex items-center gap-3">
+          <Calendar className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold text-white">Gantt Chart</h3>
+          <span className="text-sm text-zinc-500">
+            {data.tasks.length} task{data.tasks.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Zoom Controls */}
+          <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-700">
+            <button
+              onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+              className="p-1.5 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setZoom((z) => Math.min(2, z + 0.25))}
+              className="p-1.5 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* View Mode */}
+          <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-700">
             {(["Day", "Week", "Month", "Year"] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                   viewMode === mode
                     ? "bg-primary text-white"
-                    : "text-zinc-400 hover:text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800"
                 }`}
               >
                 {mode}
               </button>
             ))}
           </div>
+
+          {/* Reset */}
+          <button
+            onClick={handleReset}
+            className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-zinc-700 transition-all text-xs font-semibold"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 flex h-[calc(100%-60px)]">
+        {/* Task Names Sidebar */}
+        <div className="w-[200px] border-r border-zinc-800 bg-[#0f1419] overflow-y-auto custom-scrollbar flex-shrink-0">
+          {/* Header */}
+          <div
+            className="sticky top-0 z-20 bg-[#1a1f28] border-b border-zinc-800 flex items-center px-4"
+            style={{ height: headerHeight }}
+          >
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+              Tasks
+            </span>
+          </div>
+
+          {/* Task List */}
+          {data.tasks.map((task, index) => {
+            const color = getTaskColor(task.type);
+            const isSelected = selectedTask?.id === task.id;
+            const isHovered = hoveredTask === task.id;
+
+            return (
+              <div
+                key={task.id}
+                className={`px-4 py-3 border-b border-zinc-800/50 cursor-pointer transition-colors ${
+                  isSelected
+                    ? "bg-zinc-800/50"
+                    : isHovered
+                    ? "bg-zinc-900/50"
+                    : ""
+                }`}
+                style={{ height: rowHeight }}
+                onMouseEnter={() => setHoveredTask(task.id)}
+                onMouseLeave={() => setHoveredTask(null)}
+                onClick={() => setSelectedTask(task)}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white truncate font-medium">
+                      {task.name}
+                    </p>
+                    <p className="text-xs text-zinc-500 truncate">
+                      {task.progress}% complete
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Chart Container */}
-        <div className="flex-1 overflow-auto custom-scrollbar p-4 relative">
-          <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-xl min-h-[400px] p-4">
+        {/* Chart Area */}
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="relative" style={{ minWidth: chartWidth }}>
             <svg
               width={chartWidth}
               height={chartHeight}
               className="w-full"
-              style={{ minWidth: chartWidth }}
             >
               {/* Grid Background */}
               <defs>
@@ -228,11 +348,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 </marker>
               </defs>
 
-              <rect
-                width={chartWidth}
-                height={chartHeight}
-                fill="url(#grid)"
-              />
+              <rect width={chartWidth} height={chartHeight} fill="url(#grid)" />
 
               {/* Header */}
               <rect
@@ -268,9 +384,54 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 </g>
               ))}
 
-              {/* Dependency Arrows - Draw first so they appear behind tasks */}
+              {/* Today Indicator */}
+              {(() => {
+                const todayX = getTodayPosition();
+                const today = new Date();
+                if (
+                  todayX >= 0 &&
+                  todayX <= chartWidth &&
+                  today >= startDate &&
+                  today <= endDate
+                ) {
+                  return (
+                    <g>
+                      <line
+                        x1={todayX}
+                        y1={headerHeight}
+                        x2={todayX}
+                        y2={chartHeight}
+                        stroke="#ef4444"
+                        strokeWidth="2"
+                        strokeDasharray="5,5"
+                        opacity="0.6"
+                      />
+                      <circle
+                        cx={todayX}
+                        cy={headerHeight - 10}
+                        r="4"
+                        fill="#ef4444"
+                      />
+                      <text
+                        x={todayX}
+                        y={headerHeight - 20}
+                        textAnchor="middle"
+                        fill="#ef4444"
+                        fontSize="10"
+                        fontWeight="600"
+                      >
+                        TODAY
+                      </text>
+                    </g>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Dependency Arrows */}
               {data.tasks.map((task) => {
-                if (!task.dependencies || task.dependencies.length === 0) return null;
+                if (!task.dependencies || task.dependencies.length === 0)
+                  return null;
 
                 const targetPos = getTaskPosition(task);
                 const targetIndex = taskMap.get(task.id)?.index ?? 0;
@@ -283,13 +444,11 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                   const sourcePos = getTaskPosition(dep.task);
                   const sourceY = headerHeight + dep.index * rowHeight + 25;
 
-                  // Calculate arrow path
                   const startX = sourcePos.x + sourcePos.width;
                   const startY = sourceY;
                   const endX = targetPos.x;
                   const endY = targetY;
 
-                  // Create curved arrow path
                   const midX = (startX + endX) / 2;
                   const path = `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
 
@@ -314,6 +473,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 const barHeight = 30;
                 const color = getTaskColor(task.type);
                 const isHovered = hoveredTask === task.id;
+                const isSelected = selectedTask?.id === task.id;
                 const isMilestone = task.type === "milestone";
 
                 return (
@@ -321,17 +481,21 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                     key={task.id}
                     onMouseEnter={() => setHoveredTask(task.id)}
                     onMouseLeave={() => setHoveredTask(null)}
+                    onClick={() => setSelectedTask(task)}
                     className="cursor-pointer transition-all"
                   >
                     {isMilestone ? (
-                      // Milestone Diamond Shape
                       <>
                         <polygon
-                          points={`${x + width / 2},${y} ${x + width},${y + barHeight / 2} ${x + width / 2},${y + barHeight} ${x},${y + barHeight / 2}`}
+                          points={`${x + width / 2},${y} ${x + width},${
+                            y + barHeight / 2
+                          } ${x + width / 2},${y + barHeight} ${x},${
+                            y + barHeight / 2
+                          }`}
                           fill={color}
-                          opacity={isHovered ? 0.9 : 0.8}
-                          stroke={isHovered ? "#fff" : color}
-                          strokeWidth={isHovered ? "3" : "2"}
+                          opacity={isSelected ? 1 : isHovered ? 0.9 : 0.8}
+                          stroke={isSelected || isHovered ? "#fff" : color}
+                          strokeWidth={isSelected ? "3" : isHovered ? "3" : "2"}
                           className="transition-all duration-200"
                         />
                         <text
@@ -348,7 +512,6 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                         </text>
                       </>
                     ) : (
-                      // Regular Task Bar
                       <>
                         <rect
                           x={x}
@@ -356,14 +519,13 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                           width={width}
                           height={barHeight}
                           fill={color}
-                          opacity={isHovered ? 0.9 : 0.7}
+                          opacity={isSelected ? 1 : isHovered ? 0.9 : 0.7}
                           rx="4"
-                          stroke={isHovered ? "#fff" : color}
-                          strokeWidth={isHovered ? "2" : "1"}
+                          stroke={isSelected || isHovered ? "#fff" : color}
+                          strokeWidth={isSelected ? "2" : isHovered ? "2" : "1"}
                           className="transition-all duration-200"
                         />
 
-                        {/* Progress Bar */}
                         {task.progress > 0 && (
                           <rect
                             x={x}
@@ -373,76 +535,26 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                             fill="#60a5fa"
                             opacity="0.8"
                             rx="4"
+                            className="pointer-events-none"
                           />
                         )}
 
-                        {/* Task Label */}
-                        <text
-                          x={x + 8}
-                          y={y + barHeight / 2}
-                          dominantBaseline="middle"
-                          fill="#ffffff"
-                          fontSize="12"
-                          fontWeight="500"
-                          className="pointer-events-none"
-                        >
-                          {task.name.length > 20 ? task.name.substring(0, 20) + "..." : task.name}
-                        </text>
-                      </>
-                    )}
-
-                    {/* Tooltip on Hover */}
-                    {isHovered && (
-                      <g>
-                        <rect
-                          x={x}
-                          y={y - 80}
-                          width="220"
-                          height="75"
-                          fill="#0f1419"
-                          stroke="#334155"
-                          strokeWidth="1"
-                          rx="6"
-                          filter="url(#shadow)"
-                        />
-                        <text
-                          x={x + 10}
-                          y={y - 60}
-                          fill="#fff"
-                          fontSize="13"
-                          fontWeight="600"
-                        >
-                          {task.name}
-                        </text>
-                        <text
-                          x={x + 10}
-                          y={y - 43}
-                          fill="#94a3b8"
-                          fontSize="11"
-                        >
-                          {new Date(task.start).toLocaleDateString()} -{" "}
-                          {new Date(task.end).toLocaleDateString()}
-                        </text>
-                        <text
-                          x={x + 10}
-                          y={y - 27}
-                          fill="#3b82f6"
-                          fontSize="11"
-                          fontWeight="500"
-                        >
-                          Progress: {task.progress}%
-                        </text>
-                        {task.dependencies && task.dependencies.length > 0 && (
+                        {width > 60 && (
                           <text
-                            x={x + 10}
-                            y={y - 11}
-                            fill="#a78bfa"
-                            fontSize="10"
+                            x={x + 8}
+                            y={y + barHeight / 2}
+                            dominantBaseline="middle"
+                            fill="#ffffff"
+                            fontSize="11"
+                            fontWeight="500"
+                            className="pointer-events-none"
                           >
-                            Depends on: {task.dependencies.length} task(s)
+                            {task.name.length > 15
+                              ? task.name.substring(0, 15) + "..."
+                              : task.name}
                           </text>
                         )}
-                      </g>
+                      </>
                     )}
                   </g>
                 );
@@ -464,6 +576,139 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
           </div>
         </div>
       </div>
-    </VisualizationContainer>
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl w-full max-w-lg mx-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: getTaskColor(selectedTask.type) }}
+                />
+                <h3 className="text-lg font-semibold text-white">
+                  Task Details
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
+              <div>
+                <h4 className="text-xl font-bold text-white mb-2">
+                  {selectedTask.name}
+                </h4>
+                <span
+                  className="inline-block px-3 py-1 rounded-full text-xs font-medium"
+                  style={{
+                    backgroundColor: getTaskColor(selectedTask.type) + "20",
+                    color: getTaskColor(selectedTask.type),
+                  }}
+                >
+                  {selectedTask.type || "task"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-zinc-500 mb-1">Start Date</p>
+                  <p className="text-sm text-white font-medium">
+                    {new Date(selectedTask.start).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500 mb-1">End Date</p>
+                  <p className="text-sm text-white font-medium">
+                    {new Date(selectedTask.end).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Progress</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-3 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${selectedTask.progress}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-semibold text-white">
+                    {selectedTask.progress}%
+                  </span>
+                </div>
+              </div>
+
+              {selectedTask.dependencies &&
+                selectedTask.dependencies.length > 0 && (
+                  <div>
+                    <p className="text-xs text-zinc-500 mb-2">Dependencies</p>
+                    <div className="space-y-2">
+                      {selectedTask.dependencies.map((depId) => {
+                        const depTask = taskMap.get(depId)?.task;
+                        if (!depTask) return null;
+                        return (
+                          <div
+                            key={depId}
+                            className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded-lg"
+                          >
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{
+                                backgroundColor: getTaskColor(depTask.type),
+                              }}
+                            />
+                            <span className="text-sm text-zinc-300">
+                              {depTask.name}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              <div>
+                <p className="text-xs text-zinc-500 mb-1">Duration</p>
+                <p className="text-sm text-white">
+                  {Math.ceil(
+                    (new Date(selectedTask.end).getTime() -
+                      new Date(selectedTask.start).getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  )}{" "}
+                  days
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end p-6 border-t border-zinc-800">
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
