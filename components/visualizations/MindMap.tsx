@@ -19,19 +19,19 @@ import {
   MarkerType,
   Handle,
   Position,
-  Panel,
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import FloatingEdge from "./utils/FloatingEdge";
 import FloatingConnectionLine from "./utils/FloatingConnectionLine";
 import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
+import VisualizationContainer from "./VisualizationContainer";
+import NodeDetailPanel from "./NodeDetailPanel";
 
 interface MindMapProps {
   data: MindMapData;
@@ -238,7 +238,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       null
     );
     const [isExpanding, setIsExpanding] = useState(false);
-    const [showHelp, setShowHelp] = useState(false);
     const { addExtendedNode, isNodeExtended } = useExtendedNodes();
     const { fitView, zoomIn, zoomOut } = useReactFlow();
 
@@ -303,14 +302,13 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       link.click();
     }, []);
 
+    const handleReset = () => {
+        fitView({ padding: 0.25, duration: 400 });
+    };
+
     // Keyboard shortcuts
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        // ?: Show help
-        if (e.key === '?') {
-          e.preventDefault();
-          setShowHelp(prev => !prev);
-        }
         // Shift + R: Reset view
         if (e.shiftKey && e.key === 'R') {
           e.preventDefault();
@@ -333,7 +331,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
         }
         // Escape: Close panels
         if (e.key === 'Escape') {
-          setShowHelp(false);
           setSelectedNodeData(null);
         }
       };
@@ -352,277 +349,104 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       [data, handleExportPNG]
     );
 
+    // Map NodeData to standard selectedNode structure for NodeDetailPanel
+    const panelNode = useMemo(() => {
+      if (!selectedNodeData) return null;
+      const color = COLORS[selectedNodeData.level % COLORS.length];
+      return {
+        id: selectedNodeData.nodeId,
+        label: selectedNodeData.label,
+        category: `Level ${selectedNodeData.level}`,
+        description: selectedNodeData.description,
+        color: color,
+        extendable: selectedNodeData.extendable,
+        keyPoints: selectedNodeData.keyPoints,
+        relatedConcepts: selectedNodeData.relatedConcepts,
+      };
+    }, [selectedNodeData]);
+
+    const handlePanelExpand = () => {
+        if (selectedNodeData) {
+            handleExpand(selectedNodeData.nodeId, selectedNodeData.label);
+            setSelectedNodeData(null);
+        }
+    };
+
     return (
-      <div className="w-full h-[750px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl floating-edges">
-        <style>{`
-          .floating-edges .react-flow__handle {
-            opacity: 0;
-          }
-          .react-flow__edge-path {
-            stroke-linecap: round;
-            stroke-linejoin: round;
-          }
-          .react-flow__edge.animated path {
-            stroke-dasharray: 5;
-            animation: dashdraw 0.5s linear infinite;
-          }
-          @keyframes dashdraw {
-            to {
-              stroke-dashoffset: -10;
+      <VisualizationContainer onReset={handleReset} onExport={handleExportPNG}>
+        <div className="w-full h-full relative floating-edges">
+            <style>{`
+            .floating-edges .react-flow__handle {
+                opacity: 0;
             }
-          }
-        `}</style>
+            .react-flow__edge-path {
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+            .react-flow__edge.animated path {
+                stroke-dasharray: 5;
+                animation: dashdraw 0.5s linear infinite;
+            }
+            @keyframes dashdraw {
+                to {
+                stroke-dashoffset: -10;
+                }
+            }
+            `}</style>
 
-        {(!data || !data.root) && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-zinc-400 text-center">
-              <p className="text-lg font-semibold">No mind map data</p>
+            {(!data || !data.root) && (
+            <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-zinc-400 text-center">
+                <p className="text-lg font-semibold">No mind map data</p>
+                </div>
             </div>
-          </div>
-        )}
+            )}
 
-        {data && data.root && (
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            connectionLineComponent={FloatingConnectionLine}
-            defaultEdgeOptions={{
-              style: {
-                strokeWidth: 4,
-                strokeLinecap: 'round',
-                strokeLinejoin: 'round',
-              },
-              animated: true,
-            }}
-            fitView
-            fitViewOptions={{ padding: 0.25 }}
-            minZoom={0.2}
-            maxZoom={2}
-            selectNodesOnDrag={false}
-            panOnScroll
-            zoomOnScroll
-            zoomOnPinch
-            nodesDraggable
-            nodesConnectable={false}
-            elementsSelectable
-            style={{ width: '100%', height: '100%' }}
-          >
-            <Background gap={16} size={1} color="#27272a" />
-            <Panel position="top-right" className="flex gap-2">
-              <button
-                onClick={() => fitView({ padding: 0.25, duration: 400 })}
-                className="px-3 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white rounded-lg border border-zinc-600 transition text-sm font-medium"
-                title="Reset View (Shift + R)"
-              >
-                Reset View
-              </button>
-              <button
-                onClick={handleExportPNG}
-                className="px-3 py-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg border border-purple-500 transition text-sm font-medium"
-                title="Export as PNG (Shift + E)"
-              >
-                Export PNG
-              </button>
-              <button
-                onClick={() => setShowHelp(!showHelp)}
-                className="px-3 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white rounded-lg border border-zinc-600 transition text-sm font-medium"
-                title="Keyboard Shortcuts (?)"
-              >
-                ?
-              </button>
-            </Panel>
-          </ReactFlow>
-        )}
-
-        {/* Keyboard Shortcuts Help */}
-        <AnimatePresence>
-          {showHelp && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="absolute top-20 right-4 bg-zinc-900/95 border border-zinc-700 rounded-xl p-4 shadow-2xl z-50 backdrop-blur-sm"
-            >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-white font-bold">Keyboard Shortcuts</h3>
-                <button
-                  onClick={() => setShowHelp(false)}
-                  className="text-zinc-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Pan</span>
-                  <span className="text-white font-mono">Click + Drag</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Zoom</span>
-                  <span className="text-white font-mono">Scroll / +/-</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Reset View</span>
-                  <span className="text-white font-mono">Shift + R</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Export PNG</span>
-                  <span className="text-white font-mono">Shift + E</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Toggle Help</span>
-                  <span className="text-white font-mono">?</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Close Panels</span>
-                  <span className="text-white font-mono">Esc</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Details Panel */}
-        <AnimatePresence>
-          {selectedNodeData && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="absolute top-4 left-4 max-w-sm z-50"
-            >
-              <div
-                className="rounded-xl p-5 shadow-2xl border backdrop-blur-xl"
-                style={{
-                  background: `linear-gradient(135deg, ${
-                    COLORS[selectedNodeData.level % COLORS.length]
-                  }15, rgba(9,9,11,0.95))`,
-                  borderColor: `${
-                    COLORS[selectedNodeData.level % COLORS.length]
-                  }60`,
+            {data && data.root && (
+            <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                connectionLineComponent={FloatingConnectionLine}
+                defaultEdgeOptions={{
+                style: {
+                    strokeWidth: 4,
+                    strokeLinecap: 'round',
+                    strokeLinejoin: 'round',
+                },
+                animated: true,
                 }}
-              >
-                <button
-                  onClick={() => setSelectedNodeData(null)}
-                  className="absolute top-3 right-3 p-1 rounded hover:bg-white/10"
-                >
-                  <X className="w-4 h-4 text-zinc-400" />
-                </button>
+                fitView
+                fitViewOptions={{ padding: 0.25 }}
+                minZoom={0.2}
+                maxZoom={2}
+                selectNodesOnDrag={false}
+                panOnScroll
+                zoomOnScroll
+                zoomOnPinch
+                nodesDraggable
+                nodesConnectable={false}
+                elementsSelectable
+                style={{ width: '100%', height: '100%' }}
+            >
+                <Background gap={16} size={1} color="#27272a" />
+            </ReactFlow>
+            )}
 
-                <h3 className="text-lg font-bold text-white mb-2 pr-6">
-                  {selectedNodeData.label}
-                </h3>
-
-                {selectedNodeData.description && (
-                  <p className="text-sm text-zinc-300 mb-3">
-                    {selectedNodeData.description}
-                  </p>
-                )}
-
-                {selectedNodeData.keyPoints?.length && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">
-                      Key Points
-                    </h4>
-                    <ul className="space-y-1">
-                      {selectedNodeData.keyPoints.map((point, i) => (
-                        <li
-                          key={i}
-                          className="text-sm text-zinc-200 flex gap-2"
-                        >
-                          <span
-                            className="w-1 h-1 rounded-full mt-2"
-                            style={{
-                              backgroundColor:
-                                COLORS[selectedNodeData.level % COLORS.length],
-                            }}
-                          />
-                          <span>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedNodeData.relatedConcepts?.length && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">
-                      Related
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedNodeData.relatedConcepts.map((concept, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-1 rounded text-xs"
-                          style={{
-                            backgroundColor: `${
-                              COLORS[selectedNodeData.level % COLORS.length]
-                            }20`,
-                            color:
-                              COLORS[selectedNodeData.level % COLORS.length],
-                            border: `1px solid ${
-                              COLORS[selectedNodeData.level % COLORS.length]
-                            }40`,
-                          }}
-                        >
-                          {concept}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedNodeData.extendable && !readOnly && (
-                  isNodeExtended(selectedNodeData.nodeId, visualizationKey) ? (
-                    <div
-                      className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
-                      style={{
-                        background: `linear-gradient(135deg, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }40, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }20)`,
-                        color: COLORS[selectedNodeData.level % COLORS.length],
-                        border: `1px solid ${COLORS[selectedNodeData.level % COLORS.length]}60`,
-                      }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      Extended
-                    </div>
-                  ) : (
-                    <button
-                      onClick={async () => {
-                        await handleExpand(
-                          selectedNodeData.nodeId,
-                          selectedNodeData.label
-                        );
-                        setSelectedNodeData(null);
-                      }}
-                      disabled={isExpanding}
-                      className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
-                      style={{
-                        background: `linear-gradient(135deg, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }80, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }60)`,
-                        color: "white",
-                      }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      {isExpanding ? "Extending..." : "Extend & Explore"}
-                    </button>
-                  )
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            {/* Shared Details Panel */}
+            <NodeDetailPanel
+                selectedNode={panelNode}
+                onClose={() => setSelectedNodeData(null)}
+                onExpand={handlePanelExpand}
+                isExpanding={isExpanding}
+                readOnly={readOnly}
+                isExtended={selectedNodeData ? isNodeExtended(selectedNodeData.nodeId, visualizationKey) : false}
+            />
+        </div>
+      </VisualizationContainer>
     );
   }
 );

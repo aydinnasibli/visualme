@@ -34,15 +34,6 @@ export default function NodeDetailPanel({
     <AnimatePresence>
       {selectedNode && (
         <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto z-40"
-            onClick={onClose}
-          />
-
           {/* Panel */}
           <motion.div
             initial={{ opacity: 0, x: -50, y: -20 }}
