@@ -89,30 +89,33 @@ export default function GanttChart({ data }: GanttChartProps) {
              fill: none;
           }
           .gantt .grid-header {
-            fill: #18181b; /* zinc-900 */
-            stroke: #27272a; /* zinc-800 */
+            fill: #27272a; /* zinc-800 background for header */
+            stroke: #3f3f46; /* zinc-700 border */
+          }
+          .gantt .grid-header text {
+            fill: #e4e4e7 !important; /* zinc-200 text */
           }
           .gantt .grid-row {
             fill: #09090b; /* zinc-950 */
             stroke: #27272a;
           }
           .gantt .grid-row:nth-child(even) {
-            fill: #18181b;
+            fill: #18181b; /* zinc-900 */
           }
           .gantt .row-line {
             stroke: #27272a;
           }
           .gantt .tick text {
-            fill: #a1a1aa; /* zinc-400 */
+            fill: #a1a1aa !important; /* zinc-400 */
             font-size: 11px;
             font-family: inherit;
           }
           .gantt .upper-text {
-            fill: #e4e4e7; /* zinc-200 */
+            fill: #e4e4e7 !important; /* zinc-200 */
             font-weight: 600;
           }
           .gantt .lower-text {
-            fill: #a1a1aa;
+            fill: #a1a1aa !important;
           }
 
           /* Bars */

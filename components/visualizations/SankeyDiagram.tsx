@@ -30,131 +30,134 @@ export default function SankeyDiagram({ data }: SankeyDiagramProps) {
   useEffect(() => {
     if (!containerRef.current || !svgRef.current || !data.nodes.length) return;
 
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
+    // Use ResizeObserver to ensure we get correct dimensions
+    const resizeObserver = new ResizeObserver(entries => {
+      if (!entries[0] || !containerRef.current || !svgRef.current) return;
 
-    // Clear previous
-    const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
+      const { width, height } = entries[0].contentRect;
+      if (width === 0 || height === 0) return;
 
-    // Setup Sankey generator
-    const sankeyGenerator = d3Sankey()
-      .nodeWidth(20)
-      .nodePadding(20)
-      .extent([
-        [1, 1],
-        [width - 1, height - 20],
-      ])
-      .nodeId((d: any) => d.name); // Using name as ID for simple matching
+      // Clear previous
+      const svg = d3.select(svgRef.current);
+      svg.selectAll("*").remove();
 
-    // Deep copy data because d3 mutates it
-    const nodes = data.nodes.map(d => ({ ...d }));
-    // Links need source/target as indices or IDs matching nodeId accessor
-    // Assuming incoming data.links has source/target as names or indices.
-    // Ideally we map them to the node objects or indices.
+      // Setup Sankey generator
+      const sankeyGenerator = d3Sankey()
+        .nodeWidth(20)
+        .nodePadding(20)
+        .extent([
+          [1, 1],
+          [width - 1, height - 20],
+        ])
+        .nodeId((d: any) => d.name); // Using name as ID for simple matching
 
-    // Helper to resolve link references if they are strings
-    const links = data.links.map(l => ({
-       source: l.source,
-       target: l.target,
-       value: l.value
-    }));
+      // Deep copy data because d3 mutates it
+      const nodes = data.nodes.map(d => ({ ...d }));
 
-    try {
-      // @ts-ignore - d3 types can be tricky with sankey custom data
-      const { nodes: graphNodes, links: graphLinks } = sankeyGenerator({
-        // @ts-ignore
-        nodes,
-        // @ts-ignore
-        links,
-      });
+      // Helper to resolve link references if they are strings
+      const links = data.links.map(l => ({
+         source: l.source,
+         target: l.target,
+         value: l.value
+      }));
 
-      const colorScale = d3.scaleOrdinal(COLORS);
+      try {
+        // @ts-ignore - d3 types can be tricky with sankey custom data
+        const { nodes: graphNodes, links: graphLinks } = sankeyGenerator({
+          // @ts-ignore
+          nodes,
+          // @ts-ignore
+          links,
+        });
 
-      // Draw Links
-      svg
-        .append("g")
-        .attr("fill", "none")
-        .attr("stroke-opacity", 0.3)
-        .selectAll("path")
-        .data(graphLinks)
-        .join("path")
-        .attr("d", sankeyLinkHorizontal())
-        .attr("stroke", (d: any) => {
-             // Create gradient ID logic or just use solid for now
-             // Gradient is better: source color -> target color
-             return `url(#gradient-${d.index})`;
-        })
-        .attr("stroke-width", (d: any) => Math.max(1, d.width))
-        .style("transition", "all 0.3s")
-        .on("mouseover", function() {
-            d3.select(this).attr("stroke-opacity", 0.7);
-        })
-        .on("mouseout", function() {
-            d3.select(this).attr("stroke-opacity", 0.3);
-        })
-        .append("title")
-        .text((d: any) => `${d.source.name} → ${d.target.name}\n${d.value}`);
+        const colorScale = d3.scaleOrdinal(COLORS);
 
-      // Define Gradients for links
-      const defs = svg.append("defs");
-      graphLinks.forEach((link: any, i: number) => {
-        const gradientId = `gradient-${link.index}`;
-        const gradient = defs
-          .append("linearGradient")
-          .attr("id", gradientId)
-          .attr("gradientUnits", "userSpaceOnUse")
-          .attr("x1", link.source.x1)
-          .attr("x2", link.target.x0);
+        // Draw Links
+        svg
+          .append("g")
+          .attr("fill", "none")
+          .attr("stroke-opacity", 0.3)
+          .selectAll("path")
+          .data(graphLinks)
+          .join("path")
+          .attr("d", sankeyLinkHorizontal())
+          .attr("stroke", (d: any) => {
+               return `url(#gradient-${d.index})`;
+          })
+          .attr("stroke-width", (d: any) => Math.max(1, d.width))
+          .style("transition", "all 0.3s")
+          .on("mouseover", function() {
+              d3.select(this).attr("stroke-opacity", 0.7);
+          })
+          .on("mouseout", function() {
+              d3.select(this).attr("stroke-opacity", 0.3);
+          })
+          .append("title")
+          .text((d: any) => `${d.source.name} → ${d.target.name}\n${d.value}`);
 
-        gradient
-          .append("stop")
-          .attr("offset", "0%")
-          .attr("stop-color", colorScale(link.source.name));
+        // Define Gradients for links
+        const defs = svg.append("defs");
+        graphLinks.forEach((link: any, i: number) => {
+          const gradientId = `gradient-${link.index}`;
+          const gradient = defs
+            .append("linearGradient")
+            .attr("id", gradientId)
+            .attr("gradientUnits", "userSpaceOnUse")
+            .attr("x1", link.source.x1)
+            .attr("x2", link.target.x0);
 
-        gradient
-          .append("stop")
-          .attr("offset", "100%")
-          .attr("stop-color", colorScale(link.target.name));
-      });
+          gradient
+            .append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", colorScale(link.source.name));
 
-      // Draw Nodes
-      const nodeGroup = svg
-        .append("g")
-        .selectAll("rect")
-        .data(graphNodes)
-        .join("g");
+          gradient
+            .append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", colorScale(link.target.name));
+        });
 
-      nodeGroup
-        .append("rect")
-        .attr("x", (d: any) => d.x0)
-        .attr("y", (d: any) => d.y0)
-        .attr("height", (d: any) => Math.max(1, d.y1 - d.y0))
-        .attr("width", (d: any) => d.x1 - d.x0)
-        .attr("fill", (d: any) => colorScale(d.name))
-        .attr("rx", 4)
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 0)
-        .style("filter", (d: any) => `drop-shadow(0 0 8px ${colorScale(d.name)}60)`)
-        .on("mouseover", (event, d) => setHoveredNode(d))
-        .on("mouseout", () => setHoveredNode(null));
+        // Draw Nodes
+        const nodeGroup = svg
+          .append("g")
+          .selectAll("rect")
+          .data(graphNodes)
+          .join("g");
 
-      // Labels
-      nodeGroup
-        .append("text")
-        .attr("x", (d: any) => (d.x0 < width / 2 ? d.x1 + 10 : d.x0 - 10))
-        .attr("y", (d: any) => (d.y1 + d.y0) / 2)
-        .attr("dy", "0.35em")
-        .attr("text-anchor", (d: any) => (d.x0 < width / 2 ? "start" : "end"))
-        .text((d: any) => d.name)
-        .attr("fill", "#e4e4e7") // zinc-200
-        .style("font-size", "12px")
-        .style("font-weight", "500")
-        .style("text-shadow", "0 1px 2px rgba(0,0,0,0.8)");
+        nodeGroup
+          .append("rect")
+          .attr("x", (d: any) => d.x0)
+          .attr("y", (d: any) => d.y0)
+          .attr("height", (d: any) => Math.max(1, d.y1 - d.y0))
+          .attr("width", (d: any) => d.x1 - d.x0)
+          .attr("fill", (d: any) => colorScale(d.name))
+          .attr("rx", 4)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0)
+          .style("filter", (d: any) => `drop-shadow(0 0 8px ${colorScale(d.name)}60)`)
+          .on("mouseover", (event, d) => setHoveredNode(d))
+          .on("mouseout", () => setHoveredNode(null));
 
-    } catch (e) {
-      console.error("Sankey Layout Error:", e);
-    }
+        // Labels
+        nodeGroup
+          .append("text")
+          .attr("x", (d: any) => (d.x0 < width / 2 ? d.x1 + 10 : d.x0 - 10))
+          .attr("y", (d: any) => (d.y1 + d.y0) / 2)
+          .attr("dy", "0.35em")
+          .attr("text-anchor", (d: any) => (d.x0 < width / 2 ? "start" : "end"))
+          .text((d: any) => d.name)
+          .attr("fill", "#e4e4e7") // zinc-200
+          .style("font-size", "12px")
+          .style("font-weight", "500")
+          .style("text-shadow", "0 1px 2px rgba(0,0,0,0.8)");
+
+      } catch (e) {
+        console.error("Sankey Layout Error:", e);
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
   }, [data]);
 
   return (
