@@ -5,7 +5,6 @@ import React, { ReactNode } from "react";
 interface VisualizationContainerProps {
   children: ReactNode;
   onReset?: () => void;
-  onExport?: () => void;
   title?: string; // Optional title if we want to show it in the container
   className?: string;
 }
@@ -13,7 +12,6 @@ interface VisualizationContainerProps {
 export default function VisualizationContainer({
   children,
   onReset,
-  onExport,
   className = "",
 }: VisualizationContainerProps) {
   return (
@@ -26,11 +24,11 @@ export default function VisualizationContainer({
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
         {/* Subtle Grid */}
         <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: "radial-gradient(#4b5563 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
+           className="absolute inset-0 opacity-10"
+           style={{
+             backgroundImage: 'radial-gradient(#4b5563 1px, transparent 1px)',
+             backgroundSize: '24px 24px'
+           }}
         />
       </div>
 
@@ -57,31 +55,12 @@ export default function VisualizationContainer({
             Reset View
           </button>
         )}
-        {onExport && (
-          <button
-            onClick={onExport}
-            className="px-4 py-2 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl border border-zinc-700/50 backdrop-blur-md transition-all text-sm font-semibold shadow-xl flex items-center gap-2"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Export PNG
-          </button>
-        )}
       </div>
 
       {/* Content */}
-      <div className="absolute inset-0 z-10">{children}</div>
+      <div className="absolute inset-0 z-10">
+        {children}
+      </div>
     </div>
   );
 }

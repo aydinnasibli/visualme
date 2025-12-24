@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { TimelineData, TimelineItem } from "@/lib/types/visualization";
+import React, { useRef } from "react";
+import { motion } from "framer-motion";
+import { TimelineData } from "@/lib/types/visualization";
 import VisualizationContainer from "./VisualizationContainer";
-import NodeDetailPanel from "./NodeDetailPanel";
 
 interface TimelineProps {
   data: TimelineData;
@@ -18,7 +17,6 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
 
   // Generate colors cyclically
   const COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899"];
@@ -29,47 +27,9 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
     }
   };
 
-  // Prepare node data for the detailed panel
-  const getPanelData = () => {
-    if (!selectedItem) return null;
-
-    // Find index to reuse the same color logic
-    const index = sortedItems.findIndex(i => i.id === selectedItem.id);
-    const color = COLORS[index % COLORS.length];
-
-    // Format date for description
-    const dateStr = new Date(selectedItem.start).toLocaleDateString(undefined, {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-
-    const endDateStr = selectedItem.end
-      ? ` - ${new Date(selectedItem.end).toLocaleDateString(undefined, {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })}`
-      : '';
-
-    return {
-      id: selectedItem.id,
-      label: selectedItem.content, // Content is usually short enough for label
-      category: selectedItem.group || "Event",
-      color: color,
-      description: `Occurred on ${dateStr}${endDateStr}.`, // Generic description since Vis-timeline data is limited
-      extendable: false, // Timelines usually static unless we add API support
-      keyPoints: [],
-      relatedConcepts: [],
-      degree: 0,
-    };
-  };
-
   return (
     <VisualizationContainer onReset={handleReset}>
-      {/* Header / Legend */}
+      {/* Header / Legend could go here if needed */}
       <div className="absolute top-4 left-6 z-10 pointer-events-none">
         <h3 className="text-zinc-500 font-bold uppercase tracking-widest text-xs">
           Chronology
@@ -79,42 +39,12 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
       {/* Scrollable Container */}
       <div
         ref={containerRef}
-        className="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar flex items-center relative cursor-grab active:cursor-grabbing"
-        onMouseDown={(e) => {
-          const ele = containerRef.current;
-          if (!ele) return;
-          ele.style.cursor = 'grabbing';
-          ele.style.userSelect = 'none';
-
-          const startX = e.pageX - ele.offsetLeft;
-          const scrollLeft = ele.scrollLeft;
-
-          const mouseMoveHandler = (e: MouseEvent) => {
-            const x = e.pageX - ele.offsetLeft;
-            const walk = (x - startX) * 2; // Scroll-fast
-            ele.scrollLeft = scrollLeft - walk;
-          };
-
-          const mouseUpHandler = () => {
-            ele.style.cursor = 'grab';
-            ele.style.removeProperty('user-select');
-            document.removeEventListener('mousemove', mouseMoveHandler);
-            document.removeEventListener('mouseup', mouseUpHandler);
-          };
-
-          document.addEventListener('mousemove', mouseMoveHandler);
-          document.addEventListener('mouseup', mouseUpHandler);
-        }}
+        className="w-full h-full overflow-x-auto overflow-y-hidden custom-scrollbar flex items-center relative"
       >
         {/* The Central Line */}
         <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-zinc-800/80 min-w-full transform -translate-y-1/2" />
 
-        {/* Time Indicators (Ticks) - Simplified every 100px or so */}
-        <div className="absolute top-1/2 left-0 right-0 min-w-full h-0 transform -translate-y-1/2 pointer-events-none">
-           {/* We could render ticks based on date range, but for now lets rely on item dates */}
-        </div>
-
-        <div className="flex items-center px-10 min-w-max h-full pt-10 pb-10 gap-16">
+        <div className="flex items-center px-10 min-w-max h-full pt-10 pb-10 gap-8">
           {sortedItems.map((item, index) => {
             const color = COLORS[index % COLORS.length];
             const isTop = index % 2 === 0;
@@ -144,10 +74,7 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
                 />
 
                 {/* Central Node */}
-                <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
-                >
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
                   <div
                     className="w-4 h-4 rounded-full border-[3px] border-[#0f1419] transition-all duration-300 group-hover/item:scale-125 group-hover/item:shadow-[0_0_15px_rgba(0,0,0,0.5)]"
                     style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}60` }}
@@ -156,8 +83,8 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
 
                 {/* Date Label on the line */}
                 <div
-                  className={`absolute left-1/2 transform -translate-x-1/2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap bg-[#0f1419] px-2 py-0.5 rounded-full border border-zinc-800/50 shadow-sm ${
-                    isTop ? "top-[calc(50%+1.5rem)]" : "bottom-[calc(50%+1.5rem)]"
+                  className={`absolute left-1/2 transform -translate-x-1/2 text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap ${
+                    isTop ? "top-[calc(50%+1rem)]" : "bottom-[calc(50%+1rem)]"
                   }`}
                 >
                   {new Date(item.start).toLocaleDateString(undefined, {
@@ -169,13 +96,12 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
 
                 {/* Content Card */}
                 <div
-                  className={`relative w-full p-5 rounded-xl border border-zinc-700/50 bg-zinc-900/40 backdrop-blur-md shadow-xl transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/60 hover:-translate-y-1 cursor-pointer ${
-                    isTop ? "mb-20" : "mt-20"
+                  className={`relative w-full p-5 rounded-xl border border-zinc-700/50 bg-zinc-900/40 backdrop-blur-md shadow-xl transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/60 hover:-translate-y-1 ${
+                    isTop ? "mb-12" : "mt-12"
                   }`}
                   style={{
                     order: isTop ? 0 : 2,
                   }}
-                  onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
                 >
                   {/* Glowing border accent */}
                   <div
@@ -207,13 +133,6 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
           <div className="w-10 flex-shrink-0" />
         </div>
       </div>
-
-      {/* Shared Details Panel */}
-      <NodeDetailPanel
-        selectedNode={getPanelData()}
-        onClose={() => setSelectedItem(null)}
-        readOnly={readOnly}
-      />
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
