@@ -18,6 +18,10 @@ const DynamicTimeline = dynamic(() => import("./Timeline"), {
   ssr: false,
 });
 
+const DynamicGanttChart = dynamic(() => import("./GanttChart"), {
+  ssr: false,
+});
+
 interface VisualizationModalProps {
   visualization: SavedVisualization | null;
   onClose: () => void;
@@ -71,6 +75,13 @@ export default function VisualizationModal({
             {visualization.type === "network_graph" && (
               <DynamicNetworkGraph
                 ref={networkGraphRef}
+                data={visualization.data as any}
+                readOnly={true}
+              />
+            )}
+
+            {visualization.type === "gantt_chart" && (
+              <DynamicGanttChart
                 data={visualization.data as any}
                 readOnly={true}
               />

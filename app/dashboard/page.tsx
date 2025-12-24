@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@clerk/nextjs';
 import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction } from '@/lib/actions/visualize';
-import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData } from '@/lib/types/visualization';
+import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData } from '@/lib/types/visualization';
 
 const LoadingPlaceholder = () => (
   <div className="w-full h-full bg-[#1a1f28] rounded-2xl flex items-center justify-center border border-[#282e39] animate-pulse">
@@ -28,6 +28,11 @@ const DynamicTreeDiagram = dynamic(() => import('@/components/visualizations/Tre
 });
 
 const DynamicTimeline = dynamic(() => import('@/components/visualizations/Timeline'), {
+  ssr: false,
+  loading: LoadingPlaceholder,
+});
+
+const DynamicGanttChart = dynamic(() => import('@/components/visualizations/GanttChart'), {
   ssr: false,
   loading: LoadingPlaceholder,
 });
@@ -456,10 +461,16 @@ export default function DashboardPage() {
                 data={result.data as TimelineData}
               />
             )}
+            {result.type === 'gantt_chart' && (
+              <DynamicGanttChart
+                data={result.data as GanttChartData}
+              />
+            )}
             {result.type !== 'network_graph' && 
              result.type !== 'mind_map' && 
              result.type !== 'tree_diagram' && 
-             result.type !== 'timeline' && (
+             result.type !== 'timeline' &&
+             result.type !== 'gantt_chart' && (
               <div className="flex flex-col items-center justify-center py-16 px-4 min-h-[500px] bg-[#1a1f28] rounded-xl border border-[#282e39]">
                 <span className="material-symbols-outlined text-6xl text-gray-600 mb-4">construction</span>
                 <h3 className="text-xl font-bold text-white mb-2">{result.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} - Coming Soon</h3>

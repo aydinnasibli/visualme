@@ -125,6 +125,7 @@ export interface GanttTask {
   progress: number;
   dependencies?: string[];
   custom_class?: string;
+  type?: 'task' | 'milestone' | 'project';
 }
 
 export interface GanttChartData {
