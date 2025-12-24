@@ -21,62 +21,82 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
   useEffect(() => {
     if (!containerRef.current || !data.tasks.length) return;
 
-    // Transform data for Frappe Gantt
-    const tasks = data.tasks.map((t) => ({
-      id: t.id,
-      name: t.name,
-      start: t.start,
-      end: t.end,
-      progress: t.progress,
-      dependencies: t.dependencies?.join(", ") || "",
-      custom_class: t.type === "milestone" ? "bar-milestone" : t.type === "project" ? "bar-project" : "bar-task",
-    }));
+    // Clear container
+    containerRef.current.innerHTML = "";
 
-    // Initialize Frappe Gantt
-    ganttRef.current = new Gantt(containerRef.current, tasks, {
-      header_height: 50,
-      column_width: 30,
-      step: 24,
-      view_modes: ["Quarter Day", "Half Day", "Day", "Week", "Month", "Year"],
-      bar_height: 25,
-      bar_corner_radius: 3,
-      arrow_curve: 5,
-      padding: 18,
-      view_mode: viewMode,
-      date_format: "YYYY-MM-DD",
-      custom_popup_html: (task: any) => {
-        // Custom tooltip
-        return `
-          <div class="gantt-tooltip-content">
-            <div class="gantt-tooltip-header">${task.name}</div>
-            <div class="gantt-tooltip-dates">
-              ${task._start.toLocaleDateString()} - ${task._end.toLocaleDateString()}
-            </div>
-            <div class="gantt-tooltip-progress">
-              Progress: ${task.progress}%
-            </div>
-          </div>
-        `;
-      },
-      on_click: (task: any) => {
-        console.log("Clicked", task);
-      },
-      on_date_change: (task: any, start: Date, end: Date) => {
-        if (readOnly) return;
-        console.log("Date changed", task, start, end);
-      },
-      on_progress_change: (task: any, progress: number) => {
-        if (readOnly) return;
-        console.log("Progress changed", task, progress);
-      },
-      on_view_change: (mode: string) => {
-        console.log("View change", mode);
-      },
+    // Transform data for Frappe Gantt
+    const tasks = data.tasks.map((t) => {
+      // Ensure dates are Date objects or properly formatted strings
+      const startDate = typeof t.start === 'string' ? t.start : t.start.toISOString().split('T')[0];
+      const endDate = typeof t.end === 'string' ? t.end : t.end.toISOString().split('T')[0];
+
+      return {
+        id: t.id,
+        name: t.name,
+        start: startDate,
+        end: endDate,
+        progress: t.progress,
+        dependencies: t.dependencies?.join(", ") || "",
+        custom_class: t.type === "milestone" ? "bar-milestone" : t.type === "project" ? "bar-project" : "bar-task",
+      };
     });
 
-    // Apply view mode
-    ganttRef.current.change_view_mode(viewMode);
+    try {
+      // Initialize Frappe Gantt
+      ganttRef.current = new Gantt(containerRef.current, tasks, {
+        header_height: 50,
+        column_width: 30,
+        step: 24,
+        view_modes: ["Quarter Day", "Half Day", "Day", "Week", "Month", "Year"],
+        bar_height: 25,
+        bar_corner_radius: 3,
+        arrow_curve: 5,
+        padding: 18,
+        view_mode: viewMode,
+        date_format: "YYYY-MM-DD",
+        custom_popup_html: (task: any) => {
+          // Custom tooltip
+          return `
+            <div class="gantt-tooltip-content">
+              <div class="gantt-tooltip-header">${task.name}</div>
+              <div class="gantt-tooltip-dates">
+                ${task._start.toLocaleDateString()} - ${task._end.toLocaleDateString()}
+              </div>
+              <div class="gantt-tooltip-progress">
+                Progress: ${task.progress}%
+              </div>
+            </div>
+          `;
+        },
+        on_click: (task: any) => {
+          console.log("Clicked", task);
+        },
+        on_date_change: (task: any, start: Date, end: Date) => {
+          if (readOnly) return;
+          console.log("Date changed", task, start, end);
+        },
+        on_progress_change: (task: any, progress: number) => {
+          if (readOnly) return;
+          console.log("Progress changed", task, progress);
+        },
+        on_view_change: (mode: string) => {
+          console.log("View change", mode);
+        },
+      });
 
+      // Apply view mode
+      ganttRef.current.change_view_mode(viewMode);
+    } catch (error) {
+      console.error("Error initializing Gantt chart:", error);
+    }
+
+    // Cleanup function
+    return () => {
+      if (ganttRef.current && containerRef.current) {
+        containerRef.current.innerHTML = "";
+        ganttRef.current = null;
+      }
+    };
   }, [data, viewMode, readOnly]);
 
   return (
@@ -108,13 +128,53 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         {/* Chart Container */}
         <div className="flex-1 overflow-auto custom-scrollbar p-4 relative">
           {/* We need a specific wrapper for frappe-gantt to attach to */}
-          <div className="frappe-gantt-wrapper bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-xl overflow-hidden min-h-[400px]">
-            <svg ref={containerRef as any} id="gantt-chart" width="100%"></svg>
-          </div>
+          <div
+            ref={containerRef}
+            className="frappe-gantt-wrapper bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-xl overflow-auto min-h-[400px]"
+          />
         </div>
       </div>
 
       <style jsx global>{`
+        /* FRAPPE GANTT BASE STYLES */
+        .gantt-container {
+          line-height: 14.5px;
+          position: relative;
+          overflow: auto;
+          font-size: 12px;
+          width: 100%;
+          border-radius: 8px;
+        }
+
+        .gantt {
+          user-select: none;
+          -webkit-user-select: none;
+          position: relative;
+        }
+
+        .gantt .grid-background {
+          fill: none;
+        }
+
+        .gantt .bar-wrapper {
+          cursor: pointer;
+        }
+
+        .gantt .bar-wrapper:hover .bar {
+          transition: transform 0.3s ease;
+        }
+
+        .gantt .handle {
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .gantt .handle.active,
+        .gantt .handle.visible {
+          cursor: ew-resize;
+          opacity: 1;
+        }
+
         /* FRAPPE GANTT CUSTOM STYLES - DARK MODE SLEEK */
 
         .gantt .grid-header {
@@ -185,14 +245,18 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
 
         /* Popup / Tooltip */
         .gantt-container .popup-wrapper {
-          background-color: #0f1419;
-          color: #f1f5f9;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-          border: 1px solid #334155;
-          border-radius: 0.5rem;
-          padding: 0;
-          opacity: 0;
-          transition: opacity 0.2s;
+          background-color: #0f1419 !important;
+          color: #f1f5f9 !important;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+          border: 1px solid #334155 !important;
+          border-radius: 0.5rem !important;
+          padding: 0 !important;
+          opacity: 1 !important;
+          transition: opacity 0.2s !important;
+        }
+
+        .gantt-container .popup-wrapper.active {
+          opacity: 1 !important;
         }
 
         .gantt-tooltip-content {
