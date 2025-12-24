@@ -33,7 +33,7 @@ interface TreeCustomNode {
 const CustomNode = ({ nodeDatum, onNodeClick }: { nodeDatum: TreeCustomNode; onNodeClick: () => void }) => {
   const isRoot = nodeDatum.__rd3t.depth === 0;
   // Node colors based on depth (cycling)
-  const colors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#6366f1"];
+  const colors = ["#a855f7", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#6366f1"];
   const color = colors[(nodeDatum.__rd3t.depth || 0) % colors.length];
   
   return (
@@ -86,6 +86,7 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
   const [translate, setTranslate] = useState({ x: 100, y: 350 });
   const [zoom, setZoom] = useState(1);
 
+  // Helper for tracking wheel events for panning
   useEffect(() => {
     if (containerRef.current) {
       setDimensions({
@@ -101,7 +102,6 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
         if (entries[0]) {
             const { width, height } = entries[0].contentRect;
             setDimensions({ width, height });
-            // Optional: recenter on resize if desired, or let user do it
         }
     });
     
@@ -109,8 +109,36 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
     if (currentRef) {
         observer.observe(currentRef);
     }
+
+    // Add wheel event listener for custom panning (emulating trackpad pan)
+    const handleWheel = (e: WheelEvent) => {
+      // Prevent default to stop browser going back/forward or scrolling page
+      e.preventDefault();
+
+      // If ctrl key is pressed, it's a zoom gesture on some trackpads/mice
+      if (e.ctrlKey) {
+        // Simple zoom approximation
+        const zoomDelta = -e.deltaY * 0.001;
+        setZoom(prev => Math.max(0.1, Math.min(3, prev + zoomDelta)));
+      } else {
+        // Pan
+        setTranslate(prev => ({
+          x: prev.x - e.deltaX,
+          y: prev.y - e.deltaY
+        }));
+      }
+    };
+
+    if (currentRef) {
+      currentRef.addEventListener('wheel', handleWheel, { passive: false });
+    }
     
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (currentRef) {
+        currentRef.removeEventListener('wheel', handleWheel);
+      }
+    };
   }, []);
 
   const handleNodeClick = (nodeDatum: TreeCustomNode) => {
@@ -162,7 +190,7 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
 
   return (
     <VisualizationContainer onReset={handleReset}>
-      <div ref={containerRef} className="w-full h-full relative">
+      <div ref={containerRef} className="w-full h-full relative cursor-move">
         {dimensions.width > 0 && (
           <Tree
             data={data}
@@ -177,7 +205,7 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
             )}
             pathClassFunc={() => 'custom-link'}
             zoomable={true}
-            draggable={true}
+            draggable={false} // Disable d3-tree dragging to rely on our custom pan, or we can keep it for click-drag
             separation={{ siblings: 1.5, nonSiblings: 2 }}
             orientation="horizontal"
           />
