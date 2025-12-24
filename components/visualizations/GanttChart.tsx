@@ -152,6 +152,15 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     }
   };
 
+  // Build task map and dependencies
+  const taskMap = useMemo(() => {
+    const map = new Map<string, { task: GanttTask; index: number }>();
+    data.tasks.forEach((task, index) => {
+      map.set(task.id, { task, index });
+    });
+    return map;
+  }, [data.tasks]);
+
   const rowHeight = 50;
   const headerHeight = 60;
   const chartHeight = data.tasks.length * rowHeight + headerHeight + 20;
@@ -207,6 +216,16 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                     strokeWidth="0.5"
                   />
                 </pattern>
+                <marker
+                  id="arrowhead"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="3"
+                  orient="auto"
+                >
+                  <polygon points="0 0, 10 3, 0 6" fill="#64748b" />
+                </marker>
               </defs>
 
               <rect
@@ -249,6 +268,45 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 </g>
               ))}
 
+              {/* Dependency Arrows - Draw first so they appear behind tasks */}
+              {data.tasks.map((task) => {
+                if (!task.dependencies || task.dependencies.length === 0) return null;
+
+                const targetPos = getTaskPosition(task);
+                const targetIndex = taskMap.get(task.id)?.index ?? 0;
+                const targetY = headerHeight + targetIndex * rowHeight + 25;
+
+                return task.dependencies.map((depId) => {
+                  const dep = taskMap.get(depId);
+                  if (!dep) return null;
+
+                  const sourcePos = getTaskPosition(dep.task);
+                  const sourceY = headerHeight + dep.index * rowHeight + 25;
+
+                  // Calculate arrow path
+                  const startX = sourcePos.x + sourcePos.width;
+                  const startY = sourceY;
+                  const endX = targetPos.x;
+                  const endY = targetY;
+
+                  // Create curved arrow path
+                  const midX = (startX + endX) / 2;
+                  const path = `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
+
+                  return (
+                    <path
+                      key={`${depId}-${task.id}`}
+                      d={path}
+                      stroke="#64748b"
+                      strokeWidth="2"
+                      fill="none"
+                      markerEnd="url(#arrowhead)"
+                      opacity="0.6"
+                    />
+                  );
+                });
+              })}
+
               {/* Tasks */}
               {data.tasks.map((task, index) => {
                 const { x, width } = getTaskPosition(task);
@@ -256,6 +314,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 const barHeight = 30;
                 const color = getTaskColor(task.type);
                 const isHovered = hoveredTask === task.id;
+                const isMilestone = task.type === "milestone";
 
                 return (
                   <g
@@ -264,54 +323,82 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                     onMouseLeave={() => setHoveredTask(null)}
                     className="cursor-pointer transition-all"
                   >
-                    {/* Task Bar Background */}
-                    <rect
-                      x={x}
-                      y={y}
-                      width={width}
-                      height={barHeight}
-                      fill={color}
-                      opacity={isHovered ? 0.9 : 0.7}
-                      rx="4"
-                      stroke={isHovered ? "#fff" : color}
-                      strokeWidth={isHovered ? "2" : "1"}
-                      className="transition-all duration-200"
-                    />
+                    {isMilestone ? (
+                      // Milestone Diamond Shape
+                      <>
+                        <polygon
+                          points={`${x + width / 2},${y} ${x + width},${y + barHeight / 2} ${x + width / 2},${y + barHeight} ${x},${y + barHeight / 2}`}
+                          fill={color}
+                          opacity={isHovered ? 0.9 : 0.8}
+                          stroke={isHovered ? "#fff" : color}
+                          strokeWidth={isHovered ? "3" : "2"}
+                          className="transition-all duration-200"
+                        />
+                        <text
+                          x={x + width / 2}
+                          y={y + barHeight / 2}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill="#ffffff"
+                          fontSize="11"
+                          fontWeight="600"
+                          className="pointer-events-none"
+                        >
+                          ⬥
+                        </text>
+                      </>
+                    ) : (
+                      // Regular Task Bar
+                      <>
+                        <rect
+                          x={x}
+                          y={y}
+                          width={width}
+                          height={barHeight}
+                          fill={color}
+                          opacity={isHovered ? 0.9 : 0.7}
+                          rx="4"
+                          stroke={isHovered ? "#fff" : color}
+                          strokeWidth={isHovered ? "2" : "1"}
+                          className="transition-all duration-200"
+                        />
 
-                    {/* Progress Bar */}
-                    {task.progress > 0 && (
-                      <rect
-                        x={x}
-                        y={y}
-                        width={(width * task.progress) / 100}
-                        height={barHeight}
-                        fill="#60a5fa"
-                        opacity="0.8"
-                        rx="4"
-                      />
+                        {/* Progress Bar */}
+                        {task.progress > 0 && (
+                          <rect
+                            x={x}
+                            y={y}
+                            width={(width * task.progress) / 100}
+                            height={barHeight}
+                            fill="#60a5fa"
+                            opacity="0.8"
+                            rx="4"
+                          />
+                        )}
+
+                        {/* Task Label */}
+                        <text
+                          x={x + 8}
+                          y={y + barHeight / 2}
+                          dominantBaseline="middle"
+                          fill="#ffffff"
+                          fontSize="12"
+                          fontWeight="500"
+                          className="pointer-events-none"
+                        >
+                          {task.name.length > 20 ? task.name.substring(0, 20) + "..." : task.name}
+                        </text>
+                      </>
                     )}
-
-                    {/* Task Label */}
-                    <text
-                      x={x + 8}
-                      y={y + barHeight / 2}
-                      dominantBaseline="middle"
-                      fill="#ffffff"
-                      fontSize="12"
-                      fontWeight="500"
-                      className="pointer-events-none"
-                    >
-                      {task.name}
-                    </text>
 
                     {/* Tooltip on Hover */}
                     {isHovered && (
                       <g>
                         <rect
                           x={x}
-                          y={y - 60}
-                          width="200"
-                          height="55"
+                          y={y - 80}
+                          width="220"
+                          height="75"
                           fill="#0f1419"
                           stroke="#334155"
                           strokeWidth="1"
@@ -320,7 +407,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                         />
                         <text
                           x={x + 10}
-                          y={y - 45}
+                          y={y - 60}
                           fill="#fff"
                           fontSize="13"
                           fontWeight="600"
@@ -329,7 +416,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                         </text>
                         <text
                           x={x + 10}
-                          y={y - 28}
+                          y={y - 43}
                           fill="#94a3b8"
                           fontSize="11"
                         >
@@ -338,13 +425,23 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                         </text>
                         <text
                           x={x + 10}
-                          y={y - 12}
+                          y={y - 27}
                           fill="#3b82f6"
                           fontSize="11"
                           fontWeight="500"
                         >
                           Progress: {task.progress}%
                         </text>
+                        {task.dependencies && task.dependencies.length > 0 && (
+                          <text
+                            x={x + 10}
+                            y={y - 11}
+                            fill="#a78bfa"
+                            fontSize="10"
+                          >
+                            Depends on: {task.dependencies.length} task(s)
+                          </text>
+                        )}
                       </g>
                     )}
                   </g>
