@@ -673,42 +673,36 @@ export async function generateVisualizationCombined(
   // OPTIMIZED PROMPT: Reduced by 50% to save tokens while maintaining quality
   const systemPrompt = `Expert visualization AI: Select optimal format AND generate data in ONE response.
 
-AVAILABLE FORMATS & RULES:
-1. network_graph - Concepts, relationships, knowledge graphs (Default for complex topics)
-2. mind_map - Hierarchical ideas, brainstorming, outlines (Default for hierarchies)
-3. tree_diagram - Strict parent-child structures, org charts
-4. timeline - Historical events, sequences with specific dates
-5. gantt_chart - Project schedules with dependencies and durations
-6. animated_timeline - Step-by-step evolution or storytelling
-7. flowchart - Processes, algorithms, decision trees
-8. sankey_diagram - Flow magnitudes, resource transfers
-9. swimlane_diagram - Cross-functional processes with roles
-10. line_chart - Trends over time, continuous data
-11. bar_chart - Categorical comparisons, rankings
-12. scatter_plot - Correlations between two variables
-13. heatmap - Density patterns, activity grids
-14. radar_chart - Multi-dimensional comparisons (skills, stats)
-15. pie_chart - Proportions, percentages (use sparingly)
-16. comparison_table - Feature comparisons, side-by-side data
-17. parallel_coordinates - Complex multi-dimensional data
-18. word_cloud - Text frequency, keyword analysis
-19. syntax_diagram - Grammar rules, language syntax
+CRITICAL: Only use network_graph or mind_map formats - all other types are under development!
 
-CRITICAL RULES:
-${preferredFormat ? `- You MUST use the format '${preferredFormat}' as requested by the user. Do not select any other format.` : `- Select the MOST suitable format for the user's input.
-- Default to 'network_graph' if unsure or if the content is generic.`}
-- For Charts (bar, line, etc.), ensure data has numeric values.
-- For Timelines, ensure data has valid dates (YYYY-MM-DD).
-- Return valid JSON matching the schema for the selected format.
+AVAILABLE FORMATS (2 working):
+1. network_graph - Concepts, relationships, knowledge graphs, educational content, complex topics
+   - BEST for most content: ideas, processes, systems, comparisons, categories
+   - Shows connections and relationships between concepts
+   - Highly interactive with expandable nodes
+
+2. mind_map - Hierarchical topics, brainstorming, structured outlines
+   - BEST for hierarchical data: outlines, categories, taxonomies
+   - Tree-like structure with parent-child relationships
+   - Good for organizing thoughts and breaking down topics
+
+RULES:
+- ONLY use network_graph or mind_map - no exceptions!
+- Default to network_graph for most content (80% of cases)
+- Use mind_map only for clearly hierarchical content
+- Generate 10-20 nodes with 3-5 sentence descriptions
+- Mark complex nodes "extendable: true" with metadata
 
 Return valid JSON:
 {
-  "format": "${preferredFormat || 'selected_format_id'}",
-  "reason": "Why this format is best for the content",
-  "data": { /* complete data matching schema for selected format. IMPORTANT: If 'mind_map', 'root' is required. If 'network_graph', 'nodes' and 'edges' are required. */ }
+  "format": "network_graph" or "mind_map",
+  "reason": "why chosen",
+  "data": { /* complete schema for format */ }
 }`;
 
-  const userMessage = userInput;
+  const userMessage = preferredFormat
+    ? `${userInput}\n\nNote: User prefers ${preferredFormat} format if suitable.`
+    : userInput;
 
   try {
     const client = getOpenAIClient();
