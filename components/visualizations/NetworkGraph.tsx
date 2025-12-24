@@ -192,7 +192,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
           animate: false, // First render without animation for faster initial load
           randomize: true, // Important: randomize for better distribution
           fit: true, // Fit only on initial render
-          padding: 120,
+        padding: 120,
           nodeRepulsion: 8500,
           idealEdgeLength: 180,
           edgeElasticity: 0.5,
@@ -482,12 +482,13 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       });
     };
 
-    const handleExportPNG = async () => {
+    useImperativeHandle(ref, () => ({
+      exportPNG: async (scale = 2) => {
         if (!cyRef.current) return;
         const pngBlob = cyRef.current.png({
           output: "blob",
           bg: "#0a0a0f",
-          scale: 2,
+          scale,
           full: true,
         });
         const url = URL.createObjectURL(pngBlob);
@@ -496,10 +497,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
         link.href = url;
         link.click();
         URL.revokeObjectURL(url);
-    };
-
-    useImperativeHandle(ref, () => ({
-      exportPNG: handleExportPNG,
+      },
       getContainer: () => containerRef.current,
       fit: () => cyRef.current?.fit(),
     }));
@@ -528,7 +526,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
     };
 
     return (
-      <VisualizationContainer onReset={handleReset} onExport={handleExportPNG}>
+      <VisualizationContainer onReset={handleReset}>
         <div ref={containerRef} className="w-full h-full relative group">
            {/* The Graph */}
           <CytoscapeComponent
