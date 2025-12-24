@@ -460,22 +460,15 @@ export default function DashboardPage() {
              result.type !== 'mind_map' && 
              result.type !== 'tree_diagram' && 
              result.type !== 'timeline' && (
-              <div className="flex flex-col items-center justify-center py-16 px-4 min-h-[500px] bg-[#1a1f28] rounded-xl border border-[#282e39]">
-                <span className="material-symbols-outlined text-6xl text-gray-600 mb-4">construction</span>
-                <h3 className="text-xl font-bold text-white mb-2">{result.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} - Coming Soon</h3>
-                <p className="text-gray-400 text-center max-w-md mb-4">
-                  This visualization type is currently under development. Try using Network Graph or Mind Map for now.
-                </p>
-                <button
-                  onClick={() => {
-                    setResult(null);
-                    setInput('');
-                  }}
-                  className="px-6 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
-                >
-                  Try Another Visualization
-                </button>
-              </div>
+               <div className="w-full h-[600px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl">
+                 {(() => {
+                    const VisualizationRenderer = dynamic(() => import('@/components/visualizations/VisualizationRenderer'), {
+                      loading: LoadingPlaceholder,
+                      ssr: false
+                    });
+                    return <VisualizationRenderer type={result.type} data={result.data} />;
+                  })()}
+               </div>
             )}
           </div>
         ) : (
