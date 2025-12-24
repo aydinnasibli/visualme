@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
-import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
+import { expandNetworkNode, expandMindMapNode, generateVisualizationData, generateVisualizationCombined } from '@/lib/services/visualization-generator';
 import { calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 import {
@@ -78,29 +78,49 @@ export async function generateVisualization(
 
     let format: VisualizationType;
     let reason: string;
+    let data: VisualizationData;
 
-    if (preferredFormat) {
-      format = preferredFormat;
-      reason = 'User selected this format manually';
-    } else {
-      // Step 1: Analyze input and select format
-      const formatSelection = await selectVisualizationFormat(input);
+    // PERFORMANCE: Use combined generation to reduce latency and AI calls
+    try {
+      const combinedResult = await generateVisualizationCombined(input, preferredFormat);
 
-      if (!formatSelection.visualizable || formatSelection.format === 'none') {
-        return {
+      format = combinedResult.format;
+      data = combinedResult.data;
+      reason = combinedResult.reason;
+
+      // If format is 'none' or not supported, handle it
+      if (!format || format === ('none' as any)) {
+         return {
           success: false,
           type: 'network_graph',
           data: {} as VisualizationData,
-          reason: formatSelection.reason,
+          reason: reason || 'Content not suitable',
           error: 'This content is not suitable for visualization',
         };
       }
-      format = formatSelection.format;
-      reason = formatSelection.reason;
-    }
+    } catch (genError) {
+      // Fallback to split method if combined fails
+      console.warn("Combined generation failed, falling back to split method", genError);
 
-    // Step 2: Generate visualization data
-    const data = await generateVisualizationData(format, input);
+      if (preferredFormat) {
+        format = preferredFormat;
+        reason = 'User selected this format manually';
+      } else {
+        const formatSelection = await selectVisualizationFormat(input);
+        if (!formatSelection.visualizable || formatSelection.format === 'none') {
+          return {
+            success: false,
+            type: 'network_graph',
+            data: {} as VisualizationData,
+            reason: formatSelection.reason,
+            error: 'This content is not suitable for visualization',
+          };
+        }
+        format = formatSelection.format;
+        reason = formatSelection.reason;
+      }
+      data = await generateVisualizationData(format, input);
+    }
 
     // Calculate metadata
     const processingTime = Date.now() - startTime;
