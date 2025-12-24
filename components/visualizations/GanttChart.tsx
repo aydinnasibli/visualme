@@ -1,9 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-// @ts-ignore
-import Gantt from "frappe-gantt";
-import { GanttChartData } from "@/lib/types/visualization";
+import React, { useState, useMemo } from "react";
+import { GanttChartData, GanttTask } from "@/lib/types/visualization";
 import VisualizationContainer from "./VisualizationContainer";
 
 interface GanttChartProps {
@@ -14,90 +12,150 @@ interface GanttChartProps {
 type ViewMode = "Day" | "Week" | "Month" | "Year";
 
 export default function GanttChart({ data, readOnly = false }: GanttChartProps) {
-  const ganttRef = useRef<Gantt | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("Week");
+  const [hoveredTask, setHoveredTask] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!containerRef.current || !data.tasks.length) return;
-
-    // Clear container
-    containerRef.current.innerHTML = "";
-
-    // Transform data for Frappe Gantt
-    const tasks = data.tasks.map((t) => {
-      // Ensure dates are Date objects or properly formatted strings
-      const startDate = typeof t.start === 'string' ? t.start : t.start.toISOString().split('T')[0];
-      const endDate = typeof t.end === 'string' ? t.end : t.end.toISOString().split('T')[0];
-
+  // Calculate time scale based on view mode
+  const { startDate, endDate, totalDays, columnWidth, columns } = useMemo(() => {
+    if (!data.tasks.length) {
       return {
-        id: t.id,
-        name: t.name,
-        start: startDate,
-        end: endDate,
-        progress: t.progress,
-        dependencies: t.dependencies?.join(", ") || "",
-        custom_class: t.type === "milestone" ? "bar-milestone" : t.type === "project" ? "bar-project" : "bar-task",
+        startDate: new Date(),
+        endDate: new Date(),
+        totalDays: 0,
+        columnWidth: 0,
+        columns: [],
       };
-    });
-
-    try {
-      // Initialize Frappe Gantt
-      ganttRef.current = new Gantt(containerRef.current, tasks, {
-        header_height: 50,
-        column_width: 30,
-        step: 24,
-        view_modes: ["Quarter Day", "Half Day", "Day", "Week", "Month", "Year"],
-        bar_height: 25,
-        bar_corner_radius: 3,
-        arrow_curve: 5,
-        padding: 18,
-        view_mode: viewMode,
-        date_format: "YYYY-MM-DD",
-        custom_popup_html: (task: any) => {
-          // Custom tooltip
-          return `
-            <div class="gantt-tooltip-content">
-              <div class="gantt-tooltip-header">${task.name}</div>
-              <div class="gantt-tooltip-dates">
-                ${task._start.toLocaleDateString()} - ${task._end.toLocaleDateString()}
-              </div>
-              <div class="gantt-tooltip-progress">
-                Progress: ${task.progress}%
-              </div>
-            </div>
-          `;
-        },
-        on_click: (task: any) => {
-          console.log("Clicked", task);
-        },
-        on_date_change: (task: any, start: Date, end: Date) => {
-          if (readOnly) return;
-          console.log("Date changed", task, start, end);
-        },
-        on_progress_change: (task: any, progress: number) => {
-          if (readOnly) return;
-          console.log("Progress changed", task, progress);
-        },
-        on_view_change: (mode: string) => {
-          console.log("View change", mode);
-        },
-      });
-
-      // Apply view mode
-      ganttRef.current.change_view_mode(viewMode);
-    } catch (error) {
-      console.error("Error initializing Gantt chart:", error);
     }
 
-    // Cleanup function
-    return () => {
-      if (ganttRef.current && containerRef.current) {
-        containerRef.current.innerHTML = "";
-        ganttRef.current = null;
-      }
+    // Find min and max dates
+    const dates = data.tasks.flatMap((t) => [
+      new Date(t.start),
+      new Date(t.end),
+    ]);
+    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+
+    // Add padding
+    const start = new Date(minDate);
+    const end = new Date(maxDate);
+    start.setDate(start.getDate() - 1);
+    end.setDate(end.getDate() + 1);
+
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Calculate column width based on view mode
+    let colWidth = 40;
+    let cols: { date: Date; label: string }[] = [];
+
+    switch (viewMode) {
+      case "Day":
+        colWidth = 50;
+        for (let i = 0; i < diffDays; i++) {
+          const d = new Date(start);
+          d.setDate(d.getDate() + i);
+          cols.push({
+            date: d,
+            label: d.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            }),
+          });
+        }
+        break;
+      case "Week":
+        colWidth = 80;
+        const weeks = Math.ceil(diffDays / 7);
+        for (let i = 0; i < weeks; i++) {
+          const d = new Date(start);
+          d.setDate(d.getDate() + i * 7);
+          cols.push({
+            date: d,
+            label: `Week ${i + 1}`,
+          });
+        }
+        break;
+      case "Month":
+        colWidth = 100;
+        const months = Math.ceil(diffDays / 30);
+        for (let i = 0; i < months; i++) {
+          const d = new Date(start);
+          d.setMonth(d.getMonth() + i);
+          cols.push({
+            date: d,
+            label: d.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+          });
+        }
+        break;
+      case "Year":
+        colWidth = 120;
+        const years = Math.ceil(diffDays / 365);
+        for (let i = 0; i < years; i++) {
+          const d = new Date(start);
+          d.setFullYear(d.getFullYear() + i);
+          cols.push({ date: d, label: d.getFullYear().toString() });
+        }
+        break;
+    }
+
+    return {
+      startDate: start,
+      endDate: end,
+      totalDays: diffDays,
+      columnWidth: colWidth,
+      columns: cols,
     };
-  }, [data, viewMode, readOnly]);
+  }, [data.tasks, viewMode]);
+
+  const getTaskPosition = (task: GanttTask) => {
+    const taskStart = new Date(task.start);
+    const taskEnd = new Date(task.end);
+
+    const startDiff = Math.abs(taskStart.getTime() - startDate.getTime());
+    const startDays = Math.ceil(startDiff / (1000 * 60 * 60 * 24));
+
+    const duration =
+      Math.abs(taskEnd.getTime() - taskStart.getTime()) /
+      (1000 * 60 * 60 * 24);
+
+    let x, width;
+    switch (viewMode) {
+      case "Day":
+        x = startDays * columnWidth;
+        width = duration * columnWidth;
+        break;
+      case "Week":
+        x = (startDays / 7) * columnWidth;
+        width = (duration / 7) * columnWidth;
+        break;
+      case "Month":
+        x = (startDays / 30) * columnWidth;
+        width = (duration / 30) * columnWidth;
+        break;
+      case "Year":
+        x = (startDays / 365) * columnWidth;
+        width = (duration / 365) * columnWidth;
+        break;
+    }
+
+    return { x, width: Math.max(width, 20) };
+  };
+
+  const getTaskColor = (type?: string) => {
+    switch (type) {
+      case "milestone":
+        return "#ec4899"; // pink-500
+      case "project":
+        return "#8b5cf6"; // violet-500
+      default:
+        return "#3b82f6"; // blue-500
+    }
+  };
+
+  const rowHeight = 50;
+  const headerHeight = 60;
+  const chartHeight = data.tasks.length * rowHeight + headerHeight + 20;
+  const chartWidth = Math.max(columns.length * columnWidth, 800);
 
   return (
     <VisualizationContainer
@@ -127,180 +185,188 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
 
         {/* Chart Container */}
         <div className="flex-1 overflow-auto custom-scrollbar p-4 relative">
-          {/* We need a specific wrapper for frappe-gantt to attach to */}
-          <div
-            ref={containerRef}
-            className="frappe-gantt-wrapper bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-xl overflow-auto min-h-[400px]"
-          />
+          <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-xl min-h-[400px] p-4">
+            <svg
+              width={chartWidth}
+              height={chartHeight}
+              className="w-full"
+              style={{ minWidth: chartWidth }}
+            >
+              {/* Grid Background */}
+              <defs>
+                <pattern
+                  id="grid"
+                  width={columnWidth}
+                  height={rowHeight}
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d={`M ${columnWidth} 0 L 0 0 0 ${rowHeight}`}
+                    fill="none"
+                    stroke="#282e39"
+                    strokeWidth="0.5"
+                  />
+                </pattern>
+              </defs>
+
+              <rect
+                width={chartWidth}
+                height={chartHeight}
+                fill="url(#grid)"
+              />
+
+              {/* Header */}
+              <rect
+                x={0}
+                y={0}
+                width={chartWidth}
+                height={headerHeight}
+                fill="#1a1f28"
+              />
+
+              {/* Column Headers */}
+              {columns.map((col, i) => (
+                <g key={i}>
+                  <line
+                    x1={i * columnWidth}
+                    y1={0}
+                    x2={i * columnWidth}
+                    y2={chartHeight}
+                    stroke="#282e39"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={i * columnWidth + columnWidth / 2}
+                    y={headerHeight / 2}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#9ca3af"
+                    fontSize="12"
+                    fontWeight="500"
+                  >
+                    {col.label}
+                  </text>
+                </g>
+              ))}
+
+              {/* Tasks */}
+              {data.tasks.map((task, index) => {
+                const { x, width } = getTaskPosition(task);
+                const y = headerHeight + index * rowHeight + 10;
+                const barHeight = 30;
+                const color = getTaskColor(task.type);
+                const isHovered = hoveredTask === task.id;
+
+                return (
+                  <g
+                    key={task.id}
+                    onMouseEnter={() => setHoveredTask(task.id)}
+                    onMouseLeave={() => setHoveredTask(null)}
+                    className="cursor-pointer transition-all"
+                  >
+                    {/* Task Bar Background */}
+                    <rect
+                      x={x}
+                      y={y}
+                      width={width}
+                      height={barHeight}
+                      fill={color}
+                      opacity={isHovered ? 0.9 : 0.7}
+                      rx="4"
+                      stroke={isHovered ? "#fff" : color}
+                      strokeWidth={isHovered ? "2" : "1"}
+                      className="transition-all duration-200"
+                    />
+
+                    {/* Progress Bar */}
+                    {task.progress > 0 && (
+                      <rect
+                        x={x}
+                        y={y}
+                        width={(width * task.progress) / 100}
+                        height={barHeight}
+                        fill="#60a5fa"
+                        opacity="0.8"
+                        rx="4"
+                      />
+                    )}
+
+                    {/* Task Label */}
+                    <text
+                      x={x + 8}
+                      y={y + barHeight / 2}
+                      dominantBaseline="middle"
+                      fill="#ffffff"
+                      fontSize="12"
+                      fontWeight="500"
+                      className="pointer-events-none"
+                    >
+                      {task.name}
+                    </text>
+
+                    {/* Tooltip on Hover */}
+                    {isHovered && (
+                      <g>
+                        <rect
+                          x={x}
+                          y={y - 60}
+                          width="200"
+                          height="55"
+                          fill="#0f1419"
+                          stroke="#334155"
+                          strokeWidth="1"
+                          rx="6"
+                          filter="url(#shadow)"
+                        />
+                        <text
+                          x={x + 10}
+                          y={y - 45}
+                          fill="#fff"
+                          fontSize="13"
+                          fontWeight="600"
+                        >
+                          {task.name}
+                        </text>
+                        <text
+                          x={x + 10}
+                          y={y - 28}
+                          fill="#94a3b8"
+                          fontSize="11"
+                        >
+                          {new Date(task.start).toLocaleDateString()} -{" "}
+                          {new Date(task.end).toLocaleDateString()}
+                        </text>
+                        <text
+                          x={x + 10}
+                          y={y - 12}
+                          fill="#3b82f6"
+                          fontSize="11"
+                          fontWeight="500"
+                        >
+                          Progress: {task.progress}%
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* Shadow Filter */}
+              <defs>
+                <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow
+                    dx="0"
+                    dy="4"
+                    stdDeviation="8"
+                    floodColor="#000"
+                    floodOpacity="0.3"
+                  />
+                </filter>
+              </defs>
+            </svg>
+          </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        /* FRAPPE GANTT BASE STYLES */
-        .gantt-container {
-          line-height: 14.5px;
-          position: relative;
-          overflow: auto;
-          font-size: 12px;
-          width: 100%;
-          border-radius: 8px;
-        }
-
-        .gantt {
-          user-select: none;
-          -webkit-user-select: none;
-          position: relative;
-        }
-
-        .gantt .grid-background {
-          fill: none;
-        }
-
-        .gantt .bar-wrapper {
-          cursor: pointer;
-        }
-
-        .gantt .bar-wrapper:hover .bar {
-          transition: transform 0.3s ease;
-        }
-
-        .gantt .handle {
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-
-        .gantt .handle.active,
-        .gantt .handle.visible {
-          cursor: ew-resize;
-          opacity: 1;
-        }
-
-        /* FRAPPE GANTT CUSTOM STYLES - DARK MODE SLEEK */
-
-        .gantt .grid-header {
-          fill: #1a1f28;
-          stroke: #282e39;
-        }
-
-        .gantt .grid-row {
-          fill: transparent;
-        }
-
-        .gantt .grid-row:nth-child(even) {
-          fill: rgba(255, 255, 255, 0.02);
-        }
-
-        .gantt .row-line {
-          stroke: #282e39;
-        }
-
-        .gantt .tick {
-          stroke: #282e39;
-        }
-
-        .gantt .today-highlight {
-          fill: rgba(59, 130, 246, 0.1);
-        }
-
-        /* Text */
-        .gantt .bar-label {
-          fill: #cbd5e1;
-          font-family: inherit;
-          font-size: 12px;
-        }
-
-        .gantt .lower-text, .gantt .upper-text {
-          fill: #9ca3af;
-          font-family: inherit;
-        }
-
-        .gantt .upper-text {
-          font-weight: 600;
-          font-size: 14px;
-        }
-
-        /* Bars */
-        .gantt .bar {
-          fill: #3b82f6; /* blue-500 */
-          stroke: #2563eb; /* blue-600 */
-        }
-
-        .gantt .bar-progress {
-          fill: #60a5fa; /* blue-400 */
-        }
-
-        /* Bar Types */
-        .gantt .bar-milestone .bar {
-          fill: #ec4899; /* pink-500 */
-        }
-        .gantt .bar-project .bar {
-          fill: #8b5cf6; /* violet-500 */
-        }
-
-        /* Arrows */
-        .gantt .arrow {
-          stroke: #64748b;
-          stroke-width: 1.5;
-        }
-
-        /* Popup / Tooltip */
-        .gantt-container .popup-wrapper {
-          background-color: #0f1419 !important;
-          color: #f1f5f9 !important;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
-          border: 1px solid #334155 !important;
-          border-radius: 0.5rem !important;
-          padding: 0 !important;
-          opacity: 1 !important;
-          transition: opacity 0.2s !important;
-        }
-
-        .gantt-container .popup-wrapper.active {
-          opacity: 1 !important;
-        }
-
-        .gantt-tooltip-content {
-          padding: 12px;
-          min-width: 200px;
-        }
-
-        .gantt-tooltip-header {
-          font-weight: bold;
-          margin-bottom: 4px;
-          color: #fff;
-          font-size: 14px;
-        }
-
-        .gantt-tooltip-dates {
-          color: #94a3b8;
-          font-size: 12px;
-          margin-bottom: 4px;
-        }
-
-        .gantt-tooltip-progress {
-          color: #3b82f6;
-          font-size: 12px;
-          font-weight: 500;
-        }
-
-        /* Scrollbar fix for the svg container */
-        .frappe-gantt-wrapper {
-          overflow: auto;
-        }
-
-        /* Hide default scrollbars but allow scrolling */
-        .frappe-gantt-wrapper::-webkit-scrollbar {
-          height: 8px;
-          width: 8px;
-        }
-        .frappe-gantt-wrapper::-webkit-scrollbar-track {
-          background: rgba(39, 39, 42, 0.3);
-        }
-        .frappe-gantt-wrapper::-webkit-scrollbar-thumb {
-          background: rgba(113, 113, 122, 0.5);
-          border-radius: 4px;
-        }
-      `}</style>
     </VisualizationContainer>
   );
 }
