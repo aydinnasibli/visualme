@@ -12,7 +12,6 @@ import type {
   MindMapData,
   MindMapNode,
   TreeDiagramData,
-  ForceDirectedGraphData,
   TimelineData,
   GanttChartData,
   AnimatedTimelineData,
@@ -275,33 +274,6 @@ JSON format:
 }`;
 
   return await callOpenAI<TreeDiagramData>(systemPrompt, userInput, 'gpt-4o-mini');
-}
-
-export async function generateForceDirectedGraph(userInput: string): Promise<ForceDirectedGraphData> {
-  const systemPrompt = `Create a complex, interconnected force-directed graph visualization.
-
-Rules:
-- Generate 15-30 nodes representing key entities/concepts
-- Generate dense connections (20-40 links) to show complexity
-- nodes: {id, name, group (1-10), val (size 5-20)}
-- links: {source (node id), target (node id), value (1-5)}
-- Cluster related nodes into groups (color coding)
-- Use 'val' to indicate importance/centrality
-
-JSON format:
-{
-  "nodes": [
-    {"id": "n1", "name": "Central Concept", "group": 1, "val": 20},
-    {"id": "n2", "name": "Related Node", "group": 1, "val": 10},
-    {"id": "n3", "name": "Other Cluster", "group": 2, "val": 15}
-  ],
-  "links": [
-    {"source": "n1", "target": "n2", "value": 5},
-    {"source": "n1", "target": "n3", "value": 2}
-  ]
-}`;
-
-  return await callOpenAI<ForceDirectedGraphData>(systemPrompt, userInput, 'gpt-4o-mini');
 }
 
 // ============================================================================
@@ -777,8 +749,6 @@ export async function generateVisualizationData(
       return await generateMindMap(userInput);
     case 'tree_diagram':
       return await generateTreeDiagram(userInput);
-    case 'force_directed_graph':
-      return await generateForceDirectedGraph(userInput);
     case 'timeline':
       return await generateTimeline(userInput);
     case 'gantt_chart':
