@@ -46,13 +46,13 @@ export default function Heatmap({ data }: HeatmapProps) {
 
   return (
     <VisualizationContainer>
-      <div className="w-full h-full flex flex-col p-8 overflow-auto">
-        <div className="m-auto">
+      <div className="w-full h-full flex flex-col p-8 overflow-auto custom-scrollbar">
+        <div className="m-auto min-w-max">
           {/* Grid Container */}
           <div
             className="grid gap-1"
             style={{
-                gridTemplateColumns: `auto repeat(${xKeys.length}, minmax(40px, 1fr))`,
+                gridTemplateColumns: `auto repeat(${xKeys.length}, minmax(60px, 1fr))`,
             }}
           >
             {/* Header Row (X Axis) */}
