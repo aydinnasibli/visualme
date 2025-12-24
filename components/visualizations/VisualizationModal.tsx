@@ -3,20 +3,8 @@
 import React, { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import dynamic from "next/dynamic";
-import { NetworkGraphHandle } from "./NetworkGraph";
-import MindMapVisualization, { MindMapHandle } from "./MindMap";
+import { VISUALIZATION_COMPONENTS } from "./VisualizationFactory";
 import type { SavedVisualization } from "@/lib/types/visualization";
-
-const DynamicNetworkGraph = dynamic(() => import("./NetworkGraph"), {
-  ssr: false,
-});
-const DynamicTreeDiagram = dynamic(() => import("./TreeDiagram"), {
-  ssr: false,
-});
-const DynamicTimeline = dynamic(() => import("./Timeline"), {
-  ssr: false,
-});
 
 interface VisualizationModalProps {
   visualization: SavedVisualization | null;
@@ -27,10 +15,9 @@ export default function VisualizationModal({
   visualization,
   onClose,
 }: VisualizationModalProps) {
-  const networkGraphRef = useRef<NetworkGraphHandle>(null);
-  const mindMapRef = useRef<MindMapHandle>(null);
-
   if (!visualization) return null;
+
+  const SpecificComponent = VISUALIZATION_COMPONENTS[visualization.type];
 
   return (
     <AnimatePresence>
@@ -67,35 +54,16 @@ export default function VisualizationModal({
           </div>
 
           {/* Visualization Content */}
-          <div className="flex-1 overflow-auto p-6">
-            {visualization.type === "network_graph" && (
-              <DynamicNetworkGraph
-                ref={networkGraphRef}
+          <div className="flex-1 overflow-auto bg-[#0f1419] relative">
+            {SpecificComponent ? (
+              <SpecificComponent
                 data={visualization.data as any}
                 readOnly={true}
               />
-            )}
-
-            {visualization.type === "mind_map" && (
-              <MindMapVisualization
-                ref={mindMapRef}
-                data={visualization.data as any}
-                readOnly={true}
-              />
-            )}
-
-            {visualization.type === "tree_diagram" && (
-              <DynamicTreeDiagram
-                data={visualization.data as any}
-                readOnly={true}
-              />
-            )}
-
-            {visualization.type === "timeline" && (
-              <DynamicTimeline
-                data={visualization.data as any}
-                readOnly={true}
-              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-zinc-500">
+                Visualization type "{visualization.type}" not supported yet.
+              </div>
             )}
           </div>
         </motion.div>
