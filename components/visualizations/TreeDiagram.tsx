@@ -2,10 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Tree from 'react-d3-tree';
-import { motion, AnimatePresence } from 'framer-motion';
 import { TreeDiagramData } from '@/lib/types/visualization';
 import { useExtendedNodes } from '@/lib/context/ExtendedNodesContext';
 import NodeDetailPanel from './NodeDetailPanel';
+import VisualizationContainer from './VisualizationContainer';
 
 interface TreeDiagramProps {
   data: TreeDiagramData;
@@ -33,7 +33,7 @@ interface TreeCustomNode {
 const CustomNode = ({ nodeDatum, onNodeClick }: { nodeDatum: TreeCustomNode; onNodeClick: () => void }) => {
   const isRoot = nodeDatum.__rd3t.depth === 0;
   // Node colors based on depth (cycling)
-  const colors = ["#a855f7", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#6366f1"];
+  const colors = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#6366f1"];
   const color = colors[(nodeDatum.__rd3t.depth || 0) % colors.length];
   
   return (
@@ -82,26 +82,32 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
   const [isExpanding, setIsExpanding] = useState(false);
   const { addExtendedNode } = useExtendedNodes();
 
+  // State to force re-render/reset
+  const [translate, setTranslate] = useState({ x: 100, y: 350 });
+  const [zoom, setZoom] = useState(1);
+
   useEffect(() => {
     if (containerRef.current) {
       setDimensions({
         width: containerRef.current.clientWidth,
         height: containerRef.current.clientHeight,
       });
+      // Set initial translation based on new dimensions
+      setTranslate({ x: 100, y: containerRef.current.clientHeight / 2 });
     }
     
     // Resize observer to update dimensions on window resize
     const observer = new ResizeObserver((entries) => {
         if (entries[0]) {
-            setDimensions({
-                width: entries[0].contentRect.width,
-                height: entries[0].contentRect.height,
-            });
+            const { width, height } = entries[0].contentRect;
+            setDimensions({ width, height });
+            // Optional: recenter on resize if desired, or let user do it
         }
     });
     
-    if (containerRef.current) {
-        observer.observe(containerRef.current);
+    const currentRef = containerRef.current;
+    if (currentRef) {
+        observer.observe(currentRef);
     }
     
     return () => observer.disconnect();
@@ -114,16 +120,12 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
   const handleExpandNode = async () => {
     if (!selectedNode || !onExpand) return;
     
-    // Check if node is extendable (stored in attributes)
     if (!selectedNode.attributes?.extendable) return;
 
     setIsExpanding(true);
     try {
-      await onExpand(selectedNode.__rd3t.id, selectedNode.name); // react-d3-tree adds __rd3t.id
-      // Since tree structure might be dynamic, relying on __rd3t.id is safe for session but maybe not for persistence if IDs regenerate.
-      // Ideally the backend provides stable IDs in `attributes.id` if persistence is critical.
-      // For now we assume this works for the session.
-      // await addExtendedNode(selectedNode.__rd3t.id, visualizationKey); // Temporarily disabled if ID isn't stable or needed for this specific logic
+      await onExpand(selectedNode.__rd3t.id, selectedNode.name);
+      // await addExtendedNode(selectedNode.__rd3t.id, visualizationKey);
       setSelectedNode(null);
     } catch (error) {
       console.error("Failed to expand tree node:", error);
@@ -132,11 +134,16 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
     }
   };
 
+  const handleReset = () => {
+    // Reset zoom and translate
+    setZoom(1);
+    setTranslate({ x: 100, y: dimensions.height / 2 });
+  };
+
   // Prepare node data for the detailed panel
   const getPanelData = () => {
     if (!selectedNode) return null;
 
-    // Generate a consistent color based on depth
     const colors = ["#a855f7", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#6366f1"];
     const color = colors[(selectedNode.__rd3t.depth || 0) % colors.length];
 
@@ -147,49 +154,44 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
       color: color,
       description: selectedNode.attributes?.description,
       extendable: selectedNode.attributes?.extendable,
-      keyPoints: selectedNode.attributes?.keyPoints, // Map rich data if available
+      keyPoints: selectedNode.attributes?.keyPoints,
       relatedConcepts: selectedNode.attributes?.relatedConcepts,
       degree: selectedNode.children ? selectedNode.children.length : 0,
     };
   };
 
   return (
-    <div ref={containerRef} className="w-full h-[750px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl">
-      {/* Background Grid */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none" 
-           style={{ 
-             backgroundImage: 'radial-gradient(#4b5563 1px, transparent 1px)', 
-             backgroundSize: '24px 24px' 
-           }} 
-      />
+    <VisualizationContainer onReset={handleReset}>
+      <div ref={containerRef} className="w-full h-full relative">
+        {dimensions.width > 0 && (
+          <Tree
+            data={data}
+            translate={translate}
+            zoom={zoom}
+            nodeSize={{ x: 200, y: 100 }}
+            renderCustomNodeElement={(rd3tProps) => (
+              <CustomNode
+                {...rd3tProps}
+                onNodeClick={() => handleNodeClick(rd3tProps.nodeDatum)}
+              />
+            )}
+            pathClassFunc={() => 'custom-link'}
+            zoomable={true}
+            draggable={true}
+            separation={{ siblings: 1.5, nonSiblings: 2 }}
+            orientation="horizontal"
+          />
+        )}
 
-      {dimensions.width > 0 && (
-        <Tree
-          data={data}
-          translate={{ x: dimensions.width / 2, y: 50 }}
-          nodeSize={{ x: 200, y: 100 }}
-          renderCustomNodeElement={(rd3tProps) => (
-            <CustomNode 
-              {...rd3tProps} 
-              onNodeClick={() => handleNodeClick(rd3tProps.nodeDatum)} 
-            />
-          )}
-          pathClassFunc={() => 'custom-link'}
-          zoomable={true}
-          draggable={true}
-          separation={{ siblings: 1.5, nonSiblings: 2 }}
-          orientation="vertical"
+        {/* Details Panel */}
+        <NodeDetailPanel
+          selectedNode={getPanelData()}
+          onClose={() => setSelectedNode(null)}
+          onExpand={handleExpandNode}
+          isExpanding={isExpanding}
+          readOnly={readOnly}
         />
-      )}
-
-      {/* Details Panel */}
-      <NodeDetailPanel
-        selectedNode={getPanelData()}
-        onClose={() => setSelectedNode(null)}
-        onExpand={handleExpandNode}
-        isExpanding={isExpanding}
-        readOnly={readOnly}
-      />
-    </div>
+      </div>
+    </VisualizationContainer>
   );
 }

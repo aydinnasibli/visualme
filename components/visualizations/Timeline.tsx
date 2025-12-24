@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useRef } from "react";
+import { motion } from "framer-motion";
 import { TimelineData } from "@/lib/types/visualization";
+import VisualizationContainer from "./VisualizationContainer";
 
 interface TimelineProps {
   data: TimelineData;
@@ -20,8 +21,14 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
   // Generate colors cyclically
   const COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899"];
 
+  const handleReset = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ left: 0, behavior: "smooth" });
+    }
+  };
+
   return (
-    <div className="w-full h-[600px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl flex flex-col group">
+    <VisualizationContainer onReset={handleReset}>
       {/* Header / Legend could go here if needed */}
       <div className="absolute top-4 left-6 z-10 pointer-events-none">
         <h3 className="text-zinc-500 font-bold uppercase tracking-widest text-xs">
@@ -117,10 +124,6 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
                        {item.group}
                      </span>
                   )}
-
-                  {/* If we had descriptions, they would go here. For now content is the main text. */}
-                  {/* Using content as description if it's long, or assuming content is title. */}
-                  {/* Vis-timeline usually puts everything in content. We can try to parse or just show it. */}
                 </div>
               </motion.div>
             );
@@ -147,6 +150,6 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
           background: rgba(161, 161, 170, 0.7);
         }
       `}</style>
-    </div>
+    </VisualizationContainer>
   );
 }
