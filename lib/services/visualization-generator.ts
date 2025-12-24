@@ -309,14 +309,18 @@ export async function generateGanttChart(userInput: string): Promise<GanttChartD
   const systemPrompt = `Create Gantt chart data for project timelines.
 
 Rules:
-- tasks: array of {id, name, start (YYYY-MM-DD), end (YYYY-MM-DD), progress (0-100), dependencies (array of task IDs)}
+- tasks: array of {id, name, start (YYYY-MM-DD), end (YYYY-MM-DD), progress (0-100), dependencies (array of task IDs), type (optional: 'task'|'milestone'|'project', default 'task')}
 - Dependencies show task relationships
+- Use 'milestone' for zero-duration events, 'project' for grouping, 'task' for normal tasks.
+- Ensure dates are logical (start < end).
 
 JSON format:
 {
   "tasks": [
-    {"id": "task1", "name": "Design", "start": "2024-01-01", "end": "2024-01-15", "progress": 75, "dependencies": []},
-    {"id": "task2", "name": "Development", "start": "2024-01-16", "end": "2024-02-28", "progress": 30, "dependencies": ["task1"]}
+    {"id": "task1", "name": "Design Phase", "start": "2024-01-01", "end": "2024-01-15", "progress": 75, "dependencies": [], "type": "project"},
+    {"id": "task2", "name": "UI Design", "start": "2024-01-01", "end": "2024-01-07", "progress": 100, "dependencies": ["task1"], "type": "task"},
+    {"id": "task3", "name": "Development", "start": "2024-01-16", "end": "2024-02-28", "progress": 30, "dependencies": ["task1"], "type": "task"},
+    {"id": "m1", "name": "Launch", "start": "2024-03-01", "end": "2024-03-01", "progress": 0, "dependencies": ["task3"], "type": "milestone"}
   ]
 }`;
 
@@ -673,9 +677,9 @@ export async function generateVisualizationCombined(
   // OPTIMIZED PROMPT: Reduced by 50% to save tokens while maintaining quality
   const systemPrompt = `Expert visualization AI: Select optimal format AND generate data in ONE response.
 
-CRITICAL: Only use network_graph or mind_map formats - all other types are under development!
+CRITICAL: Only use network_graph, mind_map, or gantt_chart formats - all other types are under development!
 
-AVAILABLE FORMATS (2 working):
+AVAILABLE FORMATS (3 working):
 1. network_graph - Concepts, relationships, knowledge graphs, educational content, complex topics
    - BEST for most content: ideas, processes, systems, comparisons, categories
    - Shows connections and relationships between concepts
@@ -686,16 +690,21 @@ AVAILABLE FORMATS (2 working):
    - Tree-like structure with parent-child relationships
    - Good for organizing thoughts and breaking down topics
 
+3. gantt_chart - Project timelines, schedules, task dependencies
+   - BEST for project management, schedules, and timelines with start/end dates
+   - Shows tasks, durations, and dependencies
+   - Use 'type' field: 'task', 'milestone', or 'project'
+
 RULES:
-- ONLY use network_graph or mind_map - no exceptions!
-- Default to network_graph for most content (80% of cases)
+- ONLY use network_graph, mind_map, or gantt_chart - no exceptions!
+- Default to network_graph for most content (80% of cases) unless it's clearly a project schedule or hierarchy
 - Use mind_map only for clearly hierarchical content
-- Generate 10-20 nodes with 3-5 sentence descriptions
-- Mark complex nodes "extendable: true" with metadata
+- Use gantt_chart ONLY for project timelines with clear sequences and dates
+- Generate 10-20 nodes/tasks with rich descriptions
 
 Return valid JSON:
 {
-  "format": "network_graph" or "mind_map",
+  "format": "network_graph", "mind_map", or "gantt_chart",
   "reason": "why chosen",
   "data": { /* complete schema for format */ }
 }`;
