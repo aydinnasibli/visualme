@@ -27,67 +27,75 @@ export default function WordCloud({ data }: WordCloudProps) {
   useEffect(() => {
     if (!containerRef.current || !svgRef.current || !data.words.length) return;
 
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
+    // Use ResizeObserver to ensure we get correct dimensions
+    const resizeObserver = new ResizeObserver(entries => {
+      if (!entries[0] || !containerRef.current || !svgRef.current) return;
 
-    // Clear previous
-    const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
+      const { width, height } = entries[0].contentRect;
+      if (width === 0 || height === 0) return;
 
-    // Scale font size based on value
-    const maxValue = Math.max(...data.words.map((w) => w.value));
-    const fontSizeScale = d3.scaleLinear().domain([0, maxValue]).range([14, 80]);
+      // Clear previous
+      const svg = d3.select(svgRef.current);
+      svg.selectAll("*").remove();
 
-    // Random Color Picker
-    const getColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
+      // Scale font size based on value
+      const maxValue = Math.max(...data.words.map((w) => w.value));
+      const fontSizeScale = d3.scaleLinear().domain([0, maxValue]).range([14, 80]);
 
-    const layout = cloud()
-      .size([width, height])
-      .words(
-        data.words.map((d) => ({
-          text: d.text,
-          size: fontSizeScale(d.value),
-          color: getColor(),
-        }))
-      )
-      .padding(5)
-      .rotate(() => (Math.random() > 0.5 ? 0 : 90))
-      .font("Inter")
-      .fontSize((d: any) => d.size)
-      .on("end", draw);
+      // Random Color Picker
+      const getColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
 
-    layout.start();
+      const layout = cloud()
+        .size([width, height])
+        .words(
+          data.words.map((d) => ({
+            text: d.text,
+            size: fontSizeScale(d.value),
+            color: getColor(),
+          }))
+        )
+        .padding(5)
+        .rotate(() => (Math.random() > 0.5 ? 0 : 90))
+        .font("Inter")
+        .fontSize((d: any) => d.size)
+        .on("end", draw);
 
-    function draw(words: any[]) {
-      const g = svg
-        .append("g")
-        .attr("transform", `translate(${width / 2},${height / 2})`);
+      layout.start();
 
-      g.selectAll("text")
-        .data(words)
-        .join("text")
-        .style("font-size", (d: any) => `${d.size}px`)
-        .style("font-family", "Inter, sans-serif")
-        .style("font-weight", "bold")
-        .style("fill", (d: any) => d.color)
-        .style("cursor", "pointer")
-        .style("transition", "all 0.3s ease")
-        .attr("text-anchor", "middle")
-        .attr("transform", (d: any) => `translate(${d.x},${d.y})rotate(${d.rotate})`)
-        .text((d: any) => d.text)
-        .on("mouseover", function (event, d: any) {
-          d3.select(this)
-            .style("fill", "#fff")
-            .style("filter", `drop-shadow(0 0 10px ${d.color})`)
-            .style("font-size", `${d.size * 1.1}px`);
-        })
-        .on("mouseout", function (event, d: any) {
-          d3.select(this)
-            .style("fill", d.color)
-            .style("filter", "none")
-            .style("font-size", `${d.size}px`);
-        });
-    }
+      function draw(words: any[]) {
+        const g = svg
+          .append("g")
+          .attr("transform", `translate(${width / 2},${height / 2})`);
+
+        g.selectAll("text")
+          .data(words)
+          .join("text")
+          .style("font-size", (d: any) => `${d.size}px`)
+          .style("font-family", "Inter, sans-serif")
+          .style("font-weight", "bold")
+          .style("fill", (d: any) => d.color)
+          .style("cursor", "pointer")
+          .style("transition", "all 0.3s ease")
+          .attr("text-anchor", "middle")
+          .attr("transform", (d: any) => `translate(${d.x},${d.y})rotate(${d.rotate})`)
+          .text((d: any) => d.text)
+          .on("mouseover", function (event, d: any) {
+            d3.select(this)
+              .style("fill", "#fff")
+              .style("filter", `drop-shadow(0 0 10px ${d.color})`)
+              .style("font-size", `${d.size * 1.1}px`);
+          })
+          .on("mouseout", function (event, d: any) {
+            d3.select(this)
+              .style("fill", d.color)
+              .style("filter", "none")
+              .style("font-size", `${d.size}px`);
+          });
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
   }, [data]);
 
   return (
