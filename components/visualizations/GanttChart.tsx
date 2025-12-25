@@ -46,13 +46,14 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    // Calculate column width based on view mode and zoom
-    let colWidth = 40;
+    // Calculate base column width and columns based on view mode
+    let baseColWidth = 40;
     let cols: { date: Date; label: string }[] = [];
+    const minContainerWidth = 800; // Minimum width to fill
 
     switch (viewMode) {
       case "Day":
-        colWidth = 50 * zoom;
+        baseColWidth = 50 * zoom;
         for (let i = 0; i < diffDays; i++) {
           const d = new Date(start);
           d.setDate(d.getDate() + i);
@@ -66,7 +67,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         }
         break;
       case "Week":
-        colWidth = 80 * zoom;
+        baseColWidth = 80 * zoom;
         const weeks = Math.ceil(diffDays / 7);
         for (let i = 0; i < weeks; i++) {
           const d = new Date(start);
@@ -78,7 +79,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         }
         break;
       case "Month":
-        colWidth = 100 * zoom;
+        baseColWidth = 100 * zoom;
         const months = Math.ceil(diffDays / 30);
         for (let i = 0; i < months; i++) {
           const d = new Date(start);
@@ -90,7 +91,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         }
         break;
       case "Year":
-        colWidth = 120 * zoom;
+        baseColWidth = 120 * zoom;
         const years = Math.ceil(diffDays / 365);
         for (let i = 0; i < years; i++) {
           const d = new Date(start);
@@ -100,11 +101,18 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         break;
     }
 
+    // Calculate actual column width to fill container
+    const calculatedWidth = cols.length * baseColWidth;
+    const shouldFillContainer = calculatedWidth < minContainerWidth;
+    const finalColWidth = shouldFillContainer
+      ? Math.max(baseColWidth, minContainerWidth / cols.length)
+      : baseColWidth;
+
     return {
       startDate: start,
       endDate: end,
       totalDays: diffDays,
-      columnWidth: colWidth,
+      columnWidth: finalColWidth,
       columns: cols,
     };
   }, [data.tasks, viewMode, zoom]);
@@ -187,7 +195,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
   const headerHeight = 60;
   const taskNameWidth = 200;
   const chartHeight = data.tasks.length * rowHeight + headerHeight + 20;
-  const chartWidth = Math.max(columns.length * columnWidth, 600);
+  const chartWidth = columns.length * columnWidth;
 
   const handleReset = () => {
     setViewMode("Week");
