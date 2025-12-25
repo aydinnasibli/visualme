@@ -465,18 +465,33 @@ export default function GanttChart({ data }: GanttChartProps) {
                   // Start from end of source task
                   const startX = sourcePos.x + sourcePos.width;
                   const endX = targetPos.x;
-
-                  // Only draw arrow if target is after source (valid dependency)
-                  if (endX <= startX + 10) return null;
-
-                  // Create smooth curved path
-                  const horizontalGap = endX - startX;
                   const verticalGap = Math.abs(targetY - sourceY);
-                  const controlOffset = Math.min(horizontalGap / 3, 50);
 
-                  const path = `M ${startX} ${sourceY} C ${
-                    startX + controlOffset
-                  } ${sourceY}, ${endX - controlOffset} ${targetY}, ${endX} ${targetY}`;
+                  let path: string;
+                  let isDashed = false;
+
+                  // Check if this is a forward or backward dependency
+                  if (endX > startX + 10) {
+                    // Forward dependency - normal curved arrow
+                    const horizontalGap = endX - startX;
+                    const controlOffset = Math.min(horizontalGap / 3, 50);
+                    path = `M ${startX} ${sourceY} C ${
+                      startX + controlOffset
+                    } ${sourceY}, ${endX - controlOffset} ${targetY}, ${endX} ${targetY}`;
+                    isDashed = verticalGap > LAYOUT_CONSTANTS.rowHeight * 2;
+                  } else {
+                    // Backward dependency - loop around with S-curve
+                    const offsetY = 20;
+                    const midY = (sourceY + targetY) / 2;
+                    const loopOut = 30;
+
+                    path = `M ${startX} ${sourceY}
+                            L ${startX + loopOut} ${sourceY}
+                            C ${startX + loopOut + 20} ${sourceY}, ${startX + loopOut + 20} ${midY}, ${startX + loopOut} ${midY}
+                            L ${endX - loopOut} ${midY}
+                            C ${endX - loopOut - 20} ${midY}, ${endX - loopOut - 20} ${targetY}, ${endX} ${targetY}`;
+                    isDashed = true;
+                  }
 
                   return (
                     <path
@@ -487,11 +502,7 @@ export default function GanttChart({ data }: GanttChartProps) {
                       fill="none"
                       markerEnd="url(#arrowhead)"
                       opacity="0.5"
-                      strokeDasharray={
-                        verticalGap > LAYOUT_CONSTANTS.rowHeight * 2
-                          ? "5,5"
-                          : "none"
-                      }
+                      strokeDasharray={isDashed ? "5,5" : "none"}
                     />
                   );
                 });
