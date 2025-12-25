@@ -469,3 +469,35 @@ export async function getUserUsage() {
     return { success: false, error: 'Failed to fetch usage data', data: null };
   }
 }
+
+/**
+ * Edit a draft visualization (not saved to database yet)
+ */
+export async function editDraftVisualization(
+  visualizationType: VisualizationType,
+  existingData: VisualizationData,
+  editPrompt: string
+): Promise<{ success: boolean; data?: VisualizationData; error?: string }> {
+  try {
+    // Import the service dynamically to avoid circular dependencies
+    const { VisualizationGeneratorService } = await import('@/lib/services/visualization-generator');
+
+    const generatorService = new VisualizationGeneratorService();
+    const updatedData = await generatorService.editVisualization(
+      visualizationType,
+      existingData,
+      editPrompt
+    );
+
+    return {
+      success: true,
+      data: updatedData,
+    };
+  } catch (error) {
+    console.error('Error editing draft visualization:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to edit visualization',
+    };
+  }
+}

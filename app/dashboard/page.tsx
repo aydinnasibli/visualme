@@ -3,11 +3,10 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@clerk/nextjs';
-import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction } from '@/lib/actions/visualize';
+import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction, editDraftVisualization } from '@/lib/actions/visualize';
 import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData } from '@/lib/types/visualization';
 import { Edit3, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { VisualizationGeneratorService } from '@/lib/services/visualization-generator';
 
 const LoadingPlaceholder = () => (
   <div className="w-full h-full bg-[#1a1f28] rounded-2xl flex items-center justify-center border border-[#282e39] animate-pulse">
@@ -276,16 +275,19 @@ export default function DashboardPage() {
     setIsEditing(true);
 
     try {
-      const generatorService = new VisualizationGeneratorService();
-      const updatedData = await generatorService.editVisualization(
+      const response = await editDraftVisualization(
         result.type as VisualizationType,
         result.data,
         editPrompt.trim()
       );
 
+      if (!response.success) {
+        throw new Error(response.error || "Failed to edit visualization");
+      }
+
       setResult({
         ...result,
-        data: updatedData,
+        data: response.data!,
       });
       setEditPrompt('');
       setIsEditMode(false);
