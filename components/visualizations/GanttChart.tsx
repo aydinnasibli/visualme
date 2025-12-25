@@ -1,21 +1,55 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { GanttChartData, GanttTask } from "@/lib/types/visualization";
 import { X, ZoomIn, ZoomOut, Calendar } from "lucide-react";
 
 interface GanttChartProps {
   data: GanttChartData;
-  readOnly?: boolean;
 }
 
 type ViewMode = "Day" | "Week" | "Month" | "Year";
 
-export default function GanttChart({ data, readOnly = false }: GanttChartProps) {
+// Constants
+const VIEW_MODE_CONFIG = {
+  Day: { baseWidth: 50, divisor: 1 },
+  Week: { baseWidth: 80, divisor: 7 },
+  Month: { baseWidth: 100, divisor: 30 },
+  Year: { baseWidth: 120, divisor: 365 },
+} as const;
+
+const TASK_COLORS = {
+  milestone: "#ec4899", // pink-500
+  project: "#8b5cf6", // violet-500
+  task: "#3b82f6", // blue-500
+} as const;
+
+const LAYOUT_CONSTANTS = {
+  rowHeight: 50,
+  headerHeight: 60,
+  taskNameWidth: 200,
+  availableWidth: 1000,
+  minChartWidth: 1000,
+  barHeight: 30,
+  taskYOffset: 10,
+} as const;
+
+export default function GanttChart({ data }: GanttChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("Week");
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<GanttTask | null>(null);
   const [zoom, setZoom] = useState(1);
+
+  // Utility functions
+  const getTaskColor = useCallback((type?: string): string => {
+    if (type === "milestone") return TASK_COLORS.milestone;
+    if (type === "project") return TASK_COLORS.project;
+    return TASK_COLORS.task;
+  }, []);
+
+  const calculateDaysBetween = useCallback((start: Date, end: Date): number => {
+    return Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  }, []);
 
   // Calculate time scale based on view mode
   const { startDate, endDate, totalDays, columnWidth, columns } = useMemo(() => {
@@ -29,13 +63,11 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
       };
     }
 
-    // Find min and max dates
-    const dates = data.tasks.flatMap((t) => [
-      new Date(t.start),
-      new Date(t.end),
-    ]);
-    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    // Find min and max dates efficiently
+    const dates = data.tasks.flatMap((t) => [new Date(t.start), new Date(t.end)]);
+    const timestamps = dates.map((d) => d.getTime());
+    const minDate = new Date(Math.min(...timestamps));
+    const maxDate = new Date(Math.max(...timestamps));
 
     // Add padding
     const start = new Date(minDate);
@@ -43,68 +75,51 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     start.setDate(start.getDate() - 1);
     end.setDate(end.getDate() + 1);
 
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(
+      Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-    // Calculate base column width and columns based on view mode
-    let baseColWidth = 40;
-    let cols: { date: Date; label: string }[] = [];
-    // Available width (accounting for sidebar and padding)
-    const availableWidth = 1000; // Conservative estimate for chart area
+    const config = VIEW_MODE_CONFIG[viewMode];
+    const baseColWidth = config.baseWidth * zoom;
+    const cols: { date: Date; label: string }[] = [];
 
-    switch (viewMode) {
-      case "Day":
-        baseColWidth = 50 * zoom;
-        for (let i = 0; i < diffDays; i++) {
-          const d = new Date(start);
+    // Generate columns based on view mode
+    const periodCount = Math.ceil(diffDays / config.divisor);
+
+    for (let i = 0; i < periodCount; i++) {
+      const d = new Date(start);
+
+      switch (viewMode) {
+        case "Day":
           d.setDate(d.getDate() + i);
           cols.push({
             date: d,
-            label: d.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            }),
+            label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           });
-        }
-        break;
-      case "Week":
-        baseColWidth = 80 * zoom;
-        const weeks = Math.ceil(diffDays / 7);
-        for (let i = 0; i < weeks; i++) {
-          const d = new Date(start);
+          break;
+        case "Week":
           d.setDate(d.getDate() + i * 7);
-          cols.push({
-            date: d,
-            label: `Week ${i + 1}`,
-          });
-        }
-        break;
-      case "Month":
-        baseColWidth = 100 * zoom;
-        const months = Math.ceil(diffDays / 30);
-        for (let i = 0; i < months; i++) {
-          const d = new Date(start);
+          cols.push({ date: d, label: `Week ${i + 1}` });
+          break;
+        case "Month":
           d.setMonth(d.getMonth() + i);
           cols.push({
             date: d,
             label: d.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
           });
-        }
-        break;
-      case "Year":
-        baseColWidth = 120 * zoom;
-        const years = Math.ceil(diffDays / 365);
-        for (let i = 0; i < years; i++) {
-          const d = new Date(start);
+          break;
+        case "Year":
           d.setFullYear(d.getFullYear() + i);
           cols.push({ date: d, label: d.getFullYear().toString() });
-        }
-        break;
+          break;
+      }
     }
 
     // Always fill available width by distributing space across columns
-    const calculatedWidth = cols.length * baseColWidth;
-    const finalColWidth = Math.max(baseColWidth, availableWidth / cols.length);
+    const finalColWidth = Math.max(
+      baseColWidth,
+      LAYOUT_CONSTANTS.availableWidth / cols.length
+    );
 
     return {
       startDate: start,
@@ -115,50 +130,26 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     };
   }, [data.tasks, viewMode, zoom]);
 
-  const getTaskPosition = (task: GanttTask) => {
-    const taskStart = new Date(task.start);
-    const taskEnd = new Date(task.end);
+  // Memoize task positions for performance
+  const taskPositions = useMemo(() => {
+    const positions = new Map<string, { x: number; width: number }>();
 
-    const startDiff = Math.abs(taskStart.getTime() - startDate.getTime());
-    const startDays = Math.ceil(startDiff / (1000 * 60 * 60 * 24));
+    data.tasks.forEach((task) => {
+      const taskStart = new Date(task.start);
+      const taskEnd = new Date(task.end);
 
-    const duration =
-      Math.abs(taskEnd.getTime() - taskStart.getTime()) /
-      (1000 * 60 * 60 * 24);
+      const startDays = calculateDaysBetween(startDate, taskStart);
+      const duration = calculateDaysBetween(taskStart, taskEnd);
 
-    let x, width;
-    switch (viewMode) {
-      case "Day":
-        x = startDays * columnWidth;
-        width = duration * columnWidth;
-        break;
-      case "Week":
-        x = (startDays / 7) * columnWidth;
-        width = (duration / 7) * columnWidth;
-        break;
-      case "Month":
-        x = (startDays / 30) * columnWidth;
-        width = (duration / 30) * columnWidth;
-        break;
-      case "Year":
-        x = (startDays / 365) * columnWidth;
-        width = (duration / 365) * columnWidth;
-        break;
-    }
+      const config = VIEW_MODE_CONFIG[viewMode];
+      const x = (startDays / config.divisor) * columnWidth;
+      const width = (duration / config.divisor) * columnWidth;
 
-    return { x, width: Math.max(width, 20) };
-  };
+      positions.set(task.id, { x, width: Math.max(width, 20) });
+    });
 
-  const getTaskColor = (type?: string) => {
-    switch (type) {
-      case "milestone":
-        return "#ec4899"; // pink-500
-      case "project":
-        return "#8b5cf6"; // violet-500
-      default:
-        return "#3b82f6"; // blue-500
-    }
-  };
+    return positions;
+  }, [data.tasks, startDate, viewMode, columnWidth, calculateDaysBetween]);
 
   // Build task map and dependencies
   const taskMap = useMemo(() => {
@@ -169,38 +160,46 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     return map;
   }, [data.tasks]);
 
-  // Calculate today position
-  const getTodayPosition = () => {
+  // Memoize today position for performance
+  const todayPosition = useMemo(() => {
     const today = new Date();
-    const todayDiff = Math.abs(today.getTime() - startDate.getTime());
-    const todayDays = Math.ceil(todayDiff / (1000 * 60 * 60 * 24));
+    const todayDays = calculateDaysBetween(startDate, today);
+    const config = VIEW_MODE_CONFIG[viewMode];
+    return (todayDays / config.divisor) * columnWidth;
+  }, [startDate, viewMode, columnWidth, calculateDaysBetween]);
 
-    switch (viewMode) {
-      case "Day":
-        return todayDays * columnWidth;
-      case "Week":
-        return (todayDays / 7) * columnWidth;
-      case "Month":
-        return (todayDays / 30) * columnWidth;
-      case "Year":
-        return (todayDays / 365) * columnWidth;
-      default:
-        return 0;
-    }
-  };
+  // Chart dimensions
+  const chartHeight =
+    data.tasks.length * LAYOUT_CONSTANTS.rowHeight +
+    LAYOUT_CONSTANTS.headerHeight +
+    20;
+  const chartWidth = Math.max(
+    columns.length * columnWidth,
+    LAYOUT_CONSTANTS.minChartWidth
+  );
 
-  const rowHeight = 50;
-  const headerHeight = 60;
-  const taskNameWidth = 200;
-  const chartHeight = data.tasks.length * rowHeight + headerHeight + 20;
-  // Ensure chart always fills available width
-  const chartWidth = Math.max(columns.length * columnWidth, 1000);
-
-  const handleReset = () => {
+  // Event handlers
+  const handleReset = useCallback(() => {
     setViewMode("Week");
     setZoom(1);
     setSelectedTask(null);
-  };
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(2, z + 0.25));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => Math.max(0.5, z - 0.25));
+  }, []);
+
+  const handleTaskClick = useCallback((task: GanttTask) => {
+    setSelectedTask(task);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedTask(null);
+  }, []);
 
   return (
     <div className="w-full h-[800px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl">
@@ -224,14 +223,14 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
           {/* Zoom Controls */}
           <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-700">
             <button
-              onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+              onClick={handleZoomOut}
               className="p-1.5 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
               title="Zoom Out"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setZoom((z) => Math.min(2, z + 0.25))}
+              onClick={handleZoomIn}
               className="p-1.5 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
               title="Zoom In"
             >
@@ -273,7 +272,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
           {/* Header */}
           <div
             className="sticky top-0 z-20 bg-[#1a1f28] border-b border-zinc-800 flex items-center px-4"
-            style={{ height: headerHeight }}
+            style={{ height: LAYOUT_CONSTANTS.headerHeight }}
           >
             <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
               Tasks
@@ -281,10 +280,14 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
           </div>
 
           {/* Task List */}
-          {data.tasks.map((task, index) => {
+          {data.tasks.map((task) => {
             const color = getTaskColor(task.type);
             const isSelected = selectedTask?.id === task.id;
             const isHovered = hoveredTask === task.id;
+            const duration = calculateDaysBetween(
+              new Date(task.start),
+              new Date(task.end)
+            );
 
             return (
               <div
@@ -296,10 +299,10 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                     ? "bg-zinc-900/50"
                     : ""
                 }`}
-                style={{ height: rowHeight }}
+                style={{ height: LAYOUT_CONSTANTS.rowHeight }}
                 onMouseEnter={() => setHoveredTask(task.id)}
                 onMouseLeave={() => setHoveredTask(null)}
-                onClick={() => setSelectedTask(task)}
+                onClick={() => handleTaskClick(task)}
               >
                 <div className="flex items-center gap-2">
                   <div
@@ -311,12 +314,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                       {task.name}
                     </p>
                     <p className="text-xs text-zinc-500 truncate">
-                      {Math.ceil(
-                        (new Date(task.end).getTime() -
-                          new Date(task.start).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )}{" "}
-                      days
+                      {duration} days
                     </p>
                   </div>
                 </div>
@@ -338,11 +336,11 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 <pattern
                   id="grid"
                   width={columnWidth}
-                  height={rowHeight}
+                  height={LAYOUT_CONSTANTS.rowHeight}
                   patternUnits="userSpaceOnUse"
                 >
                   <path
-                    d={`M ${columnWidth} 0 L 0 0 0 ${rowHeight}`}
+                    d={`M ${columnWidth} 0 L 0 0 0 ${LAYOUT_CONSTANTS.rowHeight}`}
                     fill="none"
                     stroke="#282e39"
                     strokeWidth="0.5"
@@ -367,7 +365,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 x={0}
                 y={0}
                 width={chartWidth}
-                height={headerHeight}
+                height={LAYOUT_CONSTANTS.headerHeight}
                 fill="#1a1f28"
               />
 
@@ -384,7 +382,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                   />
                   <text
                     x={i * columnWidth + columnWidth / 2}
-                    y={headerHeight / 2}
+                    y={LAYOUT_CONSTANTS.headerHeight / 2}
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="#9ca3af"
@@ -398,87 +396,87 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
 
               {/* Today Indicator */}
               {(() => {
-                const todayX = getTodayPosition();
                 const today = new Date();
-                if (
-                  todayX >= 0 &&
-                  todayX <= chartWidth &&
+                const isInRange =
+                  todayPosition >= 0 &&
+                  todayPosition <= chartWidth &&
                   today >= startDate &&
-                  today <= endDate
-                ) {
-                  return (
-                    <g>
-                      <line
-                        x1={todayX}
-                        y1={headerHeight}
-                        x2={todayX}
-                        y2={chartHeight}
-                        stroke="#ef4444"
-                        strokeWidth="2"
-                        strokeDasharray="5,5"
-                        opacity="0.6"
-                      />
-                      <circle
-                        cx={todayX}
-                        cy={headerHeight - 10}
-                        r="4"
-                        fill="#ef4444"
-                      />
-                      <text
-                        x={todayX}
-                        y={headerHeight - 20}
-                        textAnchor="middle"
-                        fill="#ef4444"
-                        fontSize="10"
-                        fontWeight="600"
-                      >
-                        TODAY
-                      </text>
-                    </g>
-                  );
-                }
-                return null;
+                  today <= endDate;
+
+                if (!isInRange) return null;
+
+                return (
+                  <g>
+                    <line
+                      x1={todayPosition}
+                      y1={LAYOUT_CONSTANTS.headerHeight}
+                      x2={todayPosition}
+                      y2={chartHeight}
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      strokeDasharray="5,5"
+                      opacity="0.6"
+                    />
+                    <circle
+                      cx={todayPosition}
+                      cy={LAYOUT_CONSTANTS.headerHeight - 10}
+                      r="4"
+                      fill="#ef4444"
+                    />
+                    <text
+                      x={todayPosition}
+                      y={LAYOUT_CONSTANTS.headerHeight - 20}
+                      textAnchor="middle"
+                      fill="#ef4444"
+                      fontSize="10"
+                      fontWeight="600"
+                    >
+                      TODAY
+                    </text>
+                  </g>
+                );
               })()}
 
               {/* Dependency Arrows */}
               {data.tasks.map((task) => {
-                if (!task.dependencies || task.dependencies.length === 0)
-                  return null;
+                if (!task.dependencies?.length) return null;
 
-                const targetPos = getTaskPosition(task);
+                const targetPos = taskPositions.get(task.id);
+                if (!targetPos) return null;
+
                 const targetIndex = taskMap.get(task.id)?.index ?? 0;
-                const targetY = headerHeight + targetIndex * rowHeight + 25;
+                const targetY =
+                  LAYOUT_CONSTANTS.headerHeight +
+                  targetIndex * LAYOUT_CONSTANTS.rowHeight +
+                  25;
 
                 return task.dependencies.map((depId) => {
                   const dep = taskMap.get(depId);
                   if (!dep) return null;
 
-                  const sourcePos = getTaskPosition(dep.task);
-                  const sourceY = headerHeight + dep.index * rowHeight + 25;
+                  const sourcePos = taskPositions.get(dep.task.id);
+                  if (!sourcePos) return null;
+
+                  const sourceY =
+                    LAYOUT_CONSTANTS.headerHeight +
+                    dep.index * LAYOUT_CONSTANTS.rowHeight +
+                    25;
 
                   // Start from end of source task
                   const startX = sourcePos.x + sourcePos.width;
-                  const startY = sourceY;
-                  // End at start of target task
                   const endX = targetPos.x;
-                  const endY = targetY;
 
                   // Only draw arrow if target is after source (valid dependency)
-                  if (endX <= startX + 10) {
-                    // Skip backward dependencies or same position
-                    return null;
-                  }
+                  if (endX <= startX + 10) return null;
 
                   // Create smooth curved path
                   const horizontalGap = endX - startX;
-                  const verticalGap = Math.abs(endY - startY);
-
-                  // Control points for smooth curve
+                  const verticalGap = Math.abs(targetY - sourceY);
                   const controlOffset = Math.min(horizontalGap / 3, 50);
-                  const controlX1 = startX + controlOffset;
-                  const controlX2 = endX - controlOffset;
 
-                  const path = `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
+                  const path = `M ${startX} ${sourceY} C ${
+                    startX + controlOffset
+                  } ${sourceY}, ${endX - controlOffset} ${targetY}, ${endX} ${targetY}`;
 
                   return (
                     <path
@@ -489,7 +487,11 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                       fill="none"
                       markerEnd="url(#arrowhead)"
                       opacity="0.5"
-                      strokeDasharray={verticalGap > rowHeight * 2 ? "5,5" : "none"}
+                      strokeDasharray={
+                        verticalGap > LAYOUT_CONSTANTS.rowHeight * 2
+                          ? "5,5"
+                          : "none"
+                      }
                     />
                   );
                 });
@@ -497,9 +499,14 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
 
               {/* Tasks */}
               {data.tasks.map((task, index) => {
-                const { x, width } = getTaskPosition(task);
-                const y = headerHeight + index * rowHeight + 10;
-                const barHeight = 30;
+                const position = taskPositions.get(task.id);
+                if (!position) return null;
+
+                const { x, width } = position;
+                const y =
+                  LAYOUT_CONSTANTS.headerHeight +
+                  index * LAYOUT_CONSTANTS.rowHeight +
+                  LAYOUT_CONSTANTS.taskYOffset;
                 const color = getTaskColor(task.type);
                 const isHovered = hoveredTask === task.id;
                 const isSelected = selectedTask?.id === task.id;
@@ -510,16 +517,16 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                     key={task.id}
                     onMouseEnter={() => setHoveredTask(task.id)}
                     onMouseLeave={() => setHoveredTask(null)}
-                    onClick={() => setSelectedTask(task)}
+                    onClick={() => handleTaskClick(task)}
                     className="cursor-pointer transition-all"
                   >
                     {isMilestone ? (
                       <>
                         <polygon
                           points={`${x + width / 2},${y} ${x + width},${
-                            y + barHeight / 2
-                          } ${x + width / 2},${y + barHeight} ${x},${
-                            y + barHeight / 2
+                            y + LAYOUT_CONSTANTS.barHeight / 2
+                          } ${x + width / 2},${y + LAYOUT_CONSTANTS.barHeight} ${x},${
+                            y + LAYOUT_CONSTANTS.barHeight / 2
                           }`}
                           fill={color}
                           opacity={isSelected ? 1 : isHovered ? 0.9 : 0.8}
@@ -529,7 +536,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                         />
                         <text
                           x={x + width / 2}
-                          y={y + barHeight / 2}
+                          y={y + LAYOUT_CONSTANTS.barHeight / 2}
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fill="#ffffff"
@@ -546,7 +553,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                           x={x}
                           y={y}
                           width={width}
-                          height={barHeight}
+                          height={LAYOUT_CONSTANTS.barHeight}
                           fill={color}
                           opacity={isSelected ? 1 : isHovered ? 0.9 : 0.7}
                           rx="4"
@@ -555,12 +562,10 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                           className="transition-all duration-200"
                         />
 
-                        {/* Progress bar removed - not needed for planning */}
-
                         {width > 60 && (
                           <text
                             x={x + 8}
-                            y={y + barHeight / 2}
+                            y={y + LAYOUT_CONSTANTS.barHeight / 2}
                             dominantBaseline="middle"
                             fill="#ffffff"
                             fontSize="11"
@@ -568,7 +573,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                             className="pointer-events-none"
                           >
                             {task.name.length > 15
-                              ? task.name.substring(0, 15) + "..."
+                              ? `${task.name.substring(0, 15)}...`
                               : task.name}
                           </text>
                         )}
@@ -611,7 +616,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 </h3>
               </div>
               <button
-                onClick={() => setSelectedTask(null)}
+                onClick={handleCloseModal}
                 className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
@@ -627,7 +632,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                 <span
                   className="inline-block px-3 py-1 rounded-full text-xs font-medium"
                   style={{
-                    backgroundColor: getTaskColor(selectedTask.type) + "20",
+                    backgroundColor: `${getTaskColor(selectedTask.type)}20`,
                     color: getTaskColor(selectedTask.type),
                   }}
                 >
@@ -661,50 +666,47 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
               <div>
                 <p className="text-xs text-zinc-500 mb-1">Duration</p>
                 <p className="text-sm text-white font-medium">
-                  {Math.ceil(
-                    (new Date(selectedTask.end).getTime() -
-                      new Date(selectedTask.start).getTime()) /
-                      (1000 * 60 * 60 * 24)
+                  {calculateDaysBetween(
+                    new Date(selectedTask.start),
+                    new Date(selectedTask.end)
                   )}{" "}
                   days
                 </p>
               </div>
 
-              {selectedTask.dependencies &&
-                selectedTask.dependencies.length > 0 && (
-                  <div>
-                    <p className="text-xs text-zinc-500 mb-2">Dependencies</p>
-                    <div className="space-y-2">
-                      {selectedTask.dependencies.map((depId) => {
-                        const depTask = taskMap.get(depId)?.task;
-                        if (!depTask) return null;
-                        return (
+              {(selectedTask.dependencies?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs text-zinc-500 mb-2">Dependencies</p>
+                  <div className="space-y-2">
+                    {selectedTask.dependencies?.map((depId) => {
+                      const depTask = taskMap.get(depId)?.task;
+                      if (!depTask) return null;
+                      return (
+                        <div
+                          key={depId}
+                          className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded-lg"
+                        >
                           <div
-                            key={depId}
-                            className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded-lg"
-                          >
-                            <div
-                              className="w-2 h-2 rounded-full"
-                              style={{
-                                backgroundColor: getTaskColor(depTask.type),
-                              }}
-                            />
-                            <span className="text-sm text-zinc-300">
-                              {depTask.name}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            className="w-2 h-2 rounded-full"
+                            style={{
+                              backgroundColor: getTaskColor(depTask.type),
+                            }}
+                          />
+                          <span className="text-sm text-zinc-300">
+                            {depTask.name}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="flex justify-end p-6 border-t border-zinc-800">
               <button
-                onClick={() => setSelectedTask(null)}
+                onClick={handleCloseModal}
                 className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium"
               >
                 Close
