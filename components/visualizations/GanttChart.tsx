@@ -49,7 +49,8 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
     // Calculate base column width and columns based on view mode
     let baseColWidth = 40;
     let cols: { date: Date; label: string }[] = [];
-    const minContainerWidth = 800; // Minimum width to fill
+    // Available width (accounting for sidebar and padding)
+    const availableWidth = 1000; // Conservative estimate for chart area
 
     switch (viewMode) {
       case "Day":
@@ -101,12 +102,9 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
         break;
     }
 
-    // Calculate actual column width to fill container
+    // Always fill available width by distributing space across columns
     const calculatedWidth = cols.length * baseColWidth;
-    const shouldFillContainer = calculatedWidth < minContainerWidth;
-    const finalColWidth = shouldFillContainer
-      ? Math.max(baseColWidth, minContainerWidth / cols.length)
-      : baseColWidth;
+    const finalColWidth = Math.max(baseColWidth, availableWidth / cols.length);
 
     return {
       startDate: start,
@@ -195,7 +193,8 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
   const headerHeight = 60;
   const taskNameWidth = 200;
   const chartHeight = data.tasks.length * rowHeight + headerHeight + 20;
-  const chartWidth = columns.length * columnWidth;
+  // Ensure chart always fills available width
+  const chartWidth = Math.max(columns.length * columnWidth, 1000);
 
   const handleReset = () => {
     setViewMode("Week");
@@ -457,13 +456,29 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                   const sourcePos = getTaskPosition(dep.task);
                   const sourceY = headerHeight + dep.index * rowHeight + 25;
 
+                  // Start from end of source task
                   const startX = sourcePos.x + sourcePos.width;
                   const startY = sourceY;
+                  // End at start of target task
                   const endX = targetPos.x;
                   const endY = targetY;
 
-                  const midX = (startX + endX) / 2;
-                  const path = `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
+                  // Only draw arrow if target is after source (valid dependency)
+                  if (endX <= startX + 10) {
+                    // Skip backward dependencies or same position
+                    return null;
+                  }
+
+                  // Create smooth curved path
+                  const horizontalGap = endX - startX;
+                  const verticalGap = Math.abs(endY - startY);
+
+                  // Control points for smooth curve
+                  const controlOffset = Math.min(horizontalGap / 3, 50);
+                  const controlX1 = startX + controlOffset;
+                  const controlX2 = endX - controlOffset;
+
+                  const path = `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
 
                   return (
                     <path
@@ -473,7 +488,8 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                       strokeWidth="2"
                       fill="none"
                       markerEnd="url(#arrowhead)"
-                      opacity="0.6"
+                      opacity="0.5"
+                      strokeDasharray={verticalGap > rowHeight * 2 ? "5,5" : "none"}
                     />
                   );
                 });
