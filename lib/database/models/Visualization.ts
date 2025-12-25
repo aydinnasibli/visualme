@@ -67,6 +67,16 @@ const VisualizationSchema = new Schema<SavedVisualization>(
       sparse: true,
       index: true,
     },
+    history: {
+      type: [
+        {
+          role: { type: String, enum: ['user', 'assistant'], required: true },
+          content: { type: String, required: true },
+          timestamp: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

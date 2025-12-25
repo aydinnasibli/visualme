@@ -66,10 +66,12 @@ interface NodeData {
   onExpand: (nodeId: string, content: string) => Promise<void>;
   onShowDetails: (data: NodeData) => void;
   readOnly?: boolean;
+  customColor?: string; // Support for custom colors
 }
 
 const MindMapNode = ({ data }: { data: NodeData }) => {
-  const color = COLORS[data.level % COLORS.length];
+  // Use custom color if available, otherwise fallback to level-based color
+  const color = data.customColor || COLORS[data.level % COLORS.length];
   const isRoot = data.level === 0;
 
   return (
@@ -195,12 +197,13 @@ const createMindMapLayout = (
         keyPoints: node.metadata?.keyPoints,
         relatedConcepts: node.metadata?.relatedConcepts,
         nodeId: node.id,
+        customColor: node.color, // Pass custom color if present
       },
       draggable: true,
     });
 
     if (parentId) {
-      const color = COLORS[(node.level || 0) % COLORS.length];
+      const color = node.color || COLORS[(node.level || 0) % COLORS.length];
       edges.push({
         id: `e-${parentId}-${node.id}`,
         source: parentId,
