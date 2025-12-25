@@ -430,10 +430,18 @@ export default function MyVisualizationsPage() {
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
+        {/* Visualization Modal with Edit Support */}
         <VisualizationModal
           visualization={selectedViz}
           onClose={() => setSelectedViz(null)}
+          onVisualizationUpdated={(updatedViz) => {
+            // Update the visualization in the local state
+            setVisualizations((prev) =>
+              prev.map((v) => (v._id === updatedViz._id ? updatedViz : v))
+            );
+            // Update the selected visualization
+            setSelectedViz(updatedViz);
+          }}
         />
 
         {deleteConfirmId && (

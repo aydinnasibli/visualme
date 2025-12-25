@@ -795,3 +795,101 @@ export async function generateVisualizationData(
       throw new Error(`Unsupported visualization type: ${type}`);
   }
 }
+
+// ============================================================================
+// VISUALIZATION GENERATOR SERVICE CLASS
+// ============================================================================
+
+export class VisualizationGeneratorService {
+  /**
+   * Edit an existing visualization using AI
+   * @param type - The type of visualization
+   * @param existingData - The current visualization data
+   * @param editPrompt - User's natural language edit request
+   * @returns Updated visualization data
+   */
+  async editVisualization(
+    type: VisualizationType,
+    existingData: VisualizationData,
+    editPrompt: string
+  ): Promise<VisualizationData> {
+    const systemPrompt = this.getEditSystemPrompt(type);
+    const userPrompt = `EXISTING VISUALIZATION DATA:
+${JSON.stringify(existingData, null, 2)}
+
+USER'S EDIT REQUEST:
+${editPrompt}
+
+Please update the visualization data according to the user's request. Maintain the existing structure and only modify what's requested. Return the complete updated visualization in the same JSON format.`;
+
+    return await callOpenAI<VisualizationData>(systemPrompt, userPrompt, 'gpt-4o');
+  }
+
+  private getEditSystemPrompt(type: VisualizationType): string {
+    const basePrompt = `You are an expert visualization editor. Your task is to modify existing visualization data based on user requests while maintaining data structure integrity.
+
+CRITICAL RULES:
+1. PRESERVE the exact JSON structure and format of the original visualization
+2. ONLY modify what the user specifically requests
+3. MAINTAIN all IDs, relationships, and data types
+4. If adding new items, generate appropriate IDs that don't conflict with existing ones
+5. Ensure all modifications are logical and maintain visualization coherence
+6. Return COMPLETE updated data, not just the changes`;
+
+    const typeSpecificPrompts: Record<VisualizationType, string> = {
+      network_graph: `${basePrompt}
+
+For network graphs:
+- When adding nodes, ensure unique IDs and proper category assignment
+- When modifying connections, maintain edge source/target validity
+- Preserve node descriptions and metadata structure`,
+
+      gantt_chart: `${basePrompt}
+
+For Gantt charts:
+- Maintain date format (YYYY-MM-DD)
+- Ensure task dependencies reference valid task IDs
+- Keep task types consistent (task, milestone, project)
+- Validate date logic (start <= end)`,
+
+      mind_map: `${basePrompt}
+
+For mind maps:
+- Maintain hierarchical parent-child relationships
+- Preserve node types and categories
+- Keep the tree structure valid`,
+
+      timeline: `${basePrompt}
+
+For timelines:
+- Maintain chronological order
+- Preserve date formats
+- Keep event structure consistent`,
+
+      tree_diagram: `${basePrompt}
+
+For tree diagrams:
+- Maintain parent-child relationships
+- Preserve tree structure validity
+- Keep node attributes consistent`,
+
+      // Add more type-specific prompts as needed
+      animated_timeline: basePrompt,
+      flowchart: basePrompt,
+      sankey_diagram: basePrompt,
+      swimlane_diagram: basePrompt,
+      line_chart: basePrompt,
+      bar_chart: basePrompt,
+      scatter_plot: basePrompt,
+      heatmap: basePrompt,
+      radar_chart: basePrompt,
+      pie_chart: basePrompt,
+      comparison_table: basePrompt,
+      parallel_coordinates: basePrompt,
+      word_cloud: basePrompt,
+      syntax_diagram: basePrompt,
+    };
+
+    return typeSpecificPrompts[type] || basePrompt;
+  }
+}
