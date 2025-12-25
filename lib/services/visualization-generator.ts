@@ -806,21 +806,33 @@ export class VisualizationGeneratorService {
    * @param type - The type of visualization
    * @param existingData - The current visualization data
    * @param editPrompt - User's natural language edit request
+   * @param history - Optional conversation history for context
    * @returns Updated visualization data
    */
   async editVisualization(
     type: VisualizationType,
     existingData: VisualizationData,
-    editPrompt: string
+    editPrompt: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<VisualizationData> {
     const systemPrompt = this.getEditSystemPrompt(type);
+
+    // Format history for context, limited to last 5 turns to save context window
+    const historyContext = history.length > 0
+      ? `\nPREVIOUS CONVERSATION CONTEXT:\n${history.slice(-5).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}\n`
+      : '';
+
     const userPrompt = `EXISTING VISUALIZATION DATA:
 ${JSON.stringify(existingData, null, 2)}
-
+${historyContext}
 USER'S EDIT REQUEST:
 ${editPrompt}
 
-Please update the visualization data according to the user's request. Maintain the existing structure and only modify what's requested. Return the complete updated visualization in the same JSON format.`;
+Please update the visualization data according to the user's request.
+- You CAN modify visual properties like 'color', 'style', 'background' if requested.
+- You CAN add new nodes/tasks/items.
+- Maintain the existing structure and hierarchy.
+- Return the complete updated visualization in the same JSON format.`;
 
     return await callOpenAI<VisualizationData>(systemPrompt, userPrompt, 'gpt-4o');
   }
@@ -829,35 +841,36 @@ Please update the visualization data according to the user's request. Maintain t
     const basePrompt = `You are an expert visualization editor. Your task is to modify existing visualization data based on user requests while maintaining data structure integrity.
 
 CRITICAL RULES:
-1. PRESERVE the exact JSON structure and format of the original visualization
-2. ONLY modify what the user specifically requests
-3. MAINTAIN all IDs, relationships, and data types
-4. If adding new items, generate appropriate IDs that don't conflict with existing ones
-5. Ensure all modifications are logical and maintain visualization coherence
-6. Return COMPLETE updated data, not just the changes`;
+1. PRESERVE the general JSON structure of the original visualization.
+2. YOU ARE ALLOWED AND ENCOURAGED to modify visual attributes (color, size, style) if the user asks.
+   - For Mind Maps/Graphs: 'color' is a valid property on nodes. Use hex codes (e.g., "#3b82f6" for blue).
+3. If adding new items, generate appropriate unique IDs.
+4. Ensure all modifications are logical.
+5. Return COMPLETE updated data, not just the changes.
+6. If the user asks for "blue", use a nice shade like #3b82f6 or #60a5fa, not just "blue".`;
 
     const typeSpecificPrompts: Record<VisualizationType, string> = {
       network_graph: `${basePrompt}
 
 For network graphs:
-- When adding nodes, ensure unique IDs and proper category assignment
-- When modifying connections, maintain edge source/target validity
-- Preserve node descriptions and metadata structure`,
+- Nodes support 'color', 'size', 'category'.
+- If user wants to change color, update the 'color' field of the node(s).
+- When adding nodes, ensure unique IDs and proper category assignment.
+- When modifying connections, maintain edge source/target validity.`,
 
       gantt_chart: `${basePrompt}
 
 For Gantt charts:
-- Maintain date format (YYYY-MM-DD)
-- Ensure task dependencies reference valid task IDs
-- Keep task types consistent (task, milestone, project)
-- Validate date logic (start <= end)`,
+- Tasks support 'custom_class' for styling (e.g., 'bar-milestone', 'bar-active').
+- Maintain date format (YYYY-MM-DD).
+- Ensure task dependencies reference valid task IDs.`,
 
       mind_map: `${basePrompt}
 
 For mind maps:
-- Maintain hierarchical parent-child relationships
-- Preserve node types and categories
-- Keep the tree structure valid`,
+- Nodes support 'color' attribute. If user says "make it blue", set "color": "#3b82f6".
+- Maintain hierarchical parent-child relationships.
+- Keep the tree structure valid.`,
 
       timeline: `${basePrompt}
 

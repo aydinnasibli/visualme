@@ -375,6 +375,11 @@ export interface SavedVisualization {
   shareId?: string;
   createdAt: Date;
   updatedAt: Date;
+  history?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+  }>;
 }
 
 export interface UserUsage {

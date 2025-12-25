@@ -2,10 +2,11 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Edit3, Send, Loader2 } from "lucide-react";
+import { X, Edit3, Send, Loader2, MessageSquare } from "lucide-react";
 import dynamic from "next/dynamic";
 import { NetworkGraphHandle } from "./NetworkGraph";
 import MindMapVisualization, { MindMapHandle } from "./MindMap";
+import ChatSidebar from "./ChatSidebar";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 
@@ -38,26 +39,34 @@ export default function VisualizationModal({
   const mindMapRef = useRef<MindMapHandle>(null);
 
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editPrompt, setEditPrompt] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false); // New state for chat sidebar
   const [isEditing, setIsEditing] = useState(false);
   const [currentVisualization, setCurrentVisualization] = useState(visualization);
   const [editTab, setEditTab] = useState<'ai' | 'manual'>('ai');
   const [manualEditJson, setManualEditJson] = useState('');
 
-  // Sync currentVisualization with visualization prop
+  // Chat history state
+  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: Date | string}>>([]);
+
+  // Sync currentVisualization with visualization prop and load history
   useEffect(() => {
     setCurrentVisualization(visualization);
+    if (visualization?.history) {
+      setChatHistory(visualization.history);
+    }
   }, [visualization]);
 
   if (!currentVisualization) return null;
 
-  const handleAIEdit = async () => {
-    if (!editPrompt.trim()) {
-      toast.error("Please enter what you'd like to change");
-      return;
-    }
-
+  const handleSendMessage = async (message: string) => {
     setIsEditing(true);
+
+    // Optimistically add user message to chat
+    const newHistory = [
+      ...chatHistory,
+      { role: 'user' as const, content: message, timestamp: new Date() }
+    ];
+    setChatHistory(newHistory);
 
     try {
       const response = await fetch("/api/visualizations/edit", {
@@ -65,9 +74,10 @@ export default function VisualizationModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           visualizationId: currentVisualization._id,
-          editPrompt: editPrompt.trim(),
+          editPrompt: message.trim(),
           existingData: currentVisualization.data,
           visualizationType: currentVisualization.type,
+          messages: newHistory // Pass history if needed by backend for future expansions
         }),
       });
 
@@ -79,8 +89,12 @@ export default function VisualizationModal({
       const { visualization: updatedViz } = await response.json();
 
       setCurrentVisualization(updatedViz);
-      setEditPrompt("");
-      setIsEditMode(false);
+
+      // Update history with AI response
+      setChatHistory([
+        ...newHistory,
+        { role: 'assistant' as const, content: 'I have updated the visualization based on your request.', timestamp: new Date() }
+      ]);
 
       toast.success("Visualization updated successfully!");
 
@@ -90,6 +104,12 @@ export default function VisualizationModal({
     } catch (error) {
       console.error("Edit error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to edit visualization");
+
+      // Remove the optimistic user message on error or add error message
+      setChatHistory([
+        ...newHistory,
+        { role: 'assistant' as const, content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: new Date() }
+      ]);
     } finally {
       setIsEditing(false);
     }
@@ -149,7 +169,6 @@ export default function VisualizationModal({
       setManualEditJson(JSON.stringify(currentVisualization.data, null, 2));
     }
     setIsEditMode(!isEditMode);
-    setEditPrompt('');
   };
 
   return (
@@ -180,6 +199,18 @@ export default function VisualizationModal({
             </div>
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setIsChatOpen(!isChatOpen)}
+                className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
+                  isChatOpen
+                    ? "bg-primary text-white"
+                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                {isChatOpen ? "Close Chat" : "AI Chat"}
+              </button>
+
+              <button
                 onClick={handleEditModeToggle}
                 className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
                   isEditMode
@@ -188,7 +219,7 @@ export default function VisualizationModal({
                 }`}
               >
                 <Edit3 className="w-4 h-4" />
-                {isEditMode ? "Cancel Edit" : "Edit"}
+                {isEditMode ? "Close Manual Edit" : "Manual Edit"}
               </button>
               <button
                 onClick={onClose}
@@ -199,83 +230,17 @@ export default function VisualizationModal({
             </div>
           </div>
 
-          {/* Edit Mode UI */}
-          {isEditMode && (
-            <div className="px-6 pt-4 pb-2 border-b border-zinc-800 bg-zinc-900/50">
-              {/* Edit Tabs */}
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setEditTab('ai')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    editTab === 'ai'
-                      ? 'bg-primary text-white'
-                      : 'bg-zinc-800 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  AI Edit
-                </button>
-                <button
-                  onClick={() => setEditTab('manual')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    editTab === 'manual'
-                      ? 'bg-primary text-white'
-                      : 'bg-zinc-800 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Manual Edit
-                </button>
-              </div>
-
-              {/* AI Edit Tab */}
-              {editTab === 'ai' && (
-                <div>
-                  <div className="flex gap-3 mb-2">
-                    <input
-                      type="text"
-                      value={editPrompt}
-                      onChange={(e) => setEditPrompt(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleAIEdit();
-                        }
-                      }}
-                      placeholder="What would you like to change? (e.g., 'add a new task for testing', 'change the color scheme', 'add more nodes')"
-                      className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                      disabled={isEditing}
-                    />
-                    <button
-                      onClick={handleAIEdit}
-                      disabled={isEditing || !editPrompt.trim()}
-                      className="px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition flex items-center gap-2 font-medium"
-                    >
-                      {isEditing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          Apply
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    Use natural language to describe your changes. The AI will update your visualization accordingly.
-                  </p>
-                </div>
-              )}
-
-              {/* Manual Edit Tab */}
-              {editTab === 'manual' && (
-                <div>
+          <div className="flex flex-1 overflow-hidden">
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Manual Edit Mode UI */}
+              {isEditMode && (
+                <div className="px-6 pt-4 pb-2 border-b border-zinc-800 bg-zinc-900/50">
                   <div className="mb-2">
                     <textarea
                       value={manualEditJson}
                       onChange={(e) => setManualEditJson(e.target.value)}
-                      className="w-full h-64 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                      className="w-full h-48 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
                       placeholder="Edit the JSON data directly..."
                     />
                   </div>
@@ -293,11 +258,9 @@ export default function VisualizationModal({
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Visualization Content */}
-          <div className="flex-1 overflow-auto p-6">
+              {/* Visualization Content */}
+              <div className="flex-1 overflow-auto p-6 bg-[#0f1419]/50">
             {currentVisualization.type === "network_graph" && (
               <DynamicNetworkGraph
                 ref={networkGraphRef}
@@ -333,6 +296,27 @@ export default function VisualizationModal({
                 readOnly={true}
               />
             )}
+              </div>
+            </div>
+
+            {/* Chat Sidebar */}
+            <AnimatePresence mode="wait">
+              {isChatOpen && (
+                <motion.div
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: "auto", opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="border-l border-zinc-800"
+                >
+                  <ChatSidebar
+                    initialHistory={chatHistory}
+                    onSendMessage={handleSendMessage}
+                    isProcessing={isEditing}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       </motion.div>
