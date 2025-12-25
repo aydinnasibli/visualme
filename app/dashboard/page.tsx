@@ -5,6 +5,9 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@clerk/nextjs';
 import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction } from '@/lib/actions/visualize';
 import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData } from '@/lib/types/visualization';
+import { Edit3, Send, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { VisualizationGeneratorService } from '@/lib/services/visualization-generator';
 
 const LoadingPlaceholder = () => (
   <div className="w-full h-full bg-[#1a1f28] rounded-2xl flex items-center justify-center border border-[#282e39] animate-pulse">
@@ -51,6 +54,11 @@ export default function DashboardPage() {
   const [dataDensity, setDataDensity] = useState('balanced');
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTab, setEditTab] = useState<'ai' | 'manual'>('ai');
+  const [manualEditJson, setManualEditJson] = useState('');
 
   // Helper to recursively find and update a node in the Mind Map tree
   const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
@@ -257,6 +265,71 @@ export default function DashboardPage() {
     }
   };
 
+  const handleAIEdit = async () => {
+    if (!editPrompt.trim()) {
+      toast.error("Please enter what you'd like to change");
+      return;
+    }
+
+    if (!result) return;
+
+    setIsEditing(true);
+
+    try {
+      const generatorService = new VisualizationGeneratorService();
+      const updatedData = await generatorService.editVisualization(
+        result.type as VisualizationType,
+        result.data,
+        editPrompt.trim()
+      );
+
+      setResult({
+        ...result,
+        data: updatedData,
+      });
+      setEditPrompt('');
+      setIsEditMode(false);
+      toast.success('Visualization updated successfully!');
+    } catch (error) {
+      console.error('Edit error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to edit visualization');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleManualEdit = () => {
+    if (!manualEditJson.trim()) {
+      toast.error('Please enter valid JSON data');
+      return;
+    }
+
+    try {
+      const parsedData = JSON.parse(manualEditJson);
+
+      if (!result) return;
+
+      setResult({
+        ...result,
+        data: parsedData,
+      });
+      setManualEditJson('');
+      setIsEditMode(false);
+      toast.success('Visualization updated successfully!');
+    } catch (error) {
+      toast.error('Invalid JSON format. Please check your data.');
+    }
+  };
+
+  const handleEditModeToggle = () => {
+    if (!isEditMode && result) {
+      // When opening edit mode, populate manual edit JSON
+      setManualEditJson(JSON.stringify(result.data, null, 2));
+    }
+    setIsEditMode(!isEditMode);
+    setEditPrompt('');
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#0f1419]">
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -401,6 +474,17 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Your Visualization</h2>
               <div className="flex gap-2">
+                <button
+                  onClick={handleEditModeToggle}
+                  className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
+                    isEditMode
+                      ? 'bg-primary text-white'
+                      : 'bg-[#1a1f28] border border-[#2a2f38] text-white hover:bg-[#1e2329]'
+                  }`}
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span className="text-sm font-medium">{isEditMode ? 'Cancel Edit' : 'Edit'}</span>
+                </button>
                 {isSignedIn && (
                   <button
                     onClick={handleSave}
@@ -438,6 +522,103 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+
+            {/* Edit Mode UI */}
+            {isEditMode && (
+              <div className="mb-6 p-6 rounded-xl border border-[#2a2f38] bg-[#1a1f28]/50">
+                {/* Edit Tabs */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setEditTab('ai')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                      editTab === 'ai'
+                        ? 'bg-primary text-white'
+                        : 'bg-[#141922] text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    AI Edit
+                  </button>
+                  <button
+                    onClick={() => setEditTab('manual')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                      editTab === 'manual'
+                        ? 'bg-primary text-white'
+                        : 'bg-[#141922] text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    Manual Edit
+                  </button>
+                </div>
+
+                {/* AI Edit Tab */}
+                {editTab === 'ai' && (
+                  <div>
+                    <div className="flex gap-3 mb-2">
+                      <input
+                        type="text"
+                        value={editPrompt}
+                        onChange={(e) => setEditPrompt(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAIEdit();
+                          }
+                        }}
+                        placeholder="What would you like to change? (e.g., 'add a new task for testing', 'change the color scheme', 'add more nodes')"
+                        className="flex-1 px-4 py-3 bg-[#141922] border border-[#2a2f38] rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        disabled={isEditing}
+                      />
+                      <button
+                        onClick={handleAIEdit}
+                        disabled={isEditing || !editPrompt.trim()}
+                        className="px-6 py-3 bg-primary hover:bg-blue-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition flex items-center gap-2 font-medium"
+                      >
+                        {isEditing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4" />
+                            Apply
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Use natural language to describe your changes. The AI will update your visualization accordingly.
+                    </p>
+                  </div>
+                )}
+
+                {/* Manual Edit Tab */}
+                {editTab === 'manual' && (
+                  <div>
+                    <div className="mb-2">
+                      <textarea
+                        value={manualEditJson}
+                        onChange={(e) => setManualEditJson(e.target.value)}
+                        className="w-full h-64 px-4 py-3 bg-[#141922] border border-[#2a2f38] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                        placeholder="Edit the JSON data directly..."
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500">
+                        Edit the JSON structure directly. Make sure to maintain valid JSON format.
+                      </p>
+                      <button
+                        onClick={handleManualEdit}
+                        className="px-6 py-3 bg-primary hover:bg-blue-600 text-white rounded-lg transition flex items-center gap-2 font-medium"
+                      >
+                        <Send className="w-4 h-4" />
+                        Apply Changes
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {result.type === 'network_graph' && (
               <DynamicNetworkGraph 
                 data={result.data as NetworkGraphData} 
