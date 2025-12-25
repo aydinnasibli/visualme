@@ -83,7 +83,6 @@ export default function VisualizationModal({
             {visualization.type === "gantt_chart" && (
               <DynamicGanttChart
                 data={visualization.data as any}
-                readOnly={true}
               />
             )}
 
