@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Edit3, Send, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -41,6 +41,11 @@ export default function VisualizationModal({
   const [editPrompt, setEditPrompt] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [currentVisualization, setCurrentVisualization] = useState(visualization);
+
+  // Sync currentVisualization with visualization prop
+  useEffect(() => {
+    setCurrentVisualization(visualization);
+  }, [visualization]);
 
   if (!currentVisualization) return null;
 
