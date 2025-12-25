@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import { GanttChartData, GanttTask } from "@/lib/types/visualization";
 import { X, ZoomIn, ZoomOut, Calendar } from "lucide-react";
+import VisualizationContainer from "./VisualizationContainer";
 
 interface GanttChartProps {
   data: GanttChartData;
@@ -35,6 +36,7 @@ const LAYOUT_CONSTANTS = {
 } as const;
 
 export default function GanttChart({ data }: GanttChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("Week");
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<GanttTask | null>(null);
@@ -183,6 +185,13 @@ export default function GanttChart({ data }: GanttChartProps) {
     setViewMode("Week");
     setZoom(1);
     setSelectedTask(null);
+    // Scroll to top-left
+    if (containerRef.current) {
+      const chartArea = containerRef.current.querySelector('.overflow-auto');
+      if (chartArea) {
+        chartArea.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+      }
+    }
   }, []);
 
   const handleZoomIn = useCallback(() => {
@@ -202,15 +211,10 @@ export default function GanttChart({ data }: GanttChartProps) {
   }, []);
 
   return (
-    <div className="w-full h-[800px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl">
-      {/* Ambient glow effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
-      </div>
-
-      {/* Header with Controls */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-[#141922]">
+    <VisualizationContainer onReset={handleReset}>
+      <div ref={containerRef} className="absolute inset-0 z-10 flex flex-col">
+        {/* Header with Controls */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-[#141922]">
         <div className="flex items-center gap-3">
           <Calendar className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold text-white">Gantt Chart</h3>
@@ -254,14 +258,6 @@ export default function GanttChart({ data }: GanttChartProps) {
               </button>
             ))}
           </div>
-
-          {/* Reset */}
-          <button
-            onClick={handleReset}
-            className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-zinc-700 transition-all text-xs font-semibold"
-          >
-            Reset
-          </button>
         </div>
       </div>
 
@@ -726,6 +722,7 @@ export default function GanttChart({ data }: GanttChartProps) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </VisualizationContainer>
   );
 }

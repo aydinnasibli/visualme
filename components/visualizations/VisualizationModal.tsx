@@ -41,6 +41,8 @@ export default function VisualizationModal({
   const [editPrompt, setEditPrompt] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [currentVisualization, setCurrentVisualization] = useState(visualization);
+  const [editTab, setEditTab] = useState<'ai' | 'manual'>('ai');
+  const [manualEditJson, setManualEditJson] = useState('');
 
   // Sync currentVisualization with visualization prop
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function VisualizationModal({
 
   if (!currentVisualization) return null;
 
-  const handleEdit = async () => {
+  const handleAIEdit = async () => {
     if (!editPrompt.trim()) {
       toast.error("Please enter what you'd like to change");
       return;
@@ -93,6 +95,63 @@ export default function VisualizationModal({
     }
   };
 
+  const handleManualEdit = async () => {
+    if (!manualEditJson.trim()) {
+      toast.error('Please enter valid JSON data');
+      return;
+    }
+
+    try {
+      const parsedData = JSON.parse(manualEditJson);
+
+      if (!currentVisualization) return;
+
+      // Update in database using the edit API
+      const response = await fetch("/api/visualizations/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visualizationId: currentVisualization._id,
+          editPrompt: "Manual JSON edit",
+          existingData: parsedData,
+          visualizationType: currentVisualization.type,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update visualization");
+      }
+
+      const { visualization: updatedViz } = await response.json();
+
+      setCurrentVisualization(updatedViz);
+      setManualEditJson('');
+      setIsEditMode(false);
+
+      toast.success('Visualization updated successfully!');
+
+      if (onVisualizationUpdated) {
+        onVisualizationUpdated(updatedViz);
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        toast.error('Invalid JSON format. Please check your data.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to update visualization');
+      }
+    }
+  };
+
+  const handleEditModeToggle = () => {
+    if (!isEditMode && currentVisualization) {
+      // When opening edit mode, populate manual edit JSON
+      setManualEditJson(JSON.stringify(currentVisualization.data, null, 2));
+    }
+    setIsEditMode(!isEditMode);
+    setEditPrompt('');
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -121,7 +180,7 @@ export default function VisualizationModal({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsEditMode(!isEditMode)}
+                onClick={handleEditModeToggle}
                 className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
                   isEditMode
                     ? "bg-primary text-white"
@@ -140,45 +199,100 @@ export default function VisualizationModal({
             </div>
           </div>
 
-          {/* Edit Prompt (if in edit mode) */}
+          {/* Edit Mode UI */}
           {isEditMode && (
             <div className="px-6 pt-4 pb-2 border-b border-zinc-800 bg-zinc-900/50">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={editPrompt}
-                  onChange={(e) => setEditPrompt(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleEdit();
-                    }
-                  }}
-                  placeholder="What would you like to change? (e.g., 'add a new task for testing', 'change the color scheme', 'add more nodes')"
-                  className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  disabled={isEditing}
-                />
+              {/* Edit Tabs */}
+              <div className="flex gap-2 mb-4">
                 <button
-                  onClick={handleEdit}
-                  disabled={isEditing || !editPrompt.trim()}
-                  className="px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition flex items-center gap-2 font-medium"
+                  onClick={() => setEditTab('ai')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    editTab === 'ai'
+                      ? 'bg-primary text-white'
+                      : 'bg-zinc-800 text-gray-400 hover:text-white'
+                  }`}
                 >
-                  {isEditing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Apply
-                    </>
-                  )}
+                  AI Edit
+                </button>
+                <button
+                  onClick={() => setEditTab('manual')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    editTab === 'manual'
+                      ? 'bg-primary text-white'
+                      : 'bg-zinc-800 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Manual Edit
                 </button>
               </div>
-              <p className="text-xs text-zinc-500 mt-2">
-                Use natural language to describe your changes. The AI will update your visualization accordingly.
-              </p>
+
+              {/* AI Edit Tab */}
+              {editTab === 'ai' && (
+                <div>
+                  <div className="flex gap-3 mb-2">
+                    <input
+                      type="text"
+                      value={editPrompt}
+                      onChange={(e) => setEditPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAIEdit();
+                        }
+                      }}
+                      placeholder="What would you like to change? (e.g., 'add a new task for testing', 'change the color scheme', 'add more nodes')"
+                      className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      disabled={isEditing}
+                    />
+                    <button
+                      onClick={handleAIEdit}
+                      disabled={isEditing || !editPrompt.trim()}
+                      className="px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition flex items-center gap-2 font-medium"
+                    >
+                      {isEditing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Apply
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Use natural language to describe your changes. The AI will update your visualization accordingly.
+                  </p>
+                </div>
+              )}
+
+              {/* Manual Edit Tab */}
+              {editTab === 'manual' && (
+                <div>
+                  <div className="mb-2">
+                    <textarea
+                      value={manualEditJson}
+                      onChange={(e) => setManualEditJson(e.target.value)}
+                      className="w-full h-64 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                      placeholder="Edit the JSON data directly..."
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-zinc-500">
+                      Edit the JSON structure directly. Make sure to maintain valid JSON format.
+                    </p>
+                    <button
+                      onClick={handleManualEdit}
+                      className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg transition flex items-center gap-2 font-medium"
+                    >
+                      <Send className="w-4 h-4" />
+                      Apply Changes
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
