@@ -314,13 +314,20 @@ Rules:
 - Use 'milestone' for zero-duration events, 'project' for grouping, 'task' for normal tasks.
 - Ensure dates are logical (start < end).
 
+CRITICAL - Progress Logic:
+- For NEW/FUTURE projects (no indication of current status): Set ALL tasks to 0% progress
+- For ONGOING projects with status info: Calculate progress based on:
+  * Past tasks (end date before today): 100%
+  * Future tasks (start date after today): 0%
+  * Current tasks (today is between start and end): 25-75% based on how far through
+- Milestones: Always 0% (they're binary - not reached yet)
+
 JSON format:
 {
   "tasks": [
-    {"id": "task1", "name": "Design Phase", "start": "2024-01-01", "end": "2024-01-15", "progress": 75, "dependencies": [], "type": "project"},
-    {"id": "task2", "name": "UI Design", "start": "2024-01-01", "end": "2024-01-07", "progress": 100, "dependencies": ["task1"], "type": "task"},
-    {"id": "task3", "name": "Development", "start": "2024-01-16", "end": "2024-02-28", "progress": 30, "dependencies": ["task1"], "type": "task"},
-    {"id": "m1", "name": "Launch", "start": "2024-03-01", "end": "2024-03-01", "progress": 0, "dependencies": ["task3"], "type": "milestone"}
+    {"id": "task1", "name": "Research Phase", "start": "2025-01-06", "end": "2025-01-12", "progress": 0, "dependencies": [], "type": "task"},
+    {"id": "task2", "name": "Planning", "start": "2025-01-13", "end": "2025-01-19", "progress": 0, "dependencies": ["task1"], "type": "task"},
+    {"id": "m1", "name": "Midpoint Review", "start": "2025-02-03", "end": "2025-02-03", "progress": 0, "dependencies": ["task2"], "type": "milestone"}
   ]
 }`;
 
