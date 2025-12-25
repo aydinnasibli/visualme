@@ -312,7 +312,12 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                       {task.name}
                     </p>
                     <p className="text-xs text-zinc-500 truncate">
-                      {task.progress}% complete
+                      {Math.ceil(
+                        (new Date(task.end).getTime() -
+                          new Date(task.start).getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      )}{" "}
+                      days
                     </p>
                   </div>
                 </div>
@@ -534,18 +539,7 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                           className="transition-all duration-200"
                         />
 
-                        {task.progress > 0 && (
-                          <rect
-                            x={x}
-                            y={y}
-                            width={(width * task.progress) / 100}
-                            height={barHeight}
-                            fill="#60a5fa"
-                            opacity="0.8"
-                            rx="4"
-                            className="pointer-events-none"
-                          />
-                        )}
+                        {/* Progress bar removed - not needed for planning */}
 
                         {width > 60 && (
                           <text
@@ -649,18 +643,15 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
               </div>
 
               <div>
-                <p className="text-xs text-zinc-500 mb-2">Progress</p>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-3 bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${selectedTask.progress}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-semibold text-white">
-                    {selectedTask.progress}%
-                  </span>
-                </div>
+                <p className="text-xs text-zinc-500 mb-1">Duration</p>
+                <p className="text-sm text-white font-medium">
+                  {Math.ceil(
+                    (new Date(selectedTask.end).getTime() -
+                      new Date(selectedTask.start).getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  )}{" "}
+                  days
+                </p>
               </div>
 
               {selectedTask.dependencies &&
@@ -692,17 +683,6 @@ export default function GanttChart({ data, readOnly = false }: GanttChartProps) 
                   </div>
                 )}
 
-              <div>
-                <p className="text-xs text-zinc-500 mb-1">Duration</p>
-                <p className="text-sm text-white">
-                  {Math.ceil(
-                    (new Date(selectedTask.end).getTime() -
-                      new Date(selectedTask.start).getTime()) /
-                      (1000 * 60 * 60 * 24)
-                  )}{" "}
-                  days
-                </p>
-              </div>
             </div>
 
             {/* Modal Footer */}

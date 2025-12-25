@@ -306,21 +306,15 @@ JSON format:
 }
 
 export async function generateGanttChart(userInput: string): Promise<GanttChartData> {
-  const systemPrompt = `Create Gantt chart data for project timelines.
+  const systemPrompt = `Create Gantt chart data for project planning and scheduling.
 
 Rules:
-- tasks: array of {id, name, start (YYYY-MM-DD), end (YYYY-MM-DD), progress (0-100), dependencies (array of task IDs), type (optional: 'task'|'milestone'|'project', default 'task')}
-- Dependencies show task relationships
-- Use 'milestone' for zero-duration events, 'project' for grouping, 'task' for normal tasks.
-- Ensure dates are logical (start < end).
-
-CRITICAL - Progress Logic:
-- For NEW/FUTURE projects (no indication of current status): Set ALL tasks to 0% progress
-- For ONGOING projects with status info: Calculate progress based on:
-  * Past tasks (end date before today): 100%
-  * Future tasks (start date after today): 0%
-  * Current tasks (today is between start and end): 25-75% based on how far through
-- Milestones: Always 0% (they're binary - not reached yet)
+- tasks: array of {id, name, start (YYYY-MM-DD), end (YYYY-MM-DD), progress (always 0), dependencies (array of task IDs), type (optional: 'task'|'milestone'|'project', default 'task')}
+- Dependencies show task relationships (which tasks must complete before others can start)
+- Use 'milestone' for zero-duration events (same start/end date), 'project' for grouping, 'task' for normal work items
+- Ensure dates are logical (start <= end)
+- Set progress to 0 for all tasks (progress tracking not used in planning phase)
+- Create realistic task durations and logical dependencies
 
 JSON format:
 {
