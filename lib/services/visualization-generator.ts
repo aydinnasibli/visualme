@@ -306,21 +306,22 @@ JSON format:
 }
 
 export async function generateGanttChart(userInput: string): Promise<GanttChartData> {
-  const systemPrompt = `Create Gantt chart data for project timelines.
+  const systemPrompt = `Create Gantt chart data for project planning and scheduling.
 
 Rules:
-- tasks: array of {id, name, start (YYYY-MM-DD), end (YYYY-MM-DD), progress (0-100), dependencies (array of task IDs), type (optional: 'task'|'milestone'|'project', default 'task')}
-- Dependencies show task relationships
-- Use 'milestone' for zero-duration events, 'project' for grouping, 'task' for normal tasks.
-- Ensure dates are logical (start < end).
+- tasks: array of {id, name, start (YYYY-MM-DD), end (YYYY-MM-DD), progress (always 0), dependencies (array of task IDs), type (optional: 'task'|'milestone'|'project', default 'task')}
+- Dependencies show task relationships (which tasks must complete before others can start)
+- Use 'milestone' for zero-duration events (same start/end date), 'project' for grouping, 'task' for normal work items
+- Ensure dates are logical (start <= end)
+- Set progress to 0 for all tasks (progress tracking not used in planning phase)
+- Create realistic task durations and logical dependencies
 
 JSON format:
 {
   "tasks": [
-    {"id": "task1", "name": "Design Phase", "start": "2024-01-01", "end": "2024-01-15", "progress": 75, "dependencies": [], "type": "project"},
-    {"id": "task2", "name": "UI Design", "start": "2024-01-01", "end": "2024-01-07", "progress": 100, "dependencies": ["task1"], "type": "task"},
-    {"id": "task3", "name": "Development", "start": "2024-01-16", "end": "2024-02-28", "progress": 30, "dependencies": ["task1"], "type": "task"},
-    {"id": "m1", "name": "Launch", "start": "2024-03-01", "end": "2024-03-01", "progress": 0, "dependencies": ["task3"], "type": "milestone"}
+    {"id": "task1", "name": "Research Phase", "start": "2025-01-06", "end": "2025-01-12", "progress": 0, "dependencies": [], "type": "task"},
+    {"id": "task2", "name": "Planning", "start": "2025-01-13", "end": "2025-01-19", "progress": 0, "dependencies": ["task1"], "type": "task"},
+    {"id": "m1", "name": "Midpoint Review", "start": "2025-02-03", "end": "2025-02-03", "progress": 0, "dependencies": ["task2"], "type": "milestone"}
   ]
 }`;
 
