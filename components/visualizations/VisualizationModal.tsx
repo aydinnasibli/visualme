@@ -2,11 +2,11 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Edit3, Send, Loader2, MessageSquare } from "lucide-react";
+import { X, Edit3, Send, ArrowRight } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { NetworkGraphHandle } from "./NetworkGraph";
 import MindMapVisualization, { MindMapHandle } from "./MindMap";
-import ChatSidebar from "./ChatSidebar";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 
@@ -35,83 +35,29 @@ export default function VisualizationModal({
   onClose,
   onVisualizationUpdated,
 }: VisualizationModalProps) {
+  const router = useRouter();
   const networkGraphRef = useRef<NetworkGraphHandle>(null);
   const mindMapRef = useRef<MindMapHandle>(null);
 
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); // New state for chat sidebar
-  const [isEditing, setIsEditing] = useState(false);
   const [currentVisualization, setCurrentVisualization] = useState(visualization);
-  const [editTab, setEditTab] = useState<'ai' | 'manual'>('ai');
   const [manualEditJson, setManualEditJson] = useState('');
 
-  // Chat history state
-  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: Date | string}>>([]);
-
-  // Sync currentVisualization with visualization prop and load history
+  // Sync currentVisualization with visualization prop
   useEffect(() => {
     setCurrentVisualization(visualization);
-    if (visualization?.history) {
-      setChatHistory(visualization.history);
-    }
   }, [visualization]);
 
   if (!currentVisualization) return null;
 
-  const handleSendMessage = async (message: string) => {
-    setIsEditing(true);
-
-    // Optimistically add user message to chat
-    const newHistory = [
-      ...chatHistory,
-      { role: 'user' as const, content: message, timestamp: new Date() }
-    ];
-    setChatHistory(newHistory);
-
+  const handleRevisualize = () => {
     try {
-      const response = await fetch("/api/visualizations/edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visualizationId: currentVisualization._id,
-          editPrompt: message.trim(),
-          existingData: currentVisualization.data,
-          visualizationType: currentVisualization.type,
-          messages: newHistory // Pass history if needed by backend for future expansions
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to edit visualization");
-      }
-
-      const { visualization: updatedViz } = await response.json();
-
-      setCurrentVisualization(updatedViz);
-
-      // Update history with AI response
-      setChatHistory([
-        ...newHistory,
-        { role: 'assistant' as const, content: 'I have updated the visualization based on your request.', timestamp: new Date() }
-      ]);
-
-      toast.success("Visualization updated successfully!");
-
-      if (onVisualizationUpdated) {
-        onVisualizationUpdated(updatedViz);
-      }
+      // Store current visualization in sessionStorage to pass to dashboard
+      sessionStorage.setItem('revisualize_data', JSON.stringify(currentVisualization));
+      router.push('/dashboard');
     } catch (error) {
-      console.error("Edit error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to edit visualization");
-
-      // Remove the optimistic user message on error or add error message
-      setChatHistory([
-        ...newHistory,
-        { role: 'assistant' as const, content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: new Date() }
-      ]);
-    } finally {
-      setIsEditing(false);
+      console.error("Failed to store visualization data:", error);
+      toast.error("Failed to prepare visualization for editing");
     }
   };
 
@@ -199,22 +145,18 @@ export default function VisualizationModal({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsChatOpen(!isChatOpen)}
-                className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
-                  isChatOpen
-                    ? "bg-primary text-white"
-                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                }`}
+                onClick={handleRevisualize}
+                className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition flex items-center gap-2 font-medium"
               >
-                <MessageSquare className="w-4 h-4" />
-                {isChatOpen ? "Close Chat" : "AI Chat"}
+                Revisualize
+                <ArrowRight className="w-4 h-4" />
               </button>
 
               <button
                 onClick={handleEditModeToggle}
                 className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
                   isEditMode
-                    ? "bg-primary text-white"
+                    ? "bg-zinc-700 text-white"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                 }`}
               >
@@ -298,25 +240,6 @@ export default function VisualizationModal({
             )}
               </div>
             </div>
-
-            {/* Chat Sidebar */}
-            <AnimatePresence mode="wait">
-              {isChatOpen && (
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: "auto", opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="border-l border-zinc-800"
-                >
-                  <ChatSidebar
-                    initialHistory={chatHistory}
-                    onSendMessage={handleSendMessage}
-                    isProcessing={isEditing}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </motion.div>
       </motion.div>

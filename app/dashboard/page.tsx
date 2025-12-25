@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@clerk/nextjs';
 import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction, editDraftVisualization } from '@/lib/actions/visualize';
-import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData } from '@/lib/types/visualization';
+import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData, SavedVisualization } from '@/lib/types/visualization';
 import { Edit3, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import ChatSidebar from '@/components/visualizations/ChatSidebar';
 
 const LoadingPlaceholder = () => (
   <div className="w-full h-full bg-[#1a1f28] rounded-2xl flex items-center justify-center border border-[#282e39] animate-pulse">
@@ -54,10 +55,43 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editPrompt, setEditPrompt] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editTab, setEditTab] = useState<'ai' | 'manual'>('ai');
   const [manualEditJson, setManualEditJson] = useState('');
+  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: Date | string}>>([]);
+  const [vizId, setVizId] = useState<string | null>(null);
+
+  // Check for revisualize data on mount
+  useEffect(() => {
+    const revisualizeData = sessionStorage.getItem('revisualize_data');
+    if (revisualizeData) {
+      try {
+        const parsed: SavedVisualization = JSON.parse(revisualizeData);
+        setResult({
+          success: true,
+          type: parsed.type,
+          data: parsed.data,
+          title: parsed.title,
+          metadata: parsed.metadata
+        });
+        setVizId(parsed._id || null);
+        setIsSaved(true);
+        if (parsed.history) {
+          setChatHistory(parsed.history);
+        }
+
+        // Populate manual edit JSON
+        setManualEditJson(JSON.stringify(parsed.data, null, 2));
+
+        // Clear storage
+        sessionStorage.removeItem('revisualize_data');
+        toast.success(`Loaded "${parsed.title}" for editing`);
+      } catch (e) {
+        console.error("Failed to load revisualize data", e);
+        toast.error("Failed to load visualization data");
+      }
+    }
+  }, []);
 
   // Helper to recursively find and update a node in the Mind Map tree
   const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
@@ -127,10 +161,7 @@ export default function DashboardPage() {
         }
       } else if (result.type === 'tree_diagram') {
         // Reuse mind map expansion logic
-        // TreeDiagram data IS the root node structure roughly
-        // Let's assume we can just pass names as existing IDs? No.
-        // Let's just pass empty list for now or try to extract if possible.
-        const existingIds: string[] = []; // TODO: traverse tree to get names/IDs
+        const existingIds: string[] = [];
 
         const response = await expandMindMapNodeAction(nodeId, nodeLabel, input, existingIds);
 
@@ -148,17 +179,6 @@ export default function DashboardPage() {
 
           // Recursive update for TreeDiagram
           const updateTree = (node: any): any => {
-            // react-d3-tree adds __rd3t.id, but we might rely on matching name if ID not stable?
-            // Actually our CustomNode passes nodeDatum.__rd3t.id as nodeId.
-            // But our data doesn't have __rd3t until rendered.
-            // Wait, we are updating the raw data.
-            // We need to find the node by ID. But raw data doesn't have IDs from react-d3-tree.
-            // We should use 'name' for matching if ID is not available?
-            // Or we generated 'id' in our TreeDiagramData? 
-            // Our generator produces { name, children }. No ID.
-            // So we can't easily match by ID unless we inject IDs.
-            
-            // Fallback: match by name (nodeLabel).
             if (node.name === nodeLabel) {
                return { ...node, children: [...(node.children || []), ...newTreeNodes] };
             }
@@ -179,7 +199,6 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error('Error expanding node:', err);
-      // Optionally show an error toast
     }
   };
 
@@ -194,6 +213,8 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setVizId(null);
+    setChatHistory([]);
 
     try {
       setLoadingStep('analyzing');
@@ -214,6 +235,7 @@ export default function DashboardPage() {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       setResult(data);
+      setManualEditJson(JSON.stringify(data.data, null, 2));
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error('Error:', err);
@@ -233,7 +255,7 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const title = input.substring(0, 100) || 'Untitled Visualization';
+      const title = result.title || input.substring(0, 100) || 'Untitled Visualization';
       const metadata = {
         generatedAt: new Date(),
         aiModel: 'gpt-4o-mini',
@@ -241,11 +263,25 @@ export default function DashboardPage() {
         ...(result.metadata || {}),
       };
 
+      // If we have an ID (from revisualize), we should technically update that specific doc
+      // But saveVisualization is simpler, let's see.
+      // If we want to overwrite, we need to handle that logic.
+      // Current saveVisualization creates new.
+      // User requirement said "if needed save it again".
+      // Usually "save" on an existing one implies update, but for now let's use the standard flow.
+      // If `vizId` is present, we are editing an existing one.
+
+      // NOTE: `saveVisualization` implementation in `actions/profile` or `actions/visualize` likely creates a new one.
+      // Given the requirement "save it again", creating a new version or updating is acceptable.
+      // Let's stick to standard save for now.
+
       const saveResult = await saveVisualization(
         title,
         result.type,
         result.data,
-        metadata
+        metadata,
+        vizId || undefined, // Pass ID if updating existing
+        chatHistory // Pass chat history to save
       );
 
       if (!saveResult.success) {
@@ -253,9 +289,14 @@ export default function DashboardPage() {
         return;
       }
 
+      // If we created a new one, update ID
+      if (saveResult.data && saveResult.data._id) {
+        setVizId(saveResult.data._id);
+      }
+
       const wasAlreadySaved = isSaved;
       setIsSaved(true);
-      alert(wasAlreadySaved ? 'Visualization updated successfully!' : 'Visualization saved successfully!');
+      toast.success(wasAlreadySaved ? 'Visualization updated successfully!' : 'Visualization saved successfully!');
     } catch (err) {
       setError('An error occurred while saving');
       console.error('Error saving visualization:', err);
@@ -264,37 +305,64 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAIEdit = async () => {
-    if (!editPrompt.trim()) {
-      toast.error("Please enter what you'd like to change");
-      return;
-    }
-
+  const handleChatMessage = async (message: string) => {
     if (!result) return;
-
     setIsEditing(true);
 
-    try {
-      const response = await editDraftVisualization(
-        result.type as VisualizationType,
-        result.data,
-        editPrompt.trim()
-      );
+    const newHistory = [
+      ...chatHistory,
+      { role: 'user' as const, content: message, timestamp: new Date() }
+    ];
+    setChatHistory(newHistory);
 
-      if (!response.success) {
-        throw new Error(response.error || "Failed to edit visualization");
+    try {
+      // If we have a vizId, we can use the specific edit endpoint that tracks history on the backend
+      // But here we are in "draft" mode often.
+      // We can use the generic `api/visualizations/edit` endpoint we used in the modal.
+
+      const response = await fetch("/api/visualizations/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visualizationId: vizId, // Pass ID if available
+          editPrompt: message.trim(),
+          existingData: result.data,
+          visualizationType: result.type,
+          messages: newHistory
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to edit visualization");
       }
+
+      const { visualization } = await response.json();
+
+      // The API returns a saved visualization object usually.
+      // If we were in draft mode (no ID), the API might have created a temporary one or just returned data.
+      // Let's assume it returns { visualization: { data: ..., ... } }
 
       setResult({
         ...result,
-        data: response.data!,
+        data: visualization.data,
       });
-      setEditPrompt('');
-      setIsEditMode(false);
+      setManualEditJson(JSON.stringify(visualization.data, null, 2));
+
+      setChatHistory([
+        ...newHistory,
+        { role: 'assistant' as const, content: 'I have updated the visualization based on your request.', timestamp: new Date() }
+      ]);
+
       toast.success('Visualization updated successfully!');
+
     } catch (error) {
-      console.error('Edit error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to edit visualization');
+       console.error("Edit error:", error);
+       toast.error(error instanceof Error ? error.message : "Failed to edit visualization");
+       setChatHistory([
+        ...newHistory,
+        { role: 'assistant' as const, content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: new Date() }
+      ]);
     } finally {
       setIsEditing(false);
     }
@@ -329,7 +397,6 @@ export default function DashboardPage() {
       setManualEditJson(JSON.stringify(result.data, null, 2));
     }
     setIsEditMode(!isEditMode);
-    setEditPrompt('');
   };
 
   return (
@@ -555,42 +622,12 @@ export default function DashboardPage() {
                 {/* AI Edit Tab */}
                 {editTab === 'ai' && (
                   <div>
-                    <div className="flex gap-3 mb-2">
-                      <input
-                        type="text"
-                        value={editPrompt}
-                        onChange={(e) => setEditPrompt(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAIEdit();
-                          }
-                        }}
-                        placeholder="What would you like to change? (e.g., 'add a new task for testing', 'change the color scheme', 'add more nodes')"
-                        className="flex-1 px-4 py-3 bg-[#141922] border border-[#2a2f38] rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                        disabled={isEditing}
-                      />
-                      <button
-                        onClick={handleAIEdit}
-                        disabled={isEditing || !editPrompt.trim()}
-                        className="px-6 py-3 bg-primary hover:bg-blue-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition flex items-center gap-2 font-medium"
-                      >
-                        {isEditing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Updating...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4" />
-                            Apply
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Use natural language to describe your changes. The AI will update your visualization accordingly.
-                    </p>
+                    <ChatSidebar
+                      initialHistory={chatHistory}
+                      onSendMessage={handleChatMessage}
+                      isProcessing={isEditing}
+                      embedded={true}
+                    />
                   </div>
                 )}
 

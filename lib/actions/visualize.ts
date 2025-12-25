@@ -277,8 +277,10 @@ export async function saveVisualization(
   type: VisualizationType,
   data: VisualizationData,
   metadata: VisualizationMetadata,
-  isPublic: boolean = false
-): Promise<{ success: boolean; id?: string; error?: string }> {
+  isPublic: boolean = false,
+  id?: string,
+  history?: { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[]
+): Promise<{ success: boolean; id?: string; error?: string; data?: any }> {
   try {
     const { userId } = await auth();
 
@@ -304,60 +306,92 @@ export async function saveVisualization(
     const userUsage = await UserUsageModel.findOne({ userId });
     const tier = userUsage?.tier || 'free';
 
-    // Check for existing visualization with same title and type
-    const existingVisualization = await VisualizationModel.findOne({
-      userId,
-      title,
-      type,
-    });
-
     let visualization;
 
-    if (existingVisualization) {
-      // Update existing visualization with new data (e.g., after extending nodes)
-      existingVisualization.data = data;
-      existingVisualization.metadata = metadata;
-      existingVisualization.isPublic = isPublic;
-      existingVisualization.updatedAt = new Date();
-      await existingVisualization.save();
+    // Check if we are updating by ID
+    if (id) {
+       // Validate ID
+       const idValidation = validateObjectId(id);
+       if (!idValidation.valid) {
+         return { success: false, error: idValidation.error };
+       }
 
-      visualization = existingVisualization;
+       visualization = await VisualizationModel.findOne({ _id: id, userId });
+
+       if (visualization) {
+         visualization.title = title; // Update title if changed
+         visualization.data = data;
+         visualization.metadata = metadata;
+         visualization.isPublic = isPublic;
+         if (history) {
+           visualization.history = history;
+         }
+         visualization.updatedAt = new Date();
+         await visualization.save();
+       } else {
+         // ID provided but not found, could imply user is trying to hack or it was deleted.
+         // Fallback to creating new? No, safer to error if ID was explicit.
+         return { success: false, error: 'Visualization not found or unauthorized' };
+       }
     } else {
-      // SECURITY: Check if user exceeded max saved visualizations
-      const user = await UserModel.findOrCreate(userId);
-      const currentCount = user.savedVisualizations.length;
-      const maxAllowed = tier === 'free'
-        ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
-        : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
-
-      if (currentCount >= maxAllowed) {
-        return {
-          success: false,
-          error: `Maximum saved visualizations limit reached (${maxAllowed}). Please delete some or upgrade your plan.`
-        };
-      }
-
-      // Create new visualization
-      visualization = await VisualizationModel.create({
+      // Check for existing visualization with same title and type (Legacy behavior)
+      // Only do this if we didn't search by ID.
+      const existingVisualization = await VisualizationModel.findOne({
         userId,
         title,
         type,
-        data,
-        metadata,
-        isPublic,
       });
 
-      // Update user's saved visualizations for new visualization only
-      const visualizationIdStr = visualization._id.toString();
-      const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
+      if (existingVisualization) {
+        // Update existing visualization with new data (e.g., after extending nodes)
+        existingVisualization.data = data;
+        existingVisualization.metadata = metadata;
+        existingVisualization.isPublic = isPublic;
+        if (history) {
+           existingVisualization.history = history;
+        }
+        existingVisualization.updatedAt = new Date();
+        await existingVisualization.save();
 
-      if (!exists) {
-        user.savedVisualizations.push(visualization._id as any);
-        await user.save();
+        visualization = existingVisualization;
+      } else {
+        // SECURITY: Check if user exceeded max saved visualizations
+        const user = await UserModel.findOrCreate(userId);
+        const currentCount = user.savedVisualizations.length;
+        const maxAllowed = tier === 'free'
+          ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
+          : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
+
+        if (currentCount >= maxAllowed) {
+          return {
+            success: false,
+            error: `Maximum saved visualizations limit reached (${maxAllowed}). Please delete some or upgrade your plan.`
+          };
+        }
+
+        // Create new visualization
+        visualization = await VisualizationModel.create({
+          userId,
+          title,
+          type,
+          data,
+          metadata,
+          isPublic,
+          history: history || [],
+        });
+
+        // Update user's saved visualizations for new visualization only
+        const visualizationIdStr = visualization._id.toString();
+        const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
+
+        if (!exists) {
+          user.savedVisualizations.push(visualization._id as any);
+          await user.save();
+        }
       }
     }
 
-    return { success: true, id: visualization._id.toString() };
+    return { success: true, id: visualization._id.toString(), data: visualization.toObject() };
   } catch (error) {
     console.error('Error saving visualization:', error);
     return {
@@ -382,7 +416,7 @@ export async function getUserVisualizations(limit: number = 20) {
 
     // SECURITY: Use field projection to only return necessary fields
     const visualizations = await VisualizationModel.find({ userId })
-      .select('_id userId title type data metadata isPublic createdAt updatedAt')
+      .select('_id userId title type data metadata isPublic createdAt updatedAt history')
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
