@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { visualizationId, editPrompt, existingData, visualizationType, messages } =
       await req.json();
 
-    if (!visualizationId || !editPrompt || !existingData || !visualizationType) {
+    if (!editPrompt || !existingData || !visualizationType) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -39,25 +39,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify the visualization belongs to the user
-    const existingVisualization = await VisualizationModel.findById(visualizationId);
+    // Prepare history and target for update
+    let history: any[] = messages || [];
+    let existingVisualization: any = null;
 
-    if (!existingVisualization) {
-      return NextResponse.json(
-        { error: "Visualization not found" },
-        { status: 404 }
-      );
+    // If visualizationId is provided, verify ownership and get history from DB
+    if (visualizationId) {
+      existingVisualization = await VisualizationModel.findById(visualizationId);
+
+      if (!existingVisualization) {
+        return NextResponse.json(
+          { error: "Visualization not found" },
+          { status: 404 }
+        );
+      }
+
+      if (existingVisualization.userId !== userId) {
+        return NextResponse.json(
+          { error: "You don't have permission to edit this visualization" },
+          { status: 403 }
+        );
+      }
+
+      // Use history from DB if available, falling back to request messages if empty
+      // Note: Request messages might contain the *new* user message already,
+      // but `editVisualization` service takes history as context (previous messages).
+      // We should be careful not to duplicate.
+      history = existingVisualization.history || [];
     }
-
-    if (existingVisualization.userId !== userId) {
-      return NextResponse.json(
-        { error: "You don't have permission to edit this visualization" },
-        { status: 403 }
-      );
-    }
-
-    // Get previous history from the database or the request
-    const history = existingVisualization.history || [];
 
     // Generate updated visualization using AI
     const generatorService = new VisualizationGeneratorService();
@@ -68,18 +77,20 @@ export async function POST(req: NextRequest) {
       history
     );
 
-    // Update the visualization in the database
-    existingVisualization.data = updatedData;
-    existingVisualization.updatedAt = new Date();
+    // If it's a saved visualization, update it in the database
+    if (existingVisualization) {
+      existingVisualization.data = updatedData;
+      existingVisualization.updatedAt = new Date();
 
-    // Append new interaction to history
-    existingVisualization.history = [
-      ...history,
-      { role: 'user', content: editPrompt, timestamp: new Date() },
-      { role: 'assistant', content: 'Visualization updated successfully.', timestamp: new Date() }
-    ];
+      // Append new interaction to history
+      existingVisualization.history = [
+        ...history,
+        { role: 'user', content: editPrompt, timestamp: new Date() },
+        { role: 'assistant', content: 'Visualization updated successfully.', timestamp: new Date() }
+      ];
 
-    await existingVisualization.save();
+      await existingVisualization.save();
+    }
 
     // TOKEN SYSTEM: Deduct tokens
     await deductTokens(userId, editCost);
@@ -90,14 +101,28 @@ export async function POST(req: NextRequest) {
         { $inc: { visualizationsCreated: 1 } }
     );
 
-    return NextResponse.json({
-      success: true,
-      visualization: {
-        ...existingVisualization.toObject(),
-        _id: existingVisualization._id.toString(),
-        id: existingVisualization._id.toString(),
-      },
-    });
+    if (existingVisualization) {
+      return NextResponse.json({
+        success: true,
+        visualization: {
+          ...existingVisualization.toObject(),
+          _id: existingVisualization._id.toString(),
+          id: existingVisualization._id.toString(),
+        },
+      });
+    } else {
+      // Return a temporary visualization object for draft mode
+      return NextResponse.json({
+        success: true,
+        visualization: {
+          data: updatedData,
+          type: visualizationType,
+          // We return null ID to indicate it's still a draft
+          _id: null,
+          id: null,
+        },
+      });
+    }
   } catch (error) {
     console.error("Error editing visualization:", error);
     return NextResponse.json(
