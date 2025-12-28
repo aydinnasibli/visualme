@@ -150,7 +150,7 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
         const seedX = seededRandom(node.id + "x");
         const seedY = seededRandom(node.id + "y");
 
-        const nodeColor = colorMap.get(node.category || "default") || "#6366f1";
+        const nodeColor = node.color || colorMap.get(node.category || "default") || "#6366f1";
 
         return {
           data: {
