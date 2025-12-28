@@ -72,6 +72,7 @@ export default function DashboardPage() {
           type: parsed.type,
           data: parsed.data,
           title: parsed.title,
+          reason: 'Loaded from saved visualization',
           metadata: parsed.metadata
         });
         setVizId(parsed._id || null);
@@ -280,8 +281,9 @@ export default function DashboardPage() {
         result.type,
         result.data,
         metadata,
+        false, // isPublic default
         vizId || undefined, // Pass ID if updating existing
-        chatHistory // Pass chat history to save
+        chatHistory as { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[] // Pass chat history to save
       );
 
       if (!saveResult.success) {

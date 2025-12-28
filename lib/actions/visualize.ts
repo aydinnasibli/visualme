@@ -324,7 +324,10 @@ export async function saveVisualization(
          visualization.metadata = metadata;
          visualization.isPublic = isPublic;
          if (history) {
-           visualization.history = history;
+           visualization.history = history.map(h => ({
+             ...h,
+             timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
+           }));
          }
          visualization.updatedAt = new Date();
          await visualization.save();
@@ -348,7 +351,10 @@ export async function saveVisualization(
         existingVisualization.metadata = metadata;
         existingVisualization.isPublic = isPublic;
         if (history) {
-           existingVisualization.history = history;
+           existingVisualization.history = history.map(h => ({
+             ...h,
+             timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
+           }));
         }
         existingVisualization.updatedAt = new Date();
         await existingVisualization.save();
@@ -377,7 +383,10 @@ export async function saveVisualization(
           data,
           metadata,
           isPublic,
-          history: history || [],
+          history: history ? history.map(h => ({
+             ...h,
+             timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
+           })) : [],
         });
 
         // Update user's saved visualizations for new visualization only
