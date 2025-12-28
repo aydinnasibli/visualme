@@ -350,6 +350,7 @@ export interface VisualizationResponse {
   success: boolean;
   error?: string;
   metadata?: VisualizationMetadata;
+  title?: string;
 }
 
 export interface VisualizationMetadata {
