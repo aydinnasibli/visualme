@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Loader2, Bot, User, Clock } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Send, Loader2, Bot, User } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface Message {
   role: "user" | "assistant";
@@ -14,12 +14,16 @@ interface ChatSidebarProps {
   initialHistory?: Message[];
   onSendMessage: (message: string) => Promise<void>;
   isProcessing: boolean;
+  className?: string;
+  embedded?: boolean;
 }
 
 export default function ChatSidebar({
   initialHistory = [],
   onSendMessage,
   isProcessing,
+  className = "",
+  embedded = false,
 }: ChatSidebarProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -46,10 +50,14 @@ export default function ChatSidebar({
     }
   };
 
+  const baseClasses = embedded
+    ? "flex flex-col h-[500px] bg-[#141922] border border-[#2a2f38] rounded-xl overflow-hidden"
+    : "flex flex-col h-full bg-zinc-900 border-l border-zinc-800 w-80 md:w-96 flex-shrink-0";
+
   return (
-    <div className="flex flex-col h-full bg-zinc-900 border-l border-zinc-800 w-80 md:w-96 flex-shrink-0">
+    <div className={`${baseClasses} ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur flex items-center gap-2">
+      <div className={`p-4 border-b ${embedded ? 'border-[#2a2f38] bg-[#1a1f28]' : 'border-zinc-800 bg-zinc-900/50'} backdrop-blur flex items-center gap-2`}>
         <Bot className="w-5 h-5 text-primary" />
         <h3 className="font-semibold text-white">AI Copilot</h3>
         <span className="text-xs text-zinc-500 ml-auto flex items-center gap-1">
@@ -71,13 +79,13 @@ export default function ChatSidebar({
             <div className="mt-6 flex flex-col gap-2">
               <button
                 onClick={() => onSendMessage("Change the color scheme to blue")}
-                className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-2 px-3 rounded-lg transition text-left"
+                className={`text-xs ${embedded ? 'bg-[#1a1f28] hover:bg-[#2a2f38]' : 'bg-zinc-800 hover:bg-zinc-700'} text-zinc-300 py-2 px-3 rounded-lg transition text-left`}
               >
                 "Change color scheme to blue"
               </button>
               <button
                 onClick={() => onSendMessage("Add a new node called 'Details'")}
-                className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-2 px-3 rounded-lg transition text-left"
+                className={`text-xs ${embedded ? 'bg-[#1a1f28] hover:bg-[#2a2f38]' : 'bg-zinc-800 hover:bg-zinc-700'} text-zinc-300 py-2 px-3 rounded-lg transition text-left`}
               >
                 "Add a new node called 'Details'"
               </button>
@@ -108,7 +116,7 @@ export default function ChatSidebar({
                 className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
                   msg.role === "user"
                     ? "bg-primary text-white rounded-tr-none"
-                    : "bg-zinc-800 text-zinc-200 rounded-tl-none border border-zinc-700"
+                    : `${embedded ? 'bg-[#1a1f28] border-[#2a2f38]' : 'bg-zinc-800 border-zinc-700'} text-zinc-200 rounded-tl-none border`
                 }`}
               >
                 {msg.content}
@@ -130,7 +138,7 @@ export default function ChatSidebar({
             <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-purple-400" />
             </div>
-            <div className="bg-zinc-800 text-zinc-400 rounded-2xl rounded-tl-none px-4 py-3 text-sm border border-zinc-700 flex items-center gap-2">
+            <div className={`${embedded ? 'bg-[#1a1f28] border-[#2a2f38]' : 'bg-zinc-800 border-zinc-700'} text-zinc-400 rounded-2xl rounded-tl-none px-4 py-3 text-sm border flex items-center gap-2`}>
               <Loader2 className="w-3 h-3 animate-spin" />
               Thinking...
             </div>
@@ -139,7 +147,7 @@ export default function ChatSidebar({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-zinc-900 border-t border-zinc-800">
+      <div className={`p-4 ${embedded ? 'bg-[#1a1f28] border-[#2a2f38]' : 'bg-zinc-900 border-zinc-800'} border-t`}>
         <form onSubmit={handleSubmit} className="relative">
           <input
             type="text"
@@ -148,12 +156,12 @@ export default function ChatSidebar({
             onKeyDown={handleKeyDown}
             placeholder="Type a command..."
             disabled={isProcessing}
-            className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl py-3 pl-4 pr-12 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed placeholder-zinc-500 text-sm"
+            className={`w-full ${embedded ? 'bg-[#141922] border-[#2a2f38]' : 'bg-zinc-950 border-zinc-800'} text-white rounded-xl py-3 pl-4 pr-12 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed placeholder-zinc-500 text-sm border`}
           />
           <button
             type="submit"
             disabled={!input.trim() || isProcessing}
-            className="absolute right-2 top-2 p-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:bg-zinc-800 disabled:text-zinc-500 transition-colors"
+            className={`absolute right-2 top-2 p-1.5 ${embedded ? 'bg-primary' : 'bg-primary'} text-white rounded-lg hover:bg-primary/90 disabled:bg-zinc-800 disabled:text-zinc-500 transition-colors`}
           >
             <Send className="w-4 h-4" />
           </button>
