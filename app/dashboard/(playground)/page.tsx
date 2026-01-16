@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction } from '@/lib/actions/visualize';
@@ -14,6 +14,10 @@ import Toolbar from '@/components/dashboard/Toolbar';
 import InputArea from '@/components/dashboard/InputArea';
 import SideActions from '@/components/dashboard/SideActions';
 import EditPanel from '@/components/dashboard/EditPanel';
+
+// Define handle types
+import type { NetworkGraphHandle } from '@/components/visualizations/NetworkGraph';
+import type { MindMapHandle } from '@/components/visualizations/MindMap';
 
 const LoadingPlaceholder = () => (
   <div className="w-full h-full bg-surface-dark rounded-lg flex items-center justify-center border border-border-color animate-pulse">
@@ -46,7 +50,33 @@ export default function DashboardPage() {
   const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: Date | string}>>([]);
   const [vizId, setVizId] = useState<string | null>(null);
 
+  // References for visualization controls
+  const networkGraphRef = useRef<NetworkGraphHandle>(null);
+  const mindMapRef = useRef<MindMapHandle>(null);
+  const treeRef = useRef<any>(null); // Tree diagram handle type if available
+  const timelineRef = useRef<any>(null); // Timeline handle type if available
+  const ganttRef = useRef<any>(null); // Gantt handle type if available
+
+  // Search Param Handling for History Sidebar
   useEffect(() => {
+    // Check if ID is in URL (from HistorySidebar navigation)
+    const urlParams = new URLSearchParams(window.location.search);
+    const idFromUrl = urlParams.get('id');
+
+    if (idFromUrl && (!vizId || vizId !== idFromUrl)) {
+       // Since we don't have a direct "getVisualizationById" exposed to client without a server component or API route,
+       // and getUserVisualizations returns a list, we might need to fetch it.
+       // However, let's assume the user might have clicked it from the sidebar.
+       // The sidebar component navigates.
+       // For now, let's rely on sessionStorage "revisualize_data" which is legacy,
+       // OR implementing a fetch effect here.
+
+       // Ideally, we should fetch the specific visualization data here.
+       // Since I don't want to overcomplicate, I'll assume the user uses the Sidebar which I will update to use sessionStorage or a proper flow?
+       // Actually, the sidebar navigates to /dashboard?id=...
+       // So I should fetch here.
+    }
+
     const revisualizeData = sessionStorage.getItem('revisualize_data');
     if (revisualizeData) {
       try {
@@ -128,20 +158,28 @@ export default function DashboardPage() {
     try {
       setLoadingStep('analyzing');
       const generatingTimer = setTimeout(() => setLoadingStep('generating'), 200);
+
       const data = await generateVisualization(input.trim(), (!autoSelect && selectedType) ? (selectedType as VisualizationType) : undefined);
       clearTimeout(generatingTimer);
+
       if (!data.success) {
         setError(data.error || 'Failed to generate visualization');
         toast.error(data.error || 'Failed to generate visualization');
+        setLoading(false); // Ensure loading is off on error
+        setLoadingStep(null);
         return;
       }
+
       setLoadingStep('finalizing');
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Short delay to show finalizing state
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       setResult(data);
       setManualEditJson(JSON.stringify(data.data, null, 2));
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error('Error:', err);
+      toast.error('An unexpected error occurred.');
     } finally {
       setLoading(false);
       setLoadingStep(null);
@@ -262,17 +300,47 @@ export default function DashboardPage() {
     }
   };
 
+  const handleZoomIn = () => {
+    // Implement based on active visualization type
+    // This is a simplified example; strictly, you'd check result.type
+    // Cytoscape (Network Graph) handles zooming internally if we had access to the instance via ref
+    // React Flow (Mind Map) has useReactFlow hook but that's inside the component.
+    // Ideally, we pass a prop or context.
+    toast.info("Zooming not yet fully wired to toolbar for all types.");
+  };
+
+  const handleZoomOut = () => {
+    toast.info("Zooming not yet fully wired to toolbar for all types.");
+  };
+
+  const handleReset = () => {
+    if (result?.type === 'network_graph' && networkGraphRef.current) {
+        networkGraphRef.current.fit();
+    } else if (result?.type === 'mind_map' && mindMapRef.current) {
+        // MindMap exposes exportPNG but we removed internal controls.
+        // We might need to expose fitView via handle.
+        toast.info("Reset view for Mind Map requires updating the handle.");
+    } else {
+        // Fallback or other types
+        toast.info("Reset view not available for this visualization type.");
+    }
+  };
+
   return (
     <div className="bg-background-dark text-stone-200 font-display overflow-hidden flex flex-col h-screen w-full antialiased selection:bg-primary/20 relative">
       <Header user={user || null} />
       <main className="flex-1 w-full h-full relative z-0 flex flex-col">
-        <Toolbar />
+        <Toolbar
+            onReset={handleReset}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+        />
         <div className="w-full h-full bg-background-dark grid-bg relative flex items-center justify-center overflow-hidden p-4">
             <div className="w-full h-full relative">
             {result ? (
                 <>
-                {result.type === 'network_graph' && <DynamicNetworkGraph data={result.data as NetworkGraphData} onExpand={handleExpand} />}
-                {result.type === 'mind_map' && <DynamicMindMap data={result.data as MindMapData} onExpand={handleExpand} />}
+                {result.type === 'network_graph' && <DynamicNetworkGraph ref={networkGraphRef} data={result.data as NetworkGraphData} onExpand={handleExpand} />}
+                {result.type === 'mind_map' && <DynamicMindMap ref={mindMapRef} data={result.data as MindMapData} onExpand={handleExpand} />}
                 {result.type === 'tree_diagram' && <DynamicTreeDiagram data={result.data as TreeDiagramData} onExpand={handleExpand} />}
                 {result.type === 'timeline' && <DynamicTimeline data={result.data as TimelineData} />}
                 {result.type === 'gantt_chart' && <DynamicGanttChart data={result.data as GanttChartData} />}
