@@ -101,28 +101,29 @@ export default function DashboardPage() {
     } else {
       // Legacy session check
       const revisualizeData = sessionStorage.getItem('revisualize_data');
-    if (revisualizeData) {
-      try {
-        const parsed: SavedVisualization = JSON.parse(revisualizeData);
-        setResult({
-          success: true,
-          type: parsed.type,
-          data: parsed.data,
-          title: parsed.title,
-          reason: 'Loaded from saved visualization',
-          metadata: parsed.metadata
-        });
-        setVizId(parsed._id || null);
-        setIsSaved(true);
-        if (parsed.history) {
-          setChatHistory(parsed.history);
+      if (revisualizeData) {
+        try {
+          const parsed: SavedVisualization = JSON.parse(revisualizeData);
+          setResult({
+            success: true,
+            type: parsed.type,
+            data: parsed.data,
+            title: parsed.title,
+            reason: 'Loaded from saved visualization',
+            metadata: parsed.metadata
+          });
+          setVizId(parsed._id || null);
+          setIsSaved(true);
+          if (parsed.history) {
+            setChatHistory(parsed.history);
+          }
+          setManualEditJson(JSON.stringify(parsed.data, null, 2));
+          sessionStorage.removeItem('revisualize_data');
+          toast.success(`Loaded "${parsed.title}" for editing`);
+        } catch (e) {
+          console.error("Failed to load revisualize data", e);
+          toast.error("Failed to load visualization data");
         }
-        setManualEditJson(JSON.stringify(parsed.data, null, 2));
-        sessionStorage.removeItem('revisualize_data');
-        toast.success(`Loaded "${parsed.title}" for editing`);
-      } catch (e) {
-        console.error("Failed to load revisualize data", e);
-        toast.error("Failed to load visualization data");
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
