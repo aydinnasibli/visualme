@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { NetworkGraphHandle } from "./NetworkGraph";
 import MindMapVisualization, { MindMapHandle } from "./MindMap";
+import { saveVisualization } from "@/lib/actions/visualize";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 
@@ -72,24 +73,21 @@ export default function VisualizationModal({
 
       if (!currentVisualization) return;
 
-      // Update in database using the edit API
-      const response = await fetch("/api/visualizations/edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visualizationId: currentVisualization._id,
-          editPrompt: "Manual JSON edit",
-          existingData: parsedData,
-          visualizationType: currentVisualization.type,
-        }),
-      });
+      // Update in database using saveVisualization server action
+      const result = await saveVisualization(
+        currentVisualization.title,
+        currentVisualization.type,
+        parsedData,
+        currentVisualization.metadata,
+        currentVisualization.isPublic,
+        currentVisualization._id
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update visualization");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update visualization");
       }
 
-      const { visualization: updatedViz } = await response.json();
+      const updatedViz = result.data as SavedVisualization;
 
       setCurrentVisualization(updatedViz);
       setManualEditJson('');
