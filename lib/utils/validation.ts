@@ -36,6 +36,7 @@ export const TOKEN_LIMITS = {
 export const TOKEN_COSTS = {
   // AI operations (expensive)
   GENERATE_VISUALIZATION: 10,  // Full AI generation with GPT-4
+  EDIT_VISUALIZATION: 8,       // Slightly cheaper than generation as it reuses data
   EXPAND_NODE: 5,             // AI expansion of existing nodes
 
   // Database operations (cheap/free)
@@ -62,6 +63,7 @@ export const TOKEN_REFRESH = {
  */
 export function getTokenCosts(): {
   generateVisualization: number;
+  editVisualization: number;
   expandNode: number;
   exportVisualization: number;
   saveVisualization: number;
@@ -69,6 +71,7 @@ export function getTokenCosts(): {
 } {
   return {
     generateVisualization: TOKEN_COSTS.GENERATE_VISUALIZATION,
+    editVisualization: TOKEN_COSTS.EDIT_VISUALIZATION,
     expandNode: TOKEN_COSTS.EXPAND_NODE,
     exportVisualization: TOKEN_COSTS.EXPORT_VISUALIZATION,
     saveVisualization: TOKEN_COSTS.SAVE_VISUALIZATION,
@@ -149,7 +152,7 @@ export function validateArraySize(
   maxSize: number
 ): { valid: boolean; error?: string } {
   if (!Array.isArray(arr)) {
-    return { valid: false, error: 'Must be an array' };
+    return { valid: false, error: 'Must be a array' };
   }
 
   if (arr.length > maxSize) {
