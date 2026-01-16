@@ -244,7 +244,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
       null
     );
     const [isExpanding, setIsExpanding] = useState(false);
-    const [showHelp, setShowHelp] = useState(false);
     const { addExtendedNode, isNodeExtended } = useExtendedNodes();
     const { fitView, zoomIn, zoomOut } = useReactFlow();
 
@@ -312,11 +311,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     // Keyboard shortcuts
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        // ?: Show help
-        if (e.key === '?') {
-          e.preventDefault();
-          setShowHelp(prev => !prev);
-        }
         // Shift + R: Reset view
         if (e.shiftKey && e.key === 'R') {
           e.preventDefault();
@@ -339,7 +333,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
         }
         // Escape: Close panels
         if (e.key === 'Escape') {
-          setShowHelp(false);
           setSelectedNodeData(null);
         }
       };
@@ -429,64 +422,9 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
               >
                 Export PNG
               </button>
-              <button
-                onClick={() => setShowHelp(!showHelp)}
-                className="px-3 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white rounded-lg border border-zinc-600 transition text-sm font-medium"
-                title="Keyboard Shortcuts (?)"
-              >
-                ?
-              </button>
             </Panel>
           </ReactFlow>
         )}
-
-        {/* Keyboard Shortcuts Help */}
-        <AnimatePresence>
-          {showHelp && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="absolute top-20 right-4 bg-zinc-900/95 border border-zinc-700 rounded-xl p-4 shadow-2xl z-50 backdrop-blur-sm"
-            >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-white font-bold">Keyboard Shortcuts</h3>
-                <button
-                  onClick={() => setShowHelp(false)}
-                  className="text-zinc-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Pan</span>
-                  <span className="text-white font-mono">Click + Drag</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Zoom</span>
-                  <span className="text-white font-mono">Scroll / +/-</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Reset View</span>
-                  <span className="text-white font-mono">Shift + R</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Export PNG</span>
-                  <span className="text-white font-mono">Shift + E</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Toggle Help</span>
-                  <span className="text-white font-mono">?</span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="text-zinc-400">Close Panels</span>
-                  <span className="text-white font-mono">Esc</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Details Panel */}
         <AnimatePresence>

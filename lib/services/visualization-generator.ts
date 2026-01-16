@@ -803,18 +803,19 @@ export async function generateVisualizationData(
 export class VisualizationGeneratorService {
   /**
    * Edit an existing visualization using AI
+   * Supports both Q&A (Text only) and Data Modification (Text + Data)
    * @param type - The type of visualization
    * @param existingData - The current visualization data
    * @param editPrompt - User's natural language edit request
    * @param history - Optional conversation history for context
-   * @returns Updated visualization data
+   * @returns Object with message and optional updated data
    */
   async editVisualization(
     type: VisualizationType,
     existingData: VisualizationData,
     editPrompt: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }> = []
-  ): Promise<VisualizationData> {
+  ): Promise<{ message: string; data?: VisualizationData }> {
     const systemPrompt = this.getEditSystemPrompt(type);
 
     // Format history for context, limited to last 5 turns to save context window
@@ -825,22 +826,41 @@ export class VisualizationGeneratorService {
     const userPrompt = `EXISTING VISUALIZATION DATA:
 ${JSON.stringify(existingData, null, 2)}
 ${historyContext}
-USER'S EDIT REQUEST:
+USER'S REQUEST:
 ${editPrompt}
 
-Please update the visualization data according to the user's request.
-- You CAN modify visual properties like 'color', 'style', 'background' if requested.
-- You CAN add new nodes/tasks/items.
-- Maintain the existing structure and hierarchy.
-- Return the complete updated visualization in the same JSON format.`;
+Determine if this is a QUESTION about the data or a REQUEST TO MODIFY the data.
 
-    return await callOpenAI<VisualizationData>(systemPrompt, userPrompt, 'gpt-4o');
+1. If it is a QUESTION (e.g. "Why is node X red?", "What does this represent?", "How many nodes?"):
+   - Return "message": The answer to the question.
+   - Return "data": null (do not modify data).
+
+2. If it is a MODIFICATION (e.g. "Make node X blue", "Add a step", "Change layout"):
+   - Return "message": A brief confirmation (e.g. "I've updated the color...").
+   - Return "data": The complete updated JSON with the requested changes.
+
+Return valid JSON:
+{
+  "message": "string",
+  "data": object | null
+}`;
+
+    const response = await callOpenAI<{ message: string; data: VisualizationData | null }>(
+      systemPrompt,
+      userPrompt,
+      'gpt-4o'
+    );
+
+    return {
+      message: response.message,
+      data: response.data || undefined
+    };
   }
 
   private getEditSystemPrompt(type: VisualizationType): string {
-    const basePrompt = `You are an expert visualization editor. Your task is to modify existing visualization data based on user requests while maintaining data structure integrity.
+    const basePrompt = `You are an expert visualization assistant. Your task is to either answer questions about the data OR modify the visualization data based on user requests.
 
-CRITICAL RULES:
+CRITICAL RULES FOR MODIFICATIONS:
 1. PRESERVE the general JSON structure of the original visualization.
 2. YOU ARE ALLOWED AND ENCOURAGED to modify visual attributes (color, size, style) if the user asks.
    - For Mind Maps/Graphs: 'color' is a valid property on nodes. Use hex codes (e.g., "#3b82f6" for blue).
