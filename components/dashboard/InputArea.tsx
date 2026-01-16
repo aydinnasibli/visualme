@@ -1,5 +1,8 @@
-"use client";
-import React from 'react';
+import React, { useState, useRef, useEffect } from "react";
+import { Sparkles, X, Globe, Lock, ArrowUp, UploadCloud, ChevronDown, Check, Settings, Network, Share2, Binary, GitFork, Calendar, BarChart2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useUser } from '@clerk/nextjs';
+import { getTokenBalance } from '@/lib/utils/tokens';
 
 interface InputAreaProps {
   input: string;
@@ -22,132 +25,209 @@ const InputArea = ({
   selectedType,
   setSelectedType,
 }: InputAreaProps) => {
-    React.useEffect(() => {
-        const textarea = document.querySelector('textarea');
-        if (textarea) {
-            const handleInput = () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = (textarea.scrollHeight) + 'px';
-                if (textarea.value === '') {
-                    textarea.style.height = '64px'; // reset
-                }
-            };
-            textarea.addEventListener('input', handleInput);
-            return () => textarea.removeEventListener('input', handleInput);
-        }
-    }, []);
+  const { user } = useUser();
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSubmit(e as any);
-        }
-    };
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+    }
+  }, [input]);
 
-    const chartTypes = [
-        // Common / Simple
-        { id: 'bar_chart', icon: 'bar_chart', label: 'Bar Chart' },
-        { id: 'line_chart', icon: 'show_chart', label: 'Line Chart' },
-        { id: 'pie_chart', icon: 'pie_chart', label: 'Pie Chart' },
-        { id: 'scatter_plot', icon: 'bubble_chart', label: 'Scatter Plot' },
-        { id: 'table', icon: 'table_chart', label: 'Table' },
-        // Hierarchical
-        { id: 'tree_diagram', icon: 'account_tree', label: 'Tree Diagram' },
-        { id: 'mind_map', icon: 'psychology', label: 'Mind Map' },
-        // Relational
-        { id: 'network_graph', icon: 'hub', label: 'Network Graph' },
-        { id: 'venn_diagram', icon: 'adjust', label: 'Venn Diagram' },
-        // Flow & Process
-        { id: 'flowchart', icon: 'schema', label: 'Flowchart' },
-        { id: 'sankey_diagram', icon: 'waterfall_chart', label: 'Sankey Diagram' },
-        { id: 'sequence_diagram', icon: 'fast_forward', label: 'Sequence Diagram' },
-        // Temporal
-        { id: 'timeline', icon: 'timeline', label: 'Timeline' },
-        { id: 'gantt_chart', icon: 'view_timeline', label: 'Gantt Chart' },
-        // Geospatial
-        { id: 'geojson_map', icon: 'map', label: 'GeoJSON Map' },
-        // Specialized
-        { id: 'word_cloud', icon: 'cloud', label: 'Word Cloud' },
-        { id: 'quadrant_chart', icon: 'view_quilt', label: 'Quadrant Chart' },
-        { id: 'parallel_coordinates', icon: 'analytics', label: 'Parallel Coordinates' },
-        { id: 'funnel_chart', icon: 'filter_list', label: 'Funnel Chart' },
-        { id: 'class_diagram', icon: 'widgets', label: 'Class Diagram' },
-    ];
+  // Fetch token balance
+  useEffect(() => {
+    if (user) {
+       getTokenBalance(user.id).then(balance => {
+           setTokenBalance(balance.tokensRemaining);
+       });
+    }
+  }, [user, loading]);
 
-    return (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-40">
-            <div className="glass-panel rounded-2xl p-0 shadow-2xl border border-white/5 ring-1 ring-black/50 relative group transition-all duration-300 flex flex-col overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
-                    <div className="flex items-center gap-4">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Visualization Mode</span>
-                        <div className="bg-black/40 p-1 rounded-lg flex items-center border border-white/5">
-                            <button
-                                onClick={() => setAutoSelect(true)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${autoSelect ? 'bg-stone-700/80 text-stone-100 shadow-sm border border-white/10' : 'text-stone-500 hover:text-stone-300 hover:bg-white/5'}`}>
-                                <span className="flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                                    AI Auto
-                                </span>
-                            </button>
-                            <button
-                                onClick={() => setAutoSelect(false)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${!autoSelect ? 'bg-stone-700/80 text-stone-100 shadow-sm border border-white/10' : 'text-stone-500 hover:text-stone-300 hover:bg-white/5'}`}>
-                                <span className="flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[14px]">tune</span>
-                                    Manual Select
-                                </span>
-                            </button>
-                        </div>
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  const visualizationTypes = [
+    { id: 'network_graph', name: 'Network Graph', icon: Network },
+    { id: 'mind_map', name: 'Mind Map', icon: Share2 },
+    { id: 'tree_diagram', name: 'Tree Diagram', icon: Binary },
+    { id: 'flowchart', name: 'Flowchart', icon: GitFork },
+    { id: 'timeline', name: 'Timeline', icon: Calendar },
+    { id: 'gantt_chart', name: 'Gantt Chart', icon: Calendar },
+    { id: 'sankey_diagram', name: 'Sankey Diagram', icon: GitFork },
+    { id: 'bar_chart', name: 'Bar Chart', icon: BarChart2 },
+  ];
+
+  const selectedTypeInfo = visualizationTypes.find(t => t.id === selectedType);
+
+  return (
+    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-40">
+      <div className="relative">
+        {/* Type Selector Popover */}
+        <AnimatePresence>
+            {showTypeSelector && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute bottom-full mb-3 left-0 w-64 bg-surface-dark border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl z-50 flex flex-col"
+                >
+                    <div className="p-3 border-b border-white/5 flex items-center justify-between">
+                        <span className="text-xs font-medium text-stone-400">Select Format</span>
+                        <button onClick={() => setShowTypeSelector(false)} className="text-stone-500 hover:text-white"><X size={14} /></button>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-yellow-500 animate-pulse' : 'bg-primary'}`}></span>
-                        <span className="text-[10px] text-stone-500 font-mono">{loading ? 'Generating...' : 'Ready'}</span>
-                    </div>
-                </div>
-                <form className="flex flex-col relative" onSubmit={handleSubmit}>
-                    {!autoSelect && (
-                        <div className="px-4 py-3 border-b border-white/5 bg-black/20 flex items-center gap-4 overflow-x-auto no-scrollbar">
-                            <span className="text-[10px] text-stone-500 font-mono uppercase whitespace-nowrap">Chart Type:</span>
-                            <div className="flex items-center gap-2">
-                                {chartTypes.map(chart => (
-                                    <button
-                                        key={chart.id}
-                                        onClick={() => setSelectedType(chart.id)}
-                                        className={`group flex flex-col items-center justify-center w-10 h-10 rounded transition-all ${selectedType === chart.id ? 'bg-primary/10 border border-primary/30 text-primary' : 'hover:bg-white/5 border border-transparent hover:border-white/10 text-stone-500 hover:text-stone-300'}`}
-                                        title={chart.label}
-                                        type="button">
-                                        <span className="material-symbols-outlined text-[20px]">{chart.icon}</span>
-                                    </button>
-                                ))}
+                    <div className="max-h-60 overflow-y-auto p-1 custom-scrollbar">
+                        <button
+                            onClick={() => {
+                                setAutoSelect(true);
+                                setSelectedType(null);
+                                setShowTypeSelector(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${autoSelect ? 'bg-primary/20 text-primary' : 'text-stone-300 hover:bg-white/5'}`}
+                        >
+                            <Sparkles size={16} />
+                            <div className="flex flex-col items-start">
+                                <span className="font-medium">Auto-Detect</span>
+                                <span className="text-[10px] opacity-70">AI chooses best format</span>
                             </div>
-                        </div>
-                    )}
-                    <div className="relative w-full bg-surface-darker/30">
-                        <textarea
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            disabled={loading}
-                            className="w-full min-h-[64px] max-h-[200px] py-4 pl-5 pr-32 bg-transparent border-0 text-stone-200 text-base placeholder:text-stone-600 focus:ring-0 resize-none leading-relaxed font-light disabled:opacity-50 disabled:cursor-not-allowed"
-                            placeholder="Describe the data parameters or adjust styling..."
-                            rows={1}></textarea>
-                        <div className="absolute right-3 bottom-2.5 flex items-center gap-2">
-                            <button className="p-2 text-stone-500 hover:text-stone-300 hover:bg-white/5 rounded-full transition-colors tooltip" title="Upload Data" type="button">
-                                <span className="material-symbols-outlined text-[20px]">upload_file</span>
+                            {autoSelect && <Check size={14} className="ml-auto" />}
+                        </button>
+
+                        <div className="h-px bg-white/5 my-1 mx-2"></div>
+
+                        {visualizationTypes.map((type) => (
+                            <button
+                                key={type.id}
+                                onClick={() => {
+                                    setAutoSelect(false);
+                                    setSelectedType(type.id);
+                                    setShowTypeSelector(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${selectedType === type.id ? 'bg-primary/20 text-primary' : 'text-stone-300 hover:bg-white/5'}`}
+                            >
+                                <type.icon size={16} />
+                                <span className="font-medium">{type.name}</span>
+                                {selectedType === type.id && <Check size={14} className="ml-auto" />}
                             </button>
-                            <button disabled={loading} className="h-9 w-9 flex items-center justify-center rounded-lg bg-stone-700 hover:bg-stone-600 text-stone-200 border border-white/10 shadow-lg transition-all transform active:scale-95 disabled:opacity-50" type="submit">
-                                {loading ? (
-                                    <div className="w-4 h-4 border-2 border-stone-400 border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
-                                )}
-                            </button>
-                        </div>
+                        ))}
                     </div>
-                </form>
+                </motion.div>
+            )}
+        </AnimatePresence>
+
+        <form
+          onSubmit={handleSubmit}
+          className={`relative group bg-surface-dark/90 backdrop-blur-xl border transition-all duration-300 rounded-2xl overflow-hidden shadow-2xl ${
+            loading ? "border-primary/50 shadow-primary/20" : "border-white/10 focus-within:border-primary/50 focus-within:shadow-lg hover:border-white/20"
+          }`}
+        >
+          {loading && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent shimmer-effect pointer-events-none" />
+          )}
+
+          <div className="relative flex items-end p-3 gap-2">
+            <div className="flex-1 min-w-0">
+                <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Describe what you want to visualize..."
+                    className="w-full bg-transparent border-none focus:ring-0 text-stone-200 placeholder:text-stone-500 resize-none py-3 px-2 max-h-48 text-base leading-relaxed"
+                    rows={1}
+                    disabled={loading}
+                />
+
+                {/* Bottom Controls */}
+                <div className="flex items-center gap-2 px-2 pb-1 mt-1">
+                    <button
+                        type="button"
+                        onClick={() => setShowTypeSelector(!showTypeSelector)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            selectedType ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-white/5 border-white/5 text-stone-400 hover:text-stone-200 hover:bg-white/10'
+                        }`}
+                    >
+                        {selectedType && selectedTypeInfo ? (
+                            <>
+                                <selectedTypeInfo.icon size={14} />
+                                {selectedTypeInfo.name}
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles size={14} />
+                                Auto Format
+                            </>
+                        )}
+                        <ChevronDown size={14} />
+                    </button>
+
+                     <button
+                        type="button"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/5 border border-white/5 text-stone-400 hover:text-stone-200 hover:bg-white/10 transition-colors"
+                    >
+                        <Settings size={14} />
+                        Options
+                    </button>
+
+                    <div className="flex-1"></div>
+
+                    <span className="text-[10px] text-stone-500 font-mono">
+                         {input.length}/2000
+                    </span>
+                </div>
             </div>
+
+            <div className="flex flex-col gap-2 pb-1">
+                 {/* Upload Button (Placeholder) */}
+                 {/* <button
+                    type="button"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-stone-500 hover:text-white hover:bg-white/10 transition-colors"
+                    title="Upload file"
+                 >
+                    <UploadCloud size={20} />
+                 </button> */}
+
+                <button
+                    type="submit"
+                    disabled={!input.trim() || loading}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg ${
+                    input.trim() && !loading
+                        ? "bg-primary text-white hover:bg-primary-hover hover:scale-105 hover:shadow-primary/25"
+                        : "bg-surface-darker text-stone-600 cursor-not-allowed border border-white/5"
+                    }`}
+                >
+                    {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                    <ArrowUp size={20} />
+                    )}
+                </button>
+            </div>
+          </div>
+        </form>
+
+        {/* Footer Info */}
+        <div className="mt-3 flex items-center justify-center gap-4 text-[10px] text-stone-500 font-medium">
+            <span className="flex items-center gap-1">
+               <Globe className="w-3 h-3" /> Public
+            </span>
+            <span className="flex items-center gap-1">
+               <Lock className="w-3 h-3" /> Private
+            </span>
+             <span className="flex items-center gap-1 text-primary/70">
+               <Sparkles className="w-3 h-3" /> {tokenBalance !== null ? `${tokenBalance} tokens` : 'Loading...'}
+            </span>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default InputArea;

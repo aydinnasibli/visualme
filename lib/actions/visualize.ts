@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
-import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
+import { expandNetworkNode, expandMindMapNode, generateVisualizationData, VisualizationGeneratorService } from '@/lib/services/visualization-generator';
 import { calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 import {
@@ -256,6 +256,117 @@ export async function expandMindMapNodeAction(
   } catch (error) {
     console.error('Error expanding mind map node:', error);
     return { success: false, error: sanitizeError(error, 'Failed to expand mind map node') };
+  }
+}
+
+/**
+ * Edit an existing visualization
+ */
+export async function editVisualizationAction(
+  editPrompt: string,
+  existingData: VisualizationData,
+  visualizationType: VisualizationType,
+  visualizationId?: string,
+  messages?: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date | string }>
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    // SECURITY: Validate inputs
+    const promptValidation = validateInputLength(editPrompt);
+    if (!promptValidation.valid) {
+      return { success: false, error: promptValidation.error };
+    }
+
+    const dataValidation = validateDataSize(existingData);
+    if (!dataValidation.valid) {
+      return { success: false, error: dataValidation.error };
+    }
+
+    if (visualizationId) {
+       const idValidation = validateObjectId(visualizationId);
+       if (!idValidation.valid) {
+         return { success: false, error: idValidation.error };
+       }
+    }
+
+    await connectToDatabase();
+
+    // TOKEN SYSTEM: Check if user has enough tokens
+    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.EDIT_VISUALIZATION);
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: tokenCheck.error || 'Insufficient tokens'
+      };
+    }
+
+    // Instantiate service and edit
+    const service = new VisualizationGeneratorService();
+    // Use messages for context if provided
+    const contextHistory = messages ? messages.map(m => ({ role: m.role, content: m.content })) : [];
+
+    const result = await service.editVisualization(
+      visualizationType,
+      existingData,
+      editPrompt,
+      contextHistory
+    );
+
+    // TOKEN SYSTEM: Deduct tokens for successful edit
+    await deductTokens(userId, TOKEN_COSTS.EDIT_VISUALIZATION);
+
+    let updatedVisualization: any = null;
+
+    // If data was modified and we have an ID, update the database
+    if (result.data && visualizationId) {
+       const visualization = await VisualizationModel.findOne({ _id: visualizationId, userId });
+
+       if (visualization) {
+         visualization.data = result.data;
+         visualization.updatedAt = new Date();
+
+         // Update history if provided
+         if (messages) {
+            // Add the new interaction to the history
+            // Use explicit type assertion for the whole array to avoid type mismatch
+            const historyItems: { role: "user" | "assistant"; content: string; timestamp: Date }[] = [
+                ...messages.map(h => ({
+                    role: h.role as "user" | "assistant",
+                    content: h.content,
+                    timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
+                })),
+                { role: 'user', content: editPrompt, timestamp: new Date() },
+                { role: 'assistant', content: result.message, timestamp: new Date() }
+            ];
+            visualization.history = historyItems;
+         }
+
+         await visualization.save();
+         updatedVisualization = visualization.toObject();
+
+         // Convert _id to string
+         if (updatedVisualization._id) updatedVisualization._id = updatedVisualization._id.toString();
+         if (updatedVisualization.history) {
+             updatedVisualization.history = updatedVisualization.history.map((h: any) => ({
+                 ...h,
+                 timestamp: h.timestamp
+             }));
+         }
+       }
+    }
+
+    return {
+      success: true,
+      message: result.message,
+      data: result.data, // This is the updated data payload (or null if just a question)
+      visualization: updatedVisualization
+    };
+
+  } catch (error) {
+    console.error('Error editing visualization:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to edit visualization') };
   }
 }
 
