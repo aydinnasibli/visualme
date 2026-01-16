@@ -184,8 +184,18 @@ function DashboardContent() {
     // Branching Logic: Edit existing OR Generate new
     if (result) {
       // --- EDIT MODE ---
-      await handleChatMessage(input);
-      setInput(''); // Clear input after edit
+      setLoading(true); // Show loading state
+      const currentInput = input;
+      setInput(''); // Optimistic clear
+
+      try {
+        await handleChatMessage(currentInput);
+      } catch (err) {
+        setInput(currentInput); // Restore on error
+        console.error("Edit failed", err);
+      } finally {
+        setLoading(false);
+      }
     } else {
       // --- GENERATE MODE ---
       setLoading(true);
