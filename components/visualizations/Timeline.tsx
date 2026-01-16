@@ -3,7 +3,6 @@
 import React, { useRef } from "react";
 import { motion } from "framer-motion";
 import { TimelineData } from "@/lib/types/visualization";
-import VisualizationContainer from "./VisualizationContainer";
 
 interface TimelineProps {
   data: TimelineData;
@@ -21,14 +20,8 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
   // Generate colors cyclically
   const COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899"];
 
-  const handleReset = () => {
-    if (containerRef.current) {
-      containerRef.current.scrollTo({ left: 0, behavior: "smooth" });
-    }
-  };
-
   return (
-    <VisualizationContainer onReset={handleReset}>
+    <div className="w-full h-full relative">
       {/* Header / Legend could go here if needed */}
       <div className="absolute top-4 left-6 z-10 pointer-events-none">
         <h3 className="text-zinc-500 font-bold uppercase tracking-widest text-xs">
@@ -150,6 +143,6 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
           background: rgba(161, 161, 170, 0.7);
         }
       `}</style>
-    </VisualizationContainer>
+    </div>
   );
 }

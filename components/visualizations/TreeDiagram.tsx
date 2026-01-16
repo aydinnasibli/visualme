@@ -5,8 +5,6 @@ import Tree from 'react-d3-tree';
 import { TreeDiagramData } from '@/lib/types/visualization';
 import { useExtendedNodes } from '@/lib/context/ExtendedNodesContext';
 import NodeDetailPanel from './NodeDetailPanel';
-import VisualizationContainer from './VisualizationContainer';
-
 interface TreeDiagramProps {
   data: TreeDiagramData;
   onExpand?: (nodeId: string, nodeContent: string) => Promise<void>;
@@ -134,12 +132,6 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
     }
   };
 
-  const handleReset = () => {
-    // Reset zoom and translate
-    setZoom(1);
-    setTranslate({ x: 100, y: dimensions.height / 2 });
-  };
-
   // Prepare node data for the detailed panel
   const getPanelData = () => {
     if (!selectedNode) return null;
@@ -161,37 +153,35 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
   };
 
   return (
-    <VisualizationContainer onReset={handleReset}>
-      <div ref={containerRef} className="w-full h-full relative">
-        {dimensions.width > 0 && (
-          <Tree
-            data={data}
-            translate={translate}
-            zoom={zoom}
-            nodeSize={{ x: 200, y: 100 }}
-            renderCustomNodeElement={(rd3tProps) => (
-              <CustomNode
-                {...rd3tProps}
-                onNodeClick={() => handleNodeClick(rd3tProps.nodeDatum)}
-              />
-            )}
-            pathClassFunc={() => 'custom-link'}
-            zoomable={true}
-            draggable={true}
-            separation={{ siblings: 1.5, nonSiblings: 2 }}
-            orientation="horizontal"
-          />
-        )}
-
-        {/* Details Panel */}
-        <NodeDetailPanel
-          selectedNode={getPanelData()}
-          onClose={() => setSelectedNode(null)}
-          onExpand={handleExpandNode}
-          isExpanding={isExpanding}
-          readOnly={readOnly}
+    <div ref={containerRef} className="w-full h-full relative">
+      {dimensions.width > 0 && (
+        <Tree
+          data={data}
+          translate={translate}
+          zoom={zoom}
+          nodeSize={{ x: 200, y: 100 }}
+          renderCustomNodeElement={(rd3tProps) => (
+            <CustomNode
+              {...rd3tProps}
+              onNodeClick={() => handleNodeClick(rd3tProps.nodeDatum)}
+            />
+          )}
+          pathClassFunc={() => 'custom-link'}
+          zoomable={true}
+          draggable={true}
+          separation={{ siblings: 1.5, nonSiblings: 2 }}
+          orientation="horizontal"
         />
-      </div>
-    </VisualizationContainer>
+      )}
+
+      {/* Details Panel */}
+      <NodeDetailPanel
+        selectedNode={getPanelData()}
+        onClose={() => setSelectedNode(null)}
+        onExpand={handleExpandNode}
+        isExpanding={isExpanding}
+        readOnly={readOnly}
+      />
+    </div>
   );
 }
