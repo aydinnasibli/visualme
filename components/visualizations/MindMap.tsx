@@ -356,7 +356,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     );
 
     return (
-      <div className="w-full h-[750px] bg-[#0f1419] rounded-2xl border border-zinc-800/50 relative overflow-hidden shadow-2xl floating-edges">
+      <div className="w-full h-full relative floating-edges">
         <style>{`
           .floating-edges .react-flow__handle {
             opacity: 0;
@@ -416,13 +416,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
           >
             <Background gap={16} size={1} color="#27272a" />
             <Panel position="top-right" className="flex gap-2">
-              <button
-                onClick={() => fitView({ padding: 0.25, duration: 400 })}
-                className="px-3 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white rounded-lg border border-zinc-600 transition text-sm font-medium"
-                title="Reset View (Shift + R)"
-              >
-                Reset View
-              </button>
               <button
                 onClick={handleExportPNG}
                 className="px-3 py-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg border border-purple-500 transition text-sm font-medium"

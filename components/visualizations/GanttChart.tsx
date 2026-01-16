@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useCallback, useRef } from "react";
 import { GanttChartData, GanttTask } from "@/lib/types/visualization";
 import { X, ZoomIn, ZoomOut, Calendar } from "lucide-react";
-import VisualizationContainer from "./VisualizationContainer";
 
 interface GanttChartProps {
   data: GanttChartData;
@@ -193,19 +192,6 @@ export default function GanttChart({ data }: GanttChartProps) {
   );
 
   // Event handlers
-  const handleReset = useCallback(() => {
-    setViewMode("Week");
-    setZoom(1);
-    setSelectedTask(null);
-    // Scroll to top-left
-    if (containerRef.current) {
-      const chartArea = containerRef.current.querySelector(".overflow-auto");
-      if (chartArea) {
-        chartArea.scrollTo({ left: 0, top: 0, behavior: "smooth" });
-      }
-    }
-  }, []);
-
   const handleZoomIn = useCallback(() => {
     setZoom((z) => Math.min(2, z + 0.25));
   }, []);
@@ -223,10 +209,10 @@ export default function GanttChart({ data }: GanttChartProps) {
   }, []);
 
   return (
-    <VisualizationContainer onReset={handleReset}>
+    <div className="w-full h-full relative">
       <div ref={containerRef} className="absolute inset-0 z-10 flex flex-col">
         {/* Header with Controls */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-[#141922]">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <Calendar className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold text-white">Gantt Chart</h3>
@@ -276,10 +262,10 @@ export default function GanttChart({ data }: GanttChartProps) {
         {/* Main Content */}
         <div className="relative z-10 flex h-[calc(100%-60px)]">
           {/* Task Names Sidebar */}
-          <div className="w-[200px] border-r border-zinc-800 bg-[#0f1419] overflow-y-auto custom-scrollbar flex-shrink-0">
+          <div className="w-[200px] border-r border-zinc-800 bg-zinc-900/50 backdrop-blur-md overflow-y-auto custom-scrollbar flex-shrink-0">
             {/* Header */}
             <div
-              className="sticky top-0 z-20 bg-[#1a1f28] border-b border-zinc-800 flex items-center px-4"
+              className="sticky top-0 z-20 bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800 flex items-center px-4"
               style={{ height: LAYOUT_CONSTANTS.headerHeight }}
             >
               <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
@@ -375,6 +361,7 @@ export default function GanttChart({ data }: GanttChartProps) {
                   width={chartWidth}
                   height={LAYOUT_CONSTANTS.headerHeight}
                   fill="#1a1f28"
+                  fillOpacity="0.8"
                 />
 
                 {/* Column Headers */}
@@ -754,6 +741,6 @@ export default function GanttChart({ data }: GanttChartProps) {
           </div>
         )}
       </div>
-    </VisualizationContainer>
+    </div>
   );
 }

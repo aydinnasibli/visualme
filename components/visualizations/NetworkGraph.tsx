@@ -20,7 +20,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { NetworkGraphData, NetworkNode } from "@/lib/types/visualization";
 import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
 import NodeDetailPanel from "./NodeDetailPanel";
-import VisualizationContainer from "./VisualizationContainer";
 
 /* -------------------------------------------------------------------------- */
 /* 1. SETUP                                                                   */
@@ -492,70 +491,62 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       }
     };
 
-    const handleReset = () => {
-       cyRef.current?.animate({ fit: { padding: 80 } } as any, {
-         duration: 400,
-       });
-    };
-
     return (
-      <VisualizationContainer onReset={handleReset}>
-        <div ref={containerRef} className="w-full h-full relative group">
-           {/* The Graph */}
-          <CytoscapeComponent
-            elements={elements}
-            style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}
-            stylesheet={stylesheet}
-            layout={layout}
-            cy={setupListeners}
-            wheelSensitivity={0.1}
-            minZoom={0.1}
-            maxZoom={3}
-          />
+      <div ref={containerRef} className="w-full h-full relative group">
+          {/* The Graph */}
+        <CytoscapeComponent
+          elements={elements}
+          style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}
+          stylesheet={stylesheet}
+          layout={layout}
+          cy={setupListeners}
+          wheelSensitivity={0.1}
+          minZoom={0.1}
+          maxZoom={3}
+        />
 
-          {/* Hover Tooltip */}
-          <AnimatePresence>
-            {hoveredNode && !selectedNode && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.15 }}
-                className="absolute pointer-events-none z-30 max-w-xs"
-                style={{
-                  left: `${hoveredNode.x + 20}px`,
-                  top: `${hoveredNode.y - 10}px`,
-                }}
-              >
-                <div className="bg-zinc-900/98 border border-zinc-700/60 rounded-lg px-3 py-2 shadow-2xl backdrop-blur-sm">
-                  <div className="text-xs font-bold text-white mb-0.5">
-                    {hoveredNode.label}
-                  </div>
-                  <div className="text-[10px] font-medium text-zinc-400 mb-1">
-                    {hoveredNode.category}
-                  </div>
-                  {hoveredNode.description && (
-                    <div className="text-xs text-zinc-300 leading-snug max-w-[250px]">
-                      {hoveredNode.description.length > 120
-                        ? hoveredNode.description.slice(0, 120) + "..."
-                        : hoveredNode.description}
-                    </div>
-                  )}
+        {/* Hover Tooltip */}
+        <AnimatePresence>
+          {hoveredNode && !selectedNode && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.15 }}
+              className="absolute pointer-events-none z-30 max-w-xs"
+              style={{
+                left: `${hoveredNode.x + 20}px`,
+                top: `${hoveredNode.y - 10}px`,
+              }}
+            >
+              <div className="bg-zinc-900/98 border border-zinc-700/60 rounded-lg px-3 py-2 shadow-2xl backdrop-blur-sm">
+                <div className="text-xs font-bold text-white mb-0.5">
+                  {hoveredNode.label}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div className="text-[10px] font-medium text-zinc-400 mb-1">
+                  {hoveredNode.category}
+                </div>
+                {hoveredNode.description && (
+                  <div className="text-xs text-zinc-300 leading-snug max-w-[250px]">
+                    {hoveredNode.description.length > 120
+                      ? hoveredNode.description.slice(0, 120) + "..."
+                      : hoveredNode.description}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <NodeDetailPanel
-            selectedNode={selectedNode}
-            onClose={() => setSelectedNode(null)}
-            onExpand={handleExpand}
-            isExpanding={isExpanding}
-            readOnly={readOnly}
-            isExtended={selectedNode ? isNodeExtended(selectedNode.id, visualizationKey) : false}
-          />
-        </div>
-      </VisualizationContainer>
+        <NodeDetailPanel
+          selectedNode={selectedNode}
+          onClose={() => setSelectedNode(null)}
+          onExpand={handleExpand}
+          isExpanding={isExpanding}
+          readOnly={readOnly}
+          isExtended={selectedNode ? isNodeExtended(selectedNode.id, visualizationKey) : false}
+        />
+      </div>
     );
   }
 );
