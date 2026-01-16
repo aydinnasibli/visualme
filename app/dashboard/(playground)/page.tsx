@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth, useUser } from '@clerk/nextjs';
+import { useSearchParams } from 'next/navigation';
 import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction, getVisualizationById } from '@/lib/actions/visualize';
 import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData, SavedVisualization } from '@/lib/types/visualization';
 import { toast } from 'sonner';
@@ -32,9 +33,10 @@ const DynamicTreeDiagram = dynamic(() => import('@/components/visualizations/Tre
 const DynamicTimeline = dynamic(() => import('@/components/visualizations/Timeline'), { ssr: false, loading: LoadingPlaceholder });
 const DynamicGanttChart = dynamic(() => import('@/components/visualizations/GanttChart'), { ssr: false, loading: LoadingPlaceholder });
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
+  const searchParams = useSearchParams();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState<'analyzing' | 'generating' | 'finalizing' | null>(null);
@@ -53,18 +55,17 @@ export default function DashboardPage() {
   // References for visualization controls
   const networkGraphRef = useRef<NetworkGraphHandle>(null);
   const mindMapRef = useRef<MindMapHandle>(null);
-  const treeRef = useRef<any>(null); // Tree diagram handle type if available
-  const timelineRef = useRef<any>(null); // Timeline handle type if available
-  const ganttRef = useRef<any>(null); // Gantt handle type if available
 
-  // Search Param Handling for History Sidebar and Revisualize
+  // Search Param Handling
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const idFromUrl = urlParams.get('id');
+    const idFromUrl = searchParams.get('id');
 
     const loadFromId = async (id: string) => {
+      // Prevent redundant loading if already loaded
+      if (vizId === id) return;
+
       setLoading(true);
-      setLoadingStep('analyzing'); // Or a generic loading step
+      setLoadingStep('analyzing');
       try {
         const res = await getVisualizationById(id);
         if (res.success && res.data) {
@@ -95,11 +96,9 @@ export default function DashboardPage() {
     };
 
     if (idFromUrl) {
-      if (!vizId || vizId !== idFromUrl) {
-        loadFromId(idFromUrl);
-      }
+      loadFromId(idFromUrl);
     } else {
-      // Legacy session check
+      // Legacy session check only if no ID in URL
       const revisualizeData = sessionStorage.getItem('revisualize_data');
       if (revisualizeData) {
         try {
@@ -124,9 +123,16 @@ export default function DashboardPage() {
           console.error("Failed to load revisualize data", e);
           toast.error("Failed to load visualization data");
         }
+      } else {
+        // Reset if no ID and no session data (user navigated to new visualization)
+        setResult(null);
+        setVizId(null);
+        setIsSaved(false);
+        setChatHistory([]);
+        setInput('');
       }
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams]); // Depend on searchParams to trigger re-run
 
   const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
     if (root.id === nodeId) {
@@ -350,7 +356,6 @@ export default function DashboardPage() {
     } else if (result?.type === 'mind_map' && mindMapRef.current) {
         mindMapRef.current.fitView();
     } else {
-        // Fallback or other types
         toast.info("Reset view not available for this visualization type.");
     }
   };
@@ -407,5 +412,13 @@ export default function DashboardPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<LoadingPlaceholder />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
