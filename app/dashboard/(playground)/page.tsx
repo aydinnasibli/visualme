@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction } from '@/lib/actions/visualize';
+import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction, getVisualizationById } from '@/lib/actions/visualize';
 import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData, SavedVisualization } from '@/lib/types/visualization';
 import { toast } from 'sonner';
 
@@ -57,27 +57,50 @@ export default function DashboardPage() {
   const timelineRef = useRef<any>(null); // Timeline handle type if available
   const ganttRef = useRef<any>(null); // Gantt handle type if available
 
-  // Search Param Handling for History Sidebar
+  // Search Param Handling for History Sidebar and Revisualize
   useEffect(() => {
-    // Check if ID is in URL (from HistorySidebar navigation)
     const urlParams = new URLSearchParams(window.location.search);
     const idFromUrl = urlParams.get('id');
 
-    if (idFromUrl && (!vizId || vizId !== idFromUrl)) {
-       // Since we don't have a direct "getVisualizationById" exposed to client without a server component or API route,
-       // and getUserVisualizations returns a list, we might need to fetch it.
-       // However, let's assume the user might have clicked it from the sidebar.
-       // The sidebar component navigates.
-       // For now, let's rely on sessionStorage "revisualize_data" which is legacy,
-       // OR implementing a fetch effect here.
+    const loadFromId = async (id: string) => {
+      setLoading(true);
+      setLoadingStep('analyzing'); // Or a generic loading step
+      try {
+        const res = await getVisualizationById(id);
+        if (res.success && res.data) {
+          const viz = res.data as SavedVisualization;
+          setResult({
+             success: true,
+             type: viz.type,
+             data: viz.data,
+             title: viz.title,
+             reason: 'Loaded from history',
+             metadata: viz.metadata,
+          });
+          setVizId(viz._id || null);
+          setIsSaved(true);
+          setChatHistory(viz.history || []);
+          setManualEditJson(JSON.stringify(viz.data, null, 2));
+          toast.success(`Loaded "${viz.title}"`);
+        } else {
+          toast.error(res.error || 'Failed to load visualization');
+        }
+      } catch (err) {
+        console.error("Load by ID failed", err);
+        toast.error("Failed to load visualization");
+      } finally {
+        setLoading(false);
+        setLoadingStep(null);
+      }
+    };
 
-       // Ideally, we should fetch the specific visualization data here.
-       // Since I don't want to overcomplicate, I'll assume the user uses the Sidebar which I will update to use sessionStorage or a proper flow?
-       // Actually, the sidebar navigates to /dashboard?id=...
-       // So I should fetch here.
-    }
-
-    const revisualizeData = sessionStorage.getItem('revisualize_data');
+    if (idFromUrl) {
+      if (!vizId || vizId !== idFromUrl) {
+        loadFromId(idFromUrl);
+      }
+    } else {
+      // Legacy session check
+      const revisualizeData = sessionStorage.getItem('revisualize_data');
     if (revisualizeData) {
       try {
         const parsed: SavedVisualization = JSON.parse(revisualizeData);
@@ -102,7 +125,7 @@ export default function DashboardPage() {
         toast.error("Failed to load visualization data");
       }
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
     if (root.id === nodeId) {
@@ -301,25 +324,30 @@ export default function DashboardPage() {
   };
 
   const handleZoomIn = () => {
-    // Implement based on active visualization type
-    // This is a simplified example; strictly, you'd check result.type
-    // Cytoscape (Network Graph) handles zooming internally if we had access to the instance via ref
-    // React Flow (Mind Map) has useReactFlow hook but that's inside the component.
-    // Ideally, we pass a prop or context.
-    toast.info("Zooming not yet fully wired to toolbar for all types.");
+    if (result?.type === 'network_graph' && networkGraphRef.current) {
+      networkGraphRef.current.zoomIn();
+    } else if (result?.type === 'mind_map' && mindMapRef.current) {
+      mindMapRef.current.zoomIn();
+    } else {
+      toast.info("Zoom in not available for this visualization type.");
+    }
   };
 
   const handleZoomOut = () => {
-    toast.info("Zooming not yet fully wired to toolbar for all types.");
+    if (result?.type === 'network_graph' && networkGraphRef.current) {
+      networkGraphRef.current.zoomOut();
+    } else if (result?.type === 'mind_map' && mindMapRef.current) {
+      mindMapRef.current.zoomOut();
+    } else {
+      toast.info("Zoom out not available for this visualization type.");
+    }
   };
 
   const handleReset = () => {
     if (result?.type === 'network_graph' && networkGraphRef.current) {
         networkGraphRef.current.fit();
     } else if (result?.type === 'mind_map' && mindMapRef.current) {
-        // MindMap exposes exportPNG but we removed internal controls.
-        // We might need to expose fitView via handle.
-        toast.info("Reset view for Mind Map requires updating the handle.");
+        mindMapRef.current.fitView();
     } else {
         // Fallback or other types
         toast.info("Reset view not available for this visualization type.");

@@ -44,6 +44,9 @@ export interface MindMapHandle {
   exportPNG: (scale?: number) => Promise<void>;
   exportSVG: () => Promise<void>;
   getData: () => MindMapData;
+  fitView: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
 }
 
 const COLORS = [
@@ -351,8 +354,11 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
         exportPNG: handleExportPNG,
         exportSVG: async () => console.log("Export SVG not implemented"),
         getData: () => data,
+        fitView: () => fitView({ padding: 0.25, duration: 400 }),
+        zoomIn: () => zoomIn({ duration: 200 }),
+        zoomOut: () => zoomOut({ duration: 200 }),
       }),
-      [data, handleExportPNG]
+      [data, handleExportPNG, fitView, zoomIn, zoomOut]
     );
 
     return (

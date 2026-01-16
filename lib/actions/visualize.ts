@@ -260,16 +260,6 @@ export async function expandMindMapNodeAction(
 }
 
 /**
- * Regenerate visualization with different format
- */
-export async function regenerateVisualization(
-  input: string,
-  newFormat: VisualizationType
-): Promise<VisualizationResponse> {
-  return generateVisualization(input, newFormat);
-}
-
-/**
  * Save a visualization to database
  */
 export async function saveVisualization(
@@ -444,6 +434,44 @@ export async function getUserVisualizations(limit: number = 20) {
 }
 
 /**
+ * Get a single visualization by ID
+ */
+export async function getVisualizationById(id: string) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: 'Authentication required', data: null };
+    }
+
+    // SECURITY: Validate ObjectId format
+    const idValidation = validateObjectId(id);
+    if (!idValidation.valid) {
+      return { success: false, error: idValidation.error, data: null };
+    }
+
+    await connectToDatabase();
+
+    const visualization = await VisualizationModel.findOne({ _id: id, userId }).lean();
+
+    if (!visualization) {
+      return { success: false, error: 'Visualization not found', data: null };
+    }
+
+    return {
+      success: true,
+      data: {
+        ...visualization,
+        _id: visualization._id.toString(),
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching visualization by ID:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to fetch visualization'), data: null };
+  }
+}
+
+/**
  * Delete a visualization
  */
 export async function deleteVisualization(visualizationId: string) {
@@ -477,70 +505,6 @@ export async function deleteVisualization(visualizationId: string) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete visualization',
-    };
-  }
-}
-
-/**
- * Get user usage statistics
- * @deprecated Use getUserLimits from profile.ts instead
- */
-export async function getUserUsage() {
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return { success: false, error: 'Authentication required', data: null };
-    }
-
-    // Get token balance
-    const balance = await getTokenBalance(userId);
-
-    return {
-      success: true,
-      data: {
-        userId,
-        tier: balance.tier,
-        tokensUsed: balance.tokensUsed,
-        tokensLimit: balance.tokensLimit,
-        tokensRemaining: balance.tokensRemaining,
-        resetAt: balance.resetDate,
-      },
-    };
-  } catch (error) {
-    console.error('Error fetching user usage:', error);
-    return { success: false, error: 'Failed to fetch usage data', data: null };
-  }
-}
-
-/**
- * Edit a draft visualization (not saved to database yet)
- */
-export async function editDraftVisualization(
-  visualizationType: VisualizationType,
-  existingData: VisualizationData,
-  editPrompt: string
-): Promise<{ success: boolean; data?: VisualizationData; error?: string }> {
-  try {
-    // Import the service dynamically to avoid circular dependencies
-    const { VisualizationGeneratorService } = await import('@/lib/services/visualization-generator');
-
-    const generatorService = new VisualizationGeneratorService();
-    const updatedData = await generatorService.editVisualization(
-      visualizationType,
-      existingData,
-      editPrompt
-    );
-
-    return {
-      success: true,
-      data: updatedData,
-    };
-  } catch (error) {
-    console.error('Error editing draft visualization:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to edit visualization',
     };
   }
 }

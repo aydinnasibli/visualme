@@ -70,6 +70,8 @@ export interface NetworkGraphHandle {
   exportPNG: (scale?: number) => Promise<void>;
   getContainer: () => HTMLDivElement | null;
   fit: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
 }
 
 interface SelectedNodeInfo {
@@ -472,6 +474,16 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       },
       getContainer: () => containerRef.current,
       fit: () => cyRef.current?.fit(),
+      zoomIn: () => {
+        if (!cyRef.current) return;
+        const zoom = cyRef.current.zoom();
+        cyRef.current.zoom(zoom * 1.2);
+      },
+      zoomOut: () => {
+        if (!cyRef.current) return;
+        const zoom = cyRef.current.zoom();
+        cyRef.current.zoom(zoom / 1.2);
+      }
     }));
 
     const handleExpand = async () => {
