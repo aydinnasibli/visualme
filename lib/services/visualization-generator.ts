@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type {
   VisualizationType,
   VisualizationData,
+  VisualizationEditResponse,
   NetworkGraphData,
   MindMapData,
   MindMapNode,
@@ -807,14 +808,14 @@ export class VisualizationGeneratorService {
    * @param existingData - The current visualization data
    * @param editPrompt - User's natural language edit request
    * @param history - Optional conversation history for context
-   * @returns Updated visualization data
+   * @returns Updated visualization data or message
    */
   async editVisualization(
     type: VisualizationType,
     existingData: VisualizationData,
     editPrompt: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }> = []
-  ): Promise<VisualizationData> {
+  ): Promise<VisualizationEditResponse> {
     const systemPrompt = this.getEditSystemPrompt(type);
 
     // Format history for context, limited to last 5 turns to save context window
@@ -828,30 +829,60 @@ ${historyContext}
 USER'S EDIT REQUEST:
 ${editPrompt}
 
-Please update the visualization data according to the user's request.
-- You CAN modify visual properties like 'color', 'style', 'background' if requested.
-- You CAN add new nodes/tasks/items.
-- Maintain the existing structure and hierarchy.
-- Return the complete updated visualization in the same JSON format.`;
+Please decide if you need to update the visualization or just answer a question.
 
-    return await callOpenAI<VisualizationData>(systemPrompt, userPrompt, 'gpt-4o');
+If updating the visualization:
+- Return valid JSON with "data" property containing the COMPLETE updated visualization.
+- You can also include a "message" property to explain your changes.
+
+If just answering a question (e.g., "What does this node represent?"):
+- Return valid JSON with a "message" property containing your answer.
+- Do NOT include the "data" property if no changes are made.
+
+Example 1 (Update):
+{
+  "message": "I've changed the color to blue.",
+  "data": { ... }
+}
+
+Example 2 (Question):
+{
+  "message": "This node represents the central concept..."
+}
+`;
+
+    const result = await callOpenAI<any>(systemPrompt, userPrompt, 'gpt-4o');
+
+    return {
+        success: true,
+        data: result.data,
+        message: result.message
+    };
   }
 
   private getEditSystemPrompt(type: VisualizationType): string {
-    const basePrompt = `You are an expert visualization editor. Your task is to modify existing visualization data based on user requests while maintaining data structure integrity.
+    const basePrompt = `You are an expert visualization editor and assistant. Your task is to either modify existing visualization data based on user requests OR answer questions about the data.
 
 CRITICAL RULES:
-1. PRESERVE the general JSON structure of the original visualization.
-2. YOU ARE ALLOWED AND ENCOURAGED to modify visual attributes (color, size, style) if the user asks.
-   - For Mind Maps/Graphs: 'color' is a valid property on nodes. Use hex codes (e.g., "#3b82f6" for blue).
-3. If adding new items, generate appropriate unique IDs.
-4. Ensure all modifications are logical.
-5. Return COMPLETE updated data, not just the changes.
-6. If the user asks for "blue", use a nice shade like #3b82f6 or #60a5fa, not just "blue".`;
+1. DECIDE: Is the user asking for a change (e.g., "make it red", "add a node") or asking a question (e.g., "why is this here?", "explain this")?
+2. IF CHANGING DATA:
+   - PRESERVE the general JSON structure of the original visualization.
+   - Return "data" with the COMPLETE updated structure.
+   - Return "message" explaining what you did.
+3. IF ANSWERING QUESTION:
+   - Do NOT return "data".
+   - Return "message" with your answer.
+4. JSON STRUCTURE:
+   {
+     "message": "Your text response here",
+     "data": { ... } // Optional, only if updating
+   }
+
+SPECIFIC TYPE GUIDANCE:
+`;
 
     const typeSpecificPrompts: Record<VisualizationType, string> = {
       network_graph: `${basePrompt}
-
 For network graphs:
 - Nodes support 'color', 'size', 'category'.
 - If user wants to change color, update the 'color' field of the node(s).
@@ -859,28 +890,24 @@ For network graphs:
 - When modifying connections, maintain edge source/target validity.`,
 
       gantt_chart: `${basePrompt}
-
 For Gantt charts:
 - Tasks support 'custom_class' for styling (e.g., 'bar-milestone', 'bar-active').
 - Maintain date format (YYYY-MM-DD).
 - Ensure task dependencies reference valid task IDs.`,
 
       mind_map: `${basePrompt}
-
 For mind maps:
 - Nodes support 'color' attribute. If user says "make it blue", set "color": "#3b82f6".
 - Maintain hierarchical parent-child relationships.
 - Keep the tree structure valid.`,
 
       timeline: `${basePrompt}
-
 For timelines:
 - Maintain chronological order
 - Preserve date formats
 - Keep event structure consistent`,
 
       tree_diagram: `${basePrompt}
-
 For tree diagrams:
 - Maintain parent-child relationships
 - Preserve tree structure validity

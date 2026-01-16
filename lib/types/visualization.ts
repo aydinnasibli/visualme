@@ -353,6 +353,13 @@ export interface VisualizationResponse {
   title?: string;
 }
 
+export interface VisualizationEditResponse {
+  success: boolean;
+  error?: string;
+  data?: VisualizationData;
+  message?: string;
+}
+
 export interface VisualizationMetadata {
   generatedAt: Date;
   processingTime?: number;

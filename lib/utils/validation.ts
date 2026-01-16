@@ -37,6 +37,7 @@ export const TOKEN_COSTS = {
   // AI operations (expensive)
   GENERATE_VISUALIZATION: 10,  // Full AI generation with GPT-4
   EXPAND_NODE: 5,             // AI expansion of existing nodes
+  EDIT_VISUALIZATION: 2,       // AI editing/chat
 
   // Database operations (cheap/free)
   SAVE_VISUALIZATION: 0,      // Just database write

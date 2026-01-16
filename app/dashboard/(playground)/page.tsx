@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
-import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction, getVisualizationById } from '@/lib/actions/visualize';
+import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction, getVisualizationById, editVisualizationAction } from '@/lib/actions/visualize';
 import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData, SavedVisualization } from '@/lib/types/visualization';
 import { toast } from 'sonner';
 
@@ -222,6 +222,16 @@ function DashboardContent() {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         setResult(data);
+
+        // Inject reason into chat history
+        if (data.reason) {
+            setChatHistory([{
+                role: 'assistant',
+                content: data.reason,
+                timestamp: new Date()
+            }]);
+        }
+
         setManualEditJson(JSON.stringify(data.data, null, 2));
         setInput(''); // Clear input after generation
       } catch (err) {
@@ -290,34 +300,39 @@ function DashboardContent() {
     setChatHistory(newHistory);
 
     try {
-      const response = await fetch("/api/visualizations/edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visualizationId: vizId,
-          editPrompt: message.trim(),
-          existingData: result.data,
-          visualizationType: result.type,
-          messages: newHistory
-        }),
-      });
+      const response = await editVisualizationAction(
+          message.trim(),
+          result.type,
+          result.data,
+          newHistory
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to edit visualization");
+      if (!response.success) {
+        throw new Error(response.error || "Failed to process request");
       }
 
-      const { visualization } = await response.json();
-      setResult({
-        ...result,
-        data: visualization.data,
-      });
-      setManualEditJson(JSON.stringify(visualization.data, null, 2));
-      setChatHistory([
-        ...newHistory,
-        { role: 'assistant' as const, content: 'I have updated the visualization based on your request.', timestamp: new Date() }
-      ]);
-      toast.success('Visualization updated successfully!');
+      // Update history with assistant response
+      const assistantMessage = response.message || (response.data ? 'I have updated the visualization based on your request.' : 'I processed your request.');
+
+      const updatedHistory = [
+          ...newHistory,
+          { role: 'assistant' as const, content: assistantMessage, timestamp: new Date() }
+      ];
+      setChatHistory(updatedHistory);
+
+      // If data was updated, apply it
+      if (response.data) {
+          setResult({
+            ...result,
+            data: response.data,
+          });
+          setManualEditJson(JSON.stringify(response.data, null, 2));
+          toast.success('Visualization updated successfully!');
+      } else {
+          // Just a text reply
+          toast.success('Reply received');
+      }
+
     } catch (error) {
        console.error("Edit error:", error);
        toast.error(error instanceof Error ? error.message : "Failed to edit visualization");

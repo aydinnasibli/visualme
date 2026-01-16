@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
-import { expandNetworkNode, expandMindMapNode, generateVisualizationData } from '@/lib/services/visualization-generator';
+import { expandNetworkNode, expandMindMapNode, generateVisualizationData, VisualizationGeneratorService } from '@/lib/services/visualization-generator';
 import { calculateCost } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 import {
@@ -23,6 +23,7 @@ import type {
   VisualizationResponse,
   VisualizationData,
   VisualizationMetadata,
+  VisualizationEditResponse
 } from '@/lib/types/visualization';
 
 /**
@@ -144,6 +145,66 @@ export async function generateVisualization(
     };
   }
 }
+
+/**
+ * Edit an existing visualization based on user chat input
+ */
+export async function editVisualizationAction(
+  editPrompt: string,
+  visualizationType: VisualizationType,
+  existingData: VisualizationData,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = []
+): Promise<VisualizationEditResponse> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    // SECURITY: Validate inputs
+    const promptValidation = validateInputLength(editPrompt, VALIDATION_LIMITS.MAX_INPUT_LENGTH);
+    if (!promptValidation.valid) {
+      return { success: false, error: promptValidation.error };
+    }
+
+    // Validate history length
+    const historyValidation = validateArraySize(history, 50); // Reasonable limit for chat history
+    if (!historyValidation.valid) {
+      return { success: false, error: "History too long" };
+    }
+
+    await connectToDatabase();
+
+    // TOKEN SYSTEM: Check if user has enough tokens
+    // Edits cost less than generation but still consume tokens
+    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.EDIT_VISUALIZATION || 2);
+    if (!tokenCheck.allowed) {
+      return {
+        success: false,
+        error: tokenCheck.error || 'Insufficient tokens'
+      };
+    }
+
+    const generator = new VisualizationGeneratorService();
+    const result = await generator.editVisualization(visualizationType, existingData, editPrompt, history);
+
+    // TOKEN SYSTEM: Deduct tokens for successful edit
+    await deductTokens(userId, TOKEN_COSTS.EDIT_VISUALIZATION || 2);
+
+    // Update usage stats if visualization was updated (not just a question)
+    if (result.data) {
+        await UserUsageModel.updateOne(
+          { userId },
+          { $inc: { visualizationsCreated: 1 } } // Counting edits as creations for now or add separate counter
+        );
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error('Error editing visualization:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to edit visualization') };
+  }
+}
+
 export async function expandNodeAction(
   nodeId: string,
   nodeLabel: string,

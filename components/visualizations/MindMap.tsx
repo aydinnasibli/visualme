@@ -312,6 +312,11 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     // Keyboard shortcuts
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
+        // Ignore input fields
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return;
+        }
+
         // ?: Show help
         if (e.key === '?') {
           e.preventDefault();
