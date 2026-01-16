@@ -177,42 +177,51 @@ function DashboardContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) {
-      setError('Please enter some text to visualize');
+      setError('Please enter some text');
       return;
     }
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setVizId(null);
-    setChatHistory([]);
-    try {
-      setLoadingStep('analyzing');
-      const generatingTimer = setTimeout(() => setLoadingStep('generating'), 200);
 
-      const data = await generateVisualization(input.trim(), (!autoSelect && selectedType) ? (selectedType as VisualizationType) : undefined);
-      clearTimeout(generatingTimer);
+    // Branching Logic: Edit existing OR Generate new
+    if (result) {
+      // --- EDIT MODE ---
+      await handleChatMessage(input);
+      setInput(''); // Clear input after edit
+    } else {
+      // --- GENERATE MODE ---
+      setLoading(true);
+      setError(null);
+      setResult(null);
+      setVizId(null);
+      setChatHistory([]);
+      try {
+        setLoadingStep('analyzing');
+        const generatingTimer = setTimeout(() => setLoadingStep('generating'), 200);
 
-      if (!data.success) {
-        setError(data.error || 'Failed to generate visualization');
-        toast.error(data.error || 'Failed to generate visualization');
-        setLoading(false); // Ensure loading is off on error
+        const data = await generateVisualization(input.trim(), (!autoSelect && selectedType) ? (selectedType as VisualizationType) : undefined);
+        clearTimeout(generatingTimer);
+
+        if (!data.success) {
+          setError(data.error || 'Failed to generate visualization');
+          toast.error(data.error || 'Failed to generate visualization');
+          setLoading(false);
+          setLoadingStep(null);
+          return;
+        }
+
+        setLoadingStep('finalizing');
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        setResult(data);
+        setManualEditJson(JSON.stringify(data.data, null, 2));
+        setInput(''); // Clear input after generation
+      } catch (err) {
+        setError('An error occurred. Please try again.');
+        console.error('Error:', err);
+        toast.error('An unexpected error occurred.');
+      } finally {
+        setLoading(false);
         setLoadingStep(null);
-        return;
       }
-
-      setLoadingStep('finalizing');
-      // Short delay to show finalizing state
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      setResult(data);
-      setManualEditJson(JSON.stringify(data.data, null, 2));
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-      console.error('Error:', err);
-      toast.error('An unexpected error occurred.');
-    } finally {
-      setLoading(false);
-      setLoadingStep(null);
     }
   };
 
