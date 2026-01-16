@@ -37,6 +37,13 @@ const InputArea = ({
         }
     }, []);
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e as any);
+        }
+    };
+
     const chartTypes = [
         // Common / Simple
         { id: 'bar_chart', icon: 'bar_chart', label: 'Bar Chart' },
@@ -119,7 +126,9 @@ const InputArea = ({
                         <textarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            className="w-full min-h-[64px] max-h-[200px] py-4 pl-5 pr-32 bg-transparent border-0 text-stone-200 text-base placeholder:text-stone-600 focus:ring-0 resize-none leading-relaxed font-light"
+                            onKeyDown={handleKeyDown}
+                            disabled={loading}
+                            className="w-full min-h-[64px] max-h-[200px] py-4 pl-5 pr-32 bg-transparent border-0 text-stone-200 text-base placeholder:text-stone-600 focus:ring-0 resize-none leading-relaxed font-light disabled:opacity-50 disabled:cursor-not-allowed"
                             placeholder="Describe the data parameters or adjust styling..."
                             rows={1}></textarea>
                         <div className="absolute right-3 bottom-2.5 flex items-center gap-2">
