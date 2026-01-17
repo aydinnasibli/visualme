@@ -561,11 +561,17 @@ export async function getUserVisualizations(limit: number = 20) {
       data: visualizations.map((v) => ({
         ...v,
         _id: v._id.toString(),
+        metadata: {
+            ...v.metadata,
+            generatedAt: new Date(v.metadata.generatedAt).toISOString()
+        },
+        createdAt: new Date(v.createdAt).toISOString(),
+        updatedAt: new Date(v.updatedAt).toISOString(),
         history: v.history ? v.history.map(h => ({
           role: h.role,
           content: h.content,
-          timestamp: h.timestamp
-        })) : [] // Sanitize history to plain objects
+          timestamp: new Date(h.timestamp).toISOString()
+        })) : []
       })),
     };
   } catch (error) {
@@ -604,11 +610,17 @@ export async function getVisualizationById(id: string) {
       data: {
         ...visualization,
         _id: visualization._id.toString(),
+        metadata: {
+            ...visualization.metadata,
+            generatedAt: new Date(visualization.metadata.generatedAt).toISOString()
+        },
+        createdAt: new Date(visualization.createdAt).toISOString(),
+        updatedAt: new Date(visualization.updatedAt).toISOString(),
         history: visualization.history ? visualization.history.map(h => ({
           role: h.role,
           content: h.content,
-          timestamp: h.timestamp
-        })) : [] // Sanitize history to plain objects
+          timestamp: new Date(h.timestamp).toISOString()
+        })) : []
       },
     };
   } catch (error) {
