@@ -354,7 +354,7 @@ export interface VisualizationResponse {
 }
 
 export interface VisualizationMetadata {
-  generatedAt: Date;
+  generatedAt: Date | string;
   processingTime?: number;
   aiModel?: string;
   cost?: number;
@@ -374,12 +374,12 @@ export interface SavedVisualization {
   metadata: VisualizationMetadata;
   isPublic: boolean;
   shareId?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
   history?: Array<{
     role: 'user' | 'assistant';
     content: string;
-    timestamp: Date;
+    timestamp: Date | string;
   }>;
 }
 

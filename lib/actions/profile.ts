@@ -100,11 +100,11 @@ export async function getUserVisualizations(): Promise<{ success: boolean; data?
     const data = visualizations.map(viz => ({
       ...viz,
       _id: viz._id.toString(),
-      createdAt: viz.createdAt.toISOString(),
-      updatedAt: viz.updatedAt.toISOString(),
+      createdAt: new Date(viz.createdAt).toISOString(),
+      updatedAt: new Date(viz.updatedAt).toISOString(),
       metadata: {
         ...viz.metadata,
-        generatedAt: viz.metadata.generatedAt.toISOString(),
+        generatedAt: new Date(viz.metadata.generatedAt).toISOString(),
       },
     })) as unknown as SavedVisualization[];
 
@@ -206,11 +206,11 @@ export async function getVisualizationById(visualizationId: string): Promise<{ s
     const data = {
       ...visualization,
       _id: visualization._id.toString(),
-      createdAt: visualization.createdAt.toISOString(),
-      updatedAt: visualization.updatedAt.toISOString(),
+      createdAt: new Date(visualization.createdAt).toISOString(),
+      updatedAt: new Date(visualization.updatedAt).toISOString(),
       metadata: {
         ...visualization.metadata,
-        generatedAt: visualization.metadata.generatedAt.toISOString(),
+        generatedAt: new Date(visualization.metadata.generatedAt).toISOString(),
       },
     } as unknown as SavedVisualization;
 
