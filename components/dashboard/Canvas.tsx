@@ -1,11 +1,17 @@
+import React from 'react';
+import { BarChart2 } from 'lucide-react';
+
 const Canvas = () => {
   return (
-    <div className="w-full h-full bg-[#0c0a09] grid-bg relative flex items-center justify-center overflow-hidden">
-      <div className="flex flex-col items-center justify-center gap-4 opacity-20 select-none pointer-events-none">
-        <div className="w-24 h-24 rounded-2xl border-2 border-stone-700 border-dashed flex items-center justify-center">
-          <span className="material-symbols-outlined text-5xl text-stone-700">add_chart</span>
+    <div className="w-full h-full flex items-center justify-center opacity-30 select-none pointer-events-none">
+      <div className="flex flex-col items-center gap-4 text-center max-w-md">
+        <div className="w-24 h-24 rounded-3xl bg-surface-dark border border-white/5 flex items-center justify-center rotate-12 shadow-2xl">
+          <BarChart2 className="w-12 h-12 text-stone-700" />
         </div>
-        <p className="text-stone-500 font-mono text-sm uppercase tracking-widest">Canvas Empty</p>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-stone-600">Start Visualizing</h2>
+          <p className="text-stone-600">Enter a prompt below or choose a template to begin your visualization journey.</p>
+        </div>
       </div>
     </div>
   );

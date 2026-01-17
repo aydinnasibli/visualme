@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Maximize, Minus, Plus, RefreshCw } from "lucide-react";
 
 interface ToolbarProps {
   onZoomIn?: () => void;
@@ -18,7 +19,7 @@ const Toolbar = ({ onZoomIn, onZoomOut, onReset, scale = 100 }: ToolbarProps) =>
         title="Reset View"
         onClick={onReset}
       >
-        <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
+        <RefreshCw className="w-5 h-5" />
       </button>
       <div className="w-px h-4 bg-white/10 mx-1"></div>
       <button
@@ -26,7 +27,7 @@ const Toolbar = ({ onZoomIn, onZoomOut, onReset, scale = 100 }: ToolbarProps) =>
         onClick={onZoomOut}
         title="Zoom Out"
       >
-        <span className="material-symbols-outlined text-[20px]">remove</span>
+        <Minus className="w-5 h-5" />
       </button>
       <span className="text-xs text-stone-300 font-mono px-2 min-w-[3rem] text-center">
         {Math.round(scale)}%
@@ -36,7 +37,7 @@ const Toolbar = ({ onZoomIn, onZoomOut, onReset, scale = 100 }: ToolbarProps) =>
         onClick={onZoomIn}
         title="Zoom In"
       >
-        <span className="material-symbols-outlined text-[20px]">add</span>
+        <Plus className="w-5 h-5" />
       </button>
       <div className="w-px h-4 bg-white/10 mx-1"></div>
       {/*
@@ -48,7 +49,7 @@ const Toolbar = ({ onZoomIn, onZoomOut, onReset, scale = 100 }: ToolbarProps) =>
         title="Fit to Screen"
         onClick={onReset}
       >
-        <span className="material-symbols-outlined text-[20px]">fit_screen</span>
+        <Maximize className="w-5 h-5" />
       </button>
     </div>
   );

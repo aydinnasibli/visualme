@@ -1,179 +1,151 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Noto Sans', ui-sans-serif, system-ui, sans-serif;
-
-  --color-primary: #135bec;
-  --color-background-light: #f8fafc;
-  --color-background-dark: #101622;
-  --color-surface-dark: #1c1f27;
-  --color-surface-dark-highlight: #252b3b;
-  --color-border-dark: #282e39;
-
-  --radius-sm: 0.125rem;
-  --radius: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
-  --radius-full: 9999px;
+@layer base {
+  :root {
+    --background: #101622;
+    --background-dark: #0f1419;
+    --surface-dark: #19212e;
+    --surface-darker: #131b26;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --primary: #526efa;
+    --primary-hover: #4561e8;
+    --secondary: #94a3b8;
+    --text-primary: #f5f5f4;
+    --text-secondary: #a8a29e;
+  }
 }
 
-/* New scrollbar styles */
+body {
+  color: var(--text-primary);
+  background: var(--background);
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-    background: #0c0a09;
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-    background: #292524;
-    border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-    background: #44403c;
+  background: rgba(255, 255, 255, 0.2);
 }
 
-/* New utility classes */
+/* Grid Background */
 .grid-bg {
-    background-size: 40px 40px;
-    background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
+
+/* Glassmorphism Utilities */
 .glass-panel {
-    background: rgba(28, 25, 23, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-}
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
-}
-.no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  background: rgba(25, 33, 46, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
 }
 
-/* Material Symbols Outlined default styles */
-.material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  -webkit-font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
+.glass-button {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
 }
 
-/* Timeline Styles */
-.vis-timeline {
-  border: none;
-  font-family: 'Inter', sans-serif;
-  color: #e4e4e7;
-}
-.vis-time-axis .vis-text {
-  color: #a1a1aa;
-}
-.vis-time-axis .vis-grid.vis-minor {
-  border-color: #27272a;
-}
-.vis-time-axis .vis-grid.vis-major {
-  border-color: #3f3f46;
-}
-.vis-labelset .vis-label {
-  color: #e4e4e7;
-  border-bottom: 1px solid #27272a;
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Timeline Items */
-.custom-timeline-item {
-  background-color: #2563eb;
-  border-color: #1d4ed8;
-  color: white;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-}
-.vis-item.vis-selected {
-  background-color: #4f46e5;
-  border-color: #4338ca;
-  z-index: 2;
-  box-shadow: 0 0 0 2px #c7d2fe;
-}
-.vis-item.vis-range {
-  background: linear-gradient(to right, #2563eb, #3b82f6);
-}
-.vis-item.vis-point {
-  background-color: transparent;
-}
-.vis-item.vis-dot {
-  border-color: #fbbf24;
-  background-color: #fbbf24;
-}
-.vis-item .vis-item-content {
-  padding: 6px 10px;
-}
-.vis-current-time {
-  background-color: #ef4444;
-}
-
-/* Tree Diagram Styles */
-.custom-link {
-  stroke: #a1a1aa !important; /* zinc-400 */
-  stroke-width: 2px;
-}
-
-/* Global Visualization Container */
-.visualization-container {
-  width: 100%;
-  height: 100%;
-  min-height: 750px; /* Ensure visibility when parent height is auto */
-  background-color: #0f1419; /* Matches app theme */
-  border-radius: 1rem; /* rounded-2xl */
-  border: 1px solid rgba(39, 39, 42, 0.5); /* border-zinc-800/50 */
+/* Tooltip */
+.tooltip {
   position: relative;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
-  display: flex;
-  flex-direction: column;
 }
 
-/* Mind Map Styles */
-.floating-edges .react-flow__handle {
+.tooltip::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  padding: 4px 8px;
+  background: #1e293b;
+  color: white;
+  font-size: 10px;
+  border-radius: 4px;
   opacity: 0;
-}
-.react-flow__edge-path {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.react-flow__edge.animated path {
-  stroke-dasharray: 5;
-  animation: dashdraw 0.5s linear infinite;
-}
-@keyframes dashdraw {
-  to {
-    stroke-dashoffset: -10;
-  }
+  visibility: hidden;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 50;
 }
 
-/* Network Graph Shimmer */
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+.tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Animation Utilities */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Graph Container Fixes */
+.react-flow__renderer {
+  background: transparent !important;
+}
+
+.react-flow__node {
+  border: none !important;
+}
+
+.react-flow__controls {
+  display: none;
+}
+
+/* Markdown Content Styling */
+.prose {
+  color: #d6d3d1;
+}
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: #f5f5f4;
+  font-weight: 600;
+}
+.prose strong {
+  color: #fafaf9;
+}
+.prose ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+}
+.prose ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+}
+.prose a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+.prose a:hover {
+  text-decoration: underline;
 }

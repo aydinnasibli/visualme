@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { NetworkGraphHandle } from "./NetworkGraph";
 import MindMapVisualization, { MindMapHandle } from "./MindMap";
+import { editVisualizationAction } from "@/lib/actions/visualize";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 
@@ -72,33 +73,32 @@ export default function VisualizationModal({
 
       if (!currentVisualization) return;
 
-      // Update in database using the edit API
-      const response = await fetch("/api/visualizations/edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visualizationId: currentVisualization._id,
-          editPrompt: "Manual JSON edit",
-          existingData: parsedData,
-          visualizationType: currentVisualization.type,
-        }),
-      });
+      // Update in database using the server action
+      const response = await editVisualizationAction(
+        "Manual JSON edit",
+        parsedData,
+        currentVisualization.type,
+        currentVisualization._id
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update visualization");
+      if (!response.success) {
+        throw new Error(response.error || "Failed to update visualization");
       }
 
-      const { visualization: updatedViz } = await response.json();
+      const updatedViz = response.visualization;
 
-      setCurrentVisualization(updatedViz);
-      setManualEditJson('');
-      setIsEditMode(false);
+      if (updatedViz) {
+        setCurrentVisualization(updatedViz);
+        setManualEditJson('');
+        setIsEditMode(false);
+        toast.success('Visualization updated successfully!');
 
-      toast.success('Visualization updated successfully!');
-
-      if (onVisualizationUpdated) {
-        onVisualizationUpdated(updatedViz);
+        if (onVisualizationUpdated) {
+          onVisualizationUpdated(updatedViz);
+        }
+      } else {
+         // Should not happen for manual edit with ID
+         throw new Error("Failed to retrieve updated visualization");
       }
     } catch (error) {
       if (error instanceof SyntaxError) {
