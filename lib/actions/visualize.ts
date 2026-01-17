@@ -344,16 +344,24 @@ export async function editVisualizationAction(
          }
 
          await visualization.save();
-         updatedVisualization = visualization.toObject();
 
-         // Convert _id to string
-         if (updatedVisualization._id) updatedVisualization._id = updatedVisualization._id.toString();
-         if (updatedVisualization.history) {
-             updatedVisualization.history = updatedVisualization.history.map((h: any) => ({
-                 ...h,
+         // Manually sanitize to return a plain object
+         updatedVisualization = {
+             _id: visualization._id.toString(),
+             userId: visualization.userId.toString(),
+             title: visualization.title,
+             type: visualization.type,
+             data: visualization.data,
+             metadata: visualization.metadata,
+             isPublic: visualization.isPublic,
+             history: visualization.history ? visualization.history.map((h: any) => ({
+                 role: h.role,
+                 content: h.content,
                  timestamp: h.timestamp
-             }));
-         }
+             })) : [],
+             createdAt: visualization.createdAt,
+             updatedAt: visualization.updatedAt
+         };
        }
     }
 
@@ -501,7 +509,24 @@ export async function saveVisualization(
       }
     }
 
-    return { success: true, id: visualization._id.toString(), data: visualization.toObject() };
+    const sanitizedData = {
+        _id: visualization._id.toString(),
+        userId: visualization.userId.toString(),
+        title: visualization.title,
+        type: visualization.type,
+        data: visualization.data,
+        metadata: visualization.metadata,
+        isPublic: visualization.isPublic,
+        history: visualization.history ? visualization.history.map((h: any) => ({
+            role: h.role,
+            content: h.content,
+            timestamp: h.timestamp
+        })) : [],
+        createdAt: visualization.createdAt,
+        updatedAt: visualization.updatedAt
+    };
+
+    return { success: true, id: visualization._id.toString(), data: sanitizedData };
   } catch (error) {
     console.error('Error saving visualization:', error);
     return {
