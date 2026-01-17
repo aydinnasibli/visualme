@@ -109,3 +109,31 @@ export function parseCSVToJSON(csv: string): Array<Record<string, any>> {
 
   return result;
 }
+
+/**
+ * Sanitize visualization object for client-side use
+ * Converts ObjectIds to strings and Dates to ISO strings to prevent serialization errors
+ */
+export function sanitizeVisualization(viz: any): any {
+  if (!viz) return null;
+
+  // If it's a Mongoose document, convert to object first
+  const obj = typeof viz.toObject === 'function' ? viz.toObject() : viz;
+
+  return {
+    ...obj,
+    _id: obj._id?.toString(),
+    userId: obj.userId?.toString(),
+    createdAt: obj.createdAt ? new Date(obj.createdAt).toISOString() : undefined,
+    updatedAt: obj.updatedAt ? new Date(obj.updatedAt).toISOString() : undefined,
+    metadata: obj.metadata ? {
+      ...obj.metadata,
+      generatedAt: obj.metadata.generatedAt ? new Date(obj.metadata.generatedAt).toISOString() : undefined,
+    } : undefined,
+    history: Array.isArray(obj.history) ? obj.history.map((h: any) => ({
+      role: h.role,
+      content: h.content,
+      timestamp: h.timestamp ? new Date(h.timestamp).toISOString() : new Date().toISOString(),
+    })) : [],
+  };
+}

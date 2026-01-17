@@ -31,7 +31,7 @@
     "markmap-lib": "^0.18.12",
     "markmap-view": "^0.18.12",
     "mermaid": "^11.12.2",
-    "mongoose": "^9.0.0",
+    "mongoose": "^9.1.4",
     "nanoid": "^5.1.6",
     "next": "^16.0.10",
     "openai": "^6.9.1",

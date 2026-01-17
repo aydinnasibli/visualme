@@ -5,7 +5,7 @@ import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { selectVisualizationFormat } from '@/lib/services/format-selector';
 import { expandNetworkNode, expandMindMapNode, generateVisualizationData, VisualizationGeneratorService } from '@/lib/services/visualization-generator';
-import { calculateCost } from '@/lib/utils/helpers';
+import { calculateCost, sanitizeVisualization } from '@/lib/utils/helpers';
 import { FORMAT_INFO } from '@/lib/types/visualization';
 import {
   validateInputLength,
@@ -346,22 +346,7 @@ export async function editVisualizationAction(
          await visualization.save();
 
          // Manually sanitize to return a plain object
-         updatedVisualization = {
-             _id: visualization._id.toString(),
-             userId: visualization.userId.toString(),
-             title: visualization.title,
-             type: visualization.type,
-             data: visualization.data,
-             metadata: visualization.metadata,
-             isPublic: visualization.isPublic,
-             history: visualization.history ? visualization.history.map((h: any) => ({
-                 role: h.role,
-                 content: h.content,
-                 timestamp: h.timestamp
-             })) : [],
-             createdAt: visualization.createdAt,
-             updatedAt: visualization.updatedAt
-         };
+         updatedVisualization = sanitizeVisualization(visualization);
        }
     }
 
@@ -509,22 +494,7 @@ export async function saveVisualization(
       }
     }
 
-    const sanitizedData = {
-        _id: visualization._id.toString(),
-        userId: visualization.userId.toString(),
-        title: visualization.title,
-        type: visualization.type,
-        data: visualization.data,
-        metadata: visualization.metadata,
-        isPublic: visualization.isPublic,
-        history: visualization.history ? visualization.history.map((h: any) => ({
-            role: h.role,
-            content: h.content,
-            timestamp: h.timestamp
-        })) : [],
-        createdAt: visualization.createdAt,
-        updatedAt: visualization.updatedAt
-    };
+    const sanitizedData = sanitizeVisualization(visualization);
 
     return { success: true, id: visualization._id.toString(), data: sanitizedData };
   } catch (error) {
@@ -558,21 +528,7 @@ export async function getUserVisualizations(limit: number = 20) {
 
     return {
       success: true,
-      data: visualizations.map((v) => ({
-        ...v,
-        _id: v._id.toString(),
-        metadata: {
-            ...v.metadata,
-            generatedAt: new Date(v.metadata.generatedAt).toISOString()
-        },
-        createdAt: new Date(v.createdAt).toISOString(),
-        updatedAt: new Date(v.updatedAt).toISOString(),
-        history: v.history ? v.history.map(h => ({
-          role: h.role,
-          content: h.content,
-          timestamp: new Date(h.timestamp).toISOString()
-        })) : []
-      })),
+      data: visualizations.map(v => sanitizeVisualization(v)),
     };
   } catch (error) {
     console.error('Error fetching visualizations:', error);
@@ -607,21 +563,7 @@ export async function getVisualizationById(id: string) {
 
     return {
       success: true,
-      data: {
-        ...visualization,
-        _id: visualization._id.toString(),
-        metadata: {
-            ...visualization.metadata,
-            generatedAt: new Date(visualization.metadata.generatedAt).toISOString()
-        },
-        createdAt: new Date(visualization.createdAt).toISOString(),
-        updatedAt: new Date(visualization.updatedAt).toISOString(),
-        history: visualization.history ? visualization.history.map(h => ({
-          role: h.role,
-          content: h.content,
-          timestamp: new Date(h.timestamp).toISOString()
-        })) : []
-      },
+      data: sanitizeVisualization(visualization),
     };
   } catch (error) {
     console.error('Error fetching visualization by ID:', error);
