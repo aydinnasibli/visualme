@@ -1,293 +1,175 @@
 'use client';
 
+import React, { useEffect, useState } from 'react';
+import Header from '@/components/dashboard/Header';
 import { useUser } from '@clerk/nextjs';
-import { useState, useEffect } from 'react';
-import { getUserProfile } from '@/lib/actions/profile';
+import { User, Mail, CheckCircle, Check } from 'lucide-react';
+import { getUserProfile, UserProfile } from '@/lib/actions/profile';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { user, isLoaded } = useUser();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [plan, setPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const { user } = useUser();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (isLoaded && user) {
-      setFirstName(user.firstName || '');
-      setLastName(user.lastName || '');
-      setUsername(user.username || '');
-      setEmail(user.emailAddresses?.[0]?.emailAddress || '');
-      loadUserProfile();
-    }
-  }, [isLoaded, user]);
-
-  const loadUserProfile = async () => {
-    try {
-      const result = await getUserProfile();
-      if (result.success && result.data) {
-        setPlan(result.data.plan);
+    const fetchProfile = async () => {
+      try {
+        const result = await getUserProfile();
+        if (result.success && result.data) {
+          setProfile(result.data);
+        } else {
+          console.error("Failed to load profile:", result.error);
+          toast.error("Failed to load profile data");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  const handleSave = async () => {
-    if (!user) return;
+    fetchProfile();
+  }, []);
 
-    setSaving(true);
-    setError(null);
-    setSuccess(false);
-
-    try {
-      // Update Clerk user data
-      await user.update({
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        username: username || undefined,
-      });
-
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      console.error('Error updating profile:', err);
-      setError(err.errors?.[0]?.message || 'Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (user) {
-      setFirstName(user.firstName || '');
-      setLastName(user.lastName || '');
-      setUsername(user.username || '');
-      setEmail(user.emailAddresses?.[0]?.emailAddress || '');
-      setError(null);
-      setSuccess(false);
-    }
-  };
+  const plan = profile?.plan === 'pro' ? 'Pro Plan' : (profile?.plan === 'enterprise' ? 'Enterprise Plan' : 'Free Plan');
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0f1419]">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#0f1419]/80 backdrop-blur-md px-6 py-4 border-b border-[#282e39] flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-white">Profile Settings</h2>
-          <p className="text-sm text-gray-400">Manage your personal information and preferences.</p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleCancel}
-            disabled={saving}
-            className="px-4 py-2 rounded-lg border border-[#282e39] text-gray-400 text-sm font-medium hover:bg-[#1c1f27] hover:text-white transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-lg shadow-primary/30 disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving ? (
-              <>
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Saving...
-              </>
-            ) : (
-              'Save Changes'
-            )}
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background relative selection:bg-primary/20">
+      <Header user={user || null} />
+      <div className="max-w-4xl mx-auto p-6 pt-24">
+        <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
 
-      <div className="p-6 md:p-10 max-w-5xl mx-auto flex flex-col gap-10">
-        {/* Success/Error Messages */}
-        {success && (
-          <div className="bg-green-900/20 border border-green-500/50 text-green-200 px-4 py-3 rounded-xl flex items-center gap-3">
-            <span className="material-symbols-outlined">check_circle</span>
-            Profile updated successfully!
-          </div>
-        )}
-        {error && (
-          <div className="bg-red-900/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl flex items-center gap-3">
-            <span className="material-symbols-outlined">error</span>
-            {error}
-          </div>
-        )}
-
-        {/* Profile Section */}
-        <section>
-          <div className="flex items-start justify-between border-b border-[#282e39] pb-4 mb-6">
-            <h3 className="text-lg font-semibold text-white">Personal Information</h3>
-          </div>
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            {/* Avatar */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative group">
-                <div className="size-32 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-4xl font-bold border-4 border-[#1c1f27]">
-                  {firstName?.[0]?.toUpperCase() || user?.firstName?.[0]?.toUpperCase() || 'U'}
-                </div>
-              </div>
-            </div>
-
-            {/* Fields */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-400">First Name</span>
+        <div className="space-y-6">
+          {/* Profile Section */}
+          <section className="bg-surface-dark border border-white/10 rounded-xl p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Profile</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm text-stone-400">Full Name</label>
                 <div className="relative">
                   <input
-                    className="w-full bg-[#1c1f27] border border-[#282e39] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Enter first name"
-                  />
-                  <span className="material-symbols-outlined absolute right-3 top-3.5 text-gray-500 text-[20px]">person</span>
-                </div>
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-400">Last Name</span>
-                <div className="relative">
-                  <input
-                    className="w-full bg-[#1c1f27] border border-[#282e39] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Enter last name"
-                  />
-                  <span className="material-symbols-outlined absolute right-3 top-3.5 text-gray-500 text-[20px]">person</span>
-                </div>
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-400">Username</span>
-                <div className="relative">
-                  <input
-                    className="w-full bg-[#1c1f27] border border-[#282e39] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter username"
-                  />
-                  <span className="material-symbols-outlined absolute right-3 top-3.5 text-gray-500 text-[20px]">badge</span>
-                </div>
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-400">Email Address</span>
-                <div className="relative">
-                  <input
-                    className="w-full bg-[#1c1f27] border border-[#282e39] rounded-lg px-4 py-3 text-gray-400 placeholder-gray-500 focus:outline-none transition-all cursor-not-allowed"
-                    type="email"
-                    value={email}
-                    readOnly
+                    value={user?.fullName || ''}
                     disabled
-                    title="Email cannot be changed"
+                    className="w-full bg-surface-darker border border-white/10 rounded-lg px-4 py-3 text-stone-300 opacity-60 cursor-not-allowed"
                   />
-                  <span className="material-symbols-outlined absolute right-3 top-3.5 text-gray-500 text-[20px]">mail</span>
+                  <User className="absolute right-3 top-3.5 text-gray-500 w-5 h-5" />
                 </div>
-                <span className="text-xs text-gray-500">Email cannot be changed for security reasons</span>
-              </label>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-400">Email Address</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={user?.primaryEmailAddress?.emailAddress || ''}
+                    disabled
+                    className="w-full bg-surface-darker border border-white/10 rounded-lg px-4 py-3 text-stone-300 opacity-60 cursor-not-allowed"
+                  />
+                  <Mail className="absolute right-3 top-3.5 text-gray-500 w-5 h-5" />
+                </div>
+              </div>
             </div>
-          </div>
-        </section>
+            <div className="mt-4 flex justify-end">
+                 <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-stone-300 rounded-lg transition-colors text-sm">
+                    Manage Clerk Profile
+                 </button>
+            </div>
+          </section>
 
-        {/* Billing Section */}
-        <section className="mb-20">
-          <div className="flex items-start justify-between border-b border-[#282e39] pb-4 mb-6">
-            <h3 className="text-lg font-semibold text-white">Subscription</h3>
-          </div>
-          <div className="bg-gradient-to-br from-[#1c1f27] to-[#111318] p-6 rounded-xl border border-[#282e39] relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
+          {/* Subscription Section */}
+          <section className="bg-surface-dark border border-white/10 rounded-xl p-6">
+            <div className="flex items-start justify-between mb-6">
+               <div>
+                  <h2 className="text-xl font-semibold text-white">Subscription</h2>
+                  <p className="text-stone-400 text-sm mt-1">Manage your plan and billing</p>
+               </div>
+               <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                 profile?.plan === 'pro' ? 'bg-primary/20 text-primary border-primary/20' :
+                 profile?.plan === 'enterprise' ? 'bg-purple-500/20 text-purple-400 border-purple-500/20' :
+                 'bg-white/10 text-stone-400 border-white/10'
+               }`}>
+                  {loading ? 'Loading...' : plan}
+               </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Free Plan */}
+                <div className={`relative border rounded-xl p-4 flex flex-col gap-3 ${
+                  profile?.plan === 'free' || !profile?.plan ? 'border-primary/50 bg-primary/5' : 'border-white/10 bg-surface-darker/30 opacity-60'
+                }`}>
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold text-white">Free</span>
+                        {(profile?.plan === 'free' || !profile?.plan) && <CheckCircle className="text-primary w-5 h-5" />}
+                    </div>
+                    <div className="text-2xl font-bold text-white">$0<span className="text-sm font-normal text-stone-400">/mo</span></div>
+                    <ul className="space-y-2 text-sm text-stone-300 mb-2">
+                        <li className="flex items-center gap-2"><Check className="text-primary w-4 h-4" /> 10 Visualizations/mo</li>
+                        <li className="flex items-center gap-2"><Check className="text-primary w-4 h-4" /> Basic Formats</li>
+                    </ul>
+                    <button
+                      disabled={profile?.plan === 'free' || !profile?.plan}
+                      className={`mt-auto w-full py-2 rounded-lg text-sm font-medium ${
+                        profile?.plan === 'free' || !profile?.plan
+                        ? 'bg-primary/20 text-primary cursor-default'
+                        : 'bg-white/10 hover:bg-white/20 text-white transition-colors'
+                      }`}
+                    >
+                      {profile?.plan === 'free' || !profile?.plan ? 'Current Plan' : 'Downgrade'}
+                    </button>
+                </div>
+
+                {/* Pro Plan */}
+                <div className={`relative border rounded-xl p-4 flex flex-col gap-3 ${
+                  profile?.plan === 'pro' ? 'border-primary/50 bg-primary/5' : 'border-white/10 bg-surface-darker/50 hover:opacity-100 transition-opacity'
+                } ${!profile?.plan || profile?.plan === 'free' ? 'opacity-100' : 'opacity-60'}`}>
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold text-white">Pro</span>
+                        {profile?.plan === 'pro' && <CheckCircle className="text-primary w-5 h-5" />}
+                    </div>
+                    <div className="text-2xl font-bold text-white">$9.99<span className="text-sm font-normal text-stone-400">/mo</span></div>
+                    <ul className="space-y-2 text-sm text-stone-300 mb-2">
+                        <li className="flex items-center gap-2"><Check className="text-primary w-4 h-4" /> Unlimited Visualizations</li>
+                        <li className="flex items-center gap-2"><Check className="text-primary w-4 h-4" /> Advanced Formats</li>
+                        <li className="flex items-center gap-2"><Check className="text-primary w-4 h-4" /> Priority Support</li>
+                    </ul>
+                    <button
+                      disabled={profile?.plan === 'pro'}
+                      className={`mt-auto w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+                        profile?.plan === 'pro'
+                        ? 'bg-primary/20 text-primary cursor-default'
+                        : 'bg-white/10 hover:bg-white/20 text-white'
+                      }`}
+                    >
+                      {profile?.plan === 'pro' ? 'Current Plan' : 'Upgrade'}
+                    </button>
+                </div>
+            </div>
+          </section>
+
+          {/* Preferences */}
+           <section className="bg-surface-dark border border-white/10 rounded-xl p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Preferences</h2>
+            <div className="flex items-center justify-between py-3 border-b border-white/5">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="text-2xl font-bold text-white">
-                      {plan === 'free' && 'Free Plan'}
-                      {plan === 'pro' && 'Pro Plan'}
-                      {plan === 'enterprise' && 'Enterprise Plan'}
-                    </h4>
-                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-primary/20 text-primary border border-primary/30">CURRENT</span>
-                  </div>
-                  <p className="text-gray-400 mb-4">
-                    {plan === 'free' && 'You are currently on the free plan.'}
-                    {plan === 'pro' && 'You are currently on the pro plan with unlimited features.'}
-                    {plan === 'enterprise' && 'You are currently on the enterprise plan with all features unlocked.'}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm flex-wrap">
-                    <div className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                      {plan === 'free' && '5 Visualizations/month'}
-                      {plan === 'pro' && 'Unlimited Visualizations'}
-                      {plan === 'enterprise' && 'Unlimited Visualizations'}
-                    </div>
-                    <div className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                      All 20 Types
-                    </div>
-                    {(plan === 'pro' || plan === 'enterprise') && (
-                      <>
-                        <div className="flex items-center gap-2 text-white">
-                          <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                          Priority Support
-                        </div>
-                        <div className="flex items-center gap-2 text-white">
-                          <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                          Advanced Analytics
-                        </div>
-                      </>
-                    )}
-                    {plan === 'enterprise' && (
-                      <div className="flex items-center gap-2 text-white">
-                        <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                        Custom Integrations
-                      </div>
-                    )}
-                  </div>
+                    <h3 className="text-sm font-medium text-white">Dark Mode</h3>
+                    <p className="text-xs text-stone-400">Always on for that sleek look</p>
                 </div>
-                <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                  <div className="text-right mb-2">
-                    <span className="text-3xl font-bold text-white">
-                      {plan === 'free' && '$0'}
-                      {plan === 'pro' && '$29'}
-                      {plan === 'enterprise' && '$99'}
-                    </span>
-                    <span className="text-gray-400">/month</span>
-                  </div>
-                  {plan === 'free' && (
-                    <button className="w-full md:w-auto px-6 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-primary/30">
-                      Upgrade to Pro
-                    </button>
-                  )}
-                  {plan === 'pro' && (
-                    <button className="w-full md:w-auto px-6 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-primary/30">
-                      Upgrade to Enterprise
-                    </button>
-                  )}
-                  {plan === 'enterprise' && (
-                    <button className="w-full md:w-auto px-6 py-2 rounded-lg border border-[#282e39] text-gray-400 text-sm font-medium hover:bg-[#1c1f27] hover:text-white transition-colors">
-                      Manage Subscription
-                    </button>
-                  )}
+                <div className="w-10 h-6 bg-primary rounded-full relative cursor-not-allowed opacity-80">
+                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
                 </div>
-              </div>
-            )}
-          </div>
-        </section>
+            </div>
+            <div className="flex items-center justify-between py-3">
+                <div>
+                    <h3 className="text-sm font-medium text-white">Email Notifications</h3>
+                    <p className="text-xs text-stone-400">Receive updates and tips</p>
+                </div>
+                <button className="w-10 h-6 bg-stone-700 rounded-full relative transition-colors hover:bg-stone-600">
+                    <div className="absolute left-1 top-1 w-4 h-4 bg-white/50 rounded-full shadow-sm"></div>
+                </button>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

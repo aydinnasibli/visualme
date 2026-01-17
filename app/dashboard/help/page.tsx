@@ -1,145 +1,115 @@
 'use client';
 
+import React from 'react';
+import Header from '@/components/dashboard/Header';
+import { useUser } from '@clerk/nextjs';
+import { Rocket, Database, Activity, Wrench, ChevronRight, ChevronDown, Mail, MessageSquare } from 'lucide-react';
+
 export default function HelpPage() {
+  const { user } = useUser();
+
+  const faqs = [
+    {
+      question: "How do I create a new visualization?",
+      answer: "Go to the dashboard and type your request in the input box. You can describe what you want to visualize or paste your data directly."
+    },
+    {
+      question: "What formats are supported?",
+      answer: "We support Network Graphs, Mind Maps, Tree Diagrams, Flowcharts, Timelines, Gantt Charts, Sankey Diagrams, and various charts (Bar, Line, Pie, etc.)."
+    },
+    {
+      question: "Can I export my diagrams?",
+      answer: "Yes, you can save your visualizations to your library. Image and code export features are coming soon!"
+    },
+    {
+        question: "How does the token system work?",
+        answer: "Every AI generation consumes tokens. Free users get 100 tokens/month, while Pro users get 2000. Tokens reset on the 1st of each month."
+    }
+  ];
+
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0f1419]">
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-sm mb-8">
-          <a className="text-gray-400 hover:text-primary transition-colors" href="/dashboard">Dashboard</a>
-          <span className="material-symbols-outlined text-[14px] text-gray-400">chevron_right</span>
-          <span className="text-white font-medium">Help Center</span>
+    <div className="min-h-screen bg-background relative selection:bg-primary/20">
+      <Header user={user || null} />
+      <div className="max-w-4xl mx-auto p-6 pt-24">
+        <h1 className="text-3xl font-bold text-white mb-2">Help & Support</h1>
+        <p className="text-stone-400 mb-8">Find answers to common questions and learn how to use VisualMe.</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div className="bg-surface-dark border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors group cursor-pointer">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
+                    <Rocket className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Getting Started</h3>
+                <p className="text-stone-400 text-sm">Learn the basics of creating your first visualization in seconds.</p>
+                <div className="mt-4 flex items-center text-primary text-sm font-medium">
+                    Read Guide <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+            </div>
+
+             <div className="bg-surface-dark border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors group cursor-pointer">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-4 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                    <Database className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Data Formatting</h3>
+                <p className="text-stone-400 text-sm">Best practices for structuring your prompts and data for best results.</p>
+                <div className="mt-4 flex items-center text-primary text-sm font-medium">
+                    View Examples <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+            </div>
+
+             <div className="bg-surface-dark border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors group cursor-pointer">
+                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 mb-4 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                    <Activity className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Tips & Tricks</h3>
+                <p className="text-stone-400 text-sm">Advanced techniques to get the most out of the AI engine.</p>
+                <div className="mt-4 flex items-center text-primary text-sm font-medium">
+                    Learn More <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+            </div>
+
+             <div className="bg-surface-dark border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors group cursor-pointer">
+                <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                    <Wrench className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Troubleshooting</h3>
+                <p className="text-stone-400 text-sm">Solutions for common issues and error messages.</p>
+                <div className="mt-4 flex items-center text-primary text-sm font-medium">
+                    Get Help <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+            </div>
         </div>
 
-        {/* Hero Search Section */}
-        <section className="relative overflow-hidden rounded-2xl bg-[#141922] border border-[#282e39] p-8 md:p-16 text-center mb-8">
-          <div className="absolute inset-0 opacity-20 pointer-events-none" style={{backgroundImage: 'radial-gradient(#135bec 1px, transparent 1px)', backgroundSize: '32px 32px'}}></div>
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-          
-          <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center gap-6">
-            <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white leading-tight">
-              How can we help you <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">visualize</span> today?
-            </h1>
-            <p className="text-gray-400 text-lg font-light max-w-lg">
-              Search for articles, guides, or visualization types to get started.
-            </p>
-            <div className="w-full relative mt-4">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <span className="material-symbols-outlined text-gray-400 text-[24px]">search</span>
-              </div>
-              <input 
-                className="w-full h-14 pl-12 pr-32 bg-[#1c1f27] border border-[#282e39] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-lg text-base" 
-                placeholder="e.g., 'How to import CSV data'" 
-                type="text"
-              />
-              <button className="absolute right-2 top-2 bottom-2 bg-primary hover:bg-blue-600 text-white font-medium px-6 rounded-lg text-sm transition-colors">
-                Search
-              </button>
+        <h2 className="text-2xl font-bold text-white mb-6">Frequently Asked Questions</h2>
+        <div className="space-y-4 mb-12">
+            {faqs.map((faq, index) => (
+                <details key={index} className="group bg-surface-dark border border-white/10 rounded-xl overflow-hidden">
+                    <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors list-none">
+                        <span className="font-medium text-stone-200">{faq.question}</span>
+                        <ChevronDown className="transition-transform group-open:rotate-180 text-gray-400 w-5 h-5" />
+                    </summary>
+                    <div className="px-4 pb-4 text-stone-400 text-sm leading-relaxed border-t border-white/5 pt-4">
+                        {faq.answer}
+                    </div>
+                </details>
+            ))}
+        </div>
+
+        <div className="bg-gradient-to-r from-primary/20 to-purple-500/20 border border-white/10 rounded-2xl p-8 text-center">
+            <h2 className="text-2xl font-bold text-white mb-2">Still need help?</h2>
+            <p className="text-stone-300 mb-6">Our support team is available to assist you with any questions or issues.</p>
+            <div className="flex items-center justify-center gap-4">
+                <button className="px-6 py-2.5 bg-white text-black font-medium rounded-lg hover:bg-stone-200 transition-colors flex items-center gap-2">
+                    <Mail className="w-5 h-5" />
+                    Contact Support
+                </button>
+                 <button className="px-6 py-2.5 bg-surface-darker border border-white/10 text-white font-medium rounded-lg hover:bg-white/5 transition-colors flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Join Community
+                </button>
             </div>
-            <div className="flex gap-3 text-sm text-gray-400 mt-2 flex-wrap justify-center">
-              <span>Popular:</span>
-              <a className="hover:text-primary underline decoration-1 underline-offset-2" href="#">JSON Format</a>
-              <a className="hover:text-primary underline decoration-1 underline-offset-2" href="#">Exporting SVG</a>
-              <a className="hover:text-primary underline decoration-1 underline-offset-2" href="#">API Keys</a>
-            </div>
-          </div>
-        </section>
+        </div>
 
-        {/* Feature/Topic Grid */}
-        <section className="mt-8">
-          <div className="flex flex-col gap-2 mb-6">
-            <h2 className="text-2xl font-bold text-white">Browse by Topic</h2>
-            <p className="text-gray-400">Explore our comprehensive guides categorized for your needs.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <a className="group flex flex-col p-6 rounded-xl border border-[#282e39] bg-[#141922] hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5" href="#">
-              <div className="size-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-[28px]">rocket_launch</span>
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2 group-hover:text-primary transition-colors">Getting Started</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">Account setup, platform overview, and creating your first visualization.</p>
-            </a>
-
-            <a className="group flex flex-col p-6 rounded-xl border border-[#282e39] bg-[#141922] hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5" href="#">
-              <div className="size-12 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-[28px]">dataset</span>
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-500 transition-colors">Data Inputs</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">Supported file types (CSV, JSON), API connections, and formatting rules.</p>
-            </a>
-
-            <a className="group flex flex-col p-6 rounded-xl border border-[#282e39] bg-[#141922] hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5" href="#">
-              <div className="size-12 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-[28px]">monitoring</span>
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2 group-hover:text-purple-500 transition-colors">Viz Library</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">In-depth guides and best practices for all 19 visualization types.</p>
-            </a>
-
-            <a className="group flex flex-col p-6 rounded-xl border border-[#282e39] bg-[#141922] hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5" href="#">
-              <div className="size-12 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-[28px]">build</span>
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2 group-hover:text-orange-500 transition-colors">Troubleshooting</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">Solutions for common errors, slow rendering, and export issues.</p>
-            </a>
-          </div>
-        </section>
-
-        {/* FAQ Section */}
-        <section className="mt-12 mb-16">
-          <h2 className="text-2xl font-bold text-white mb-6">Frequently Asked Questions</h2>
-          <div className="flex flex-col gap-4">
-            <details className="group rounded-xl border border-[#282e39] bg-[#141922] overflow-hidden">
-              <summary className="flex items-center justify-between p-5 cursor-pointer list-none font-medium text-white hover:bg-white/5 transition-colors">
-                <span>What happens if my data file is too large?</span>
-                <span className="material-symbols-outlined transition-transform group-open:rotate-180 text-gray-400">keyboard_arrow_down</span>
-              </summary>
-              <div className="px-5 pb-5 pt-0 text-gray-400 text-sm leading-relaxed border-t border-transparent group-open:border-[#282e39]/50 group-open:pt-4">
-                For free tier users, the limit is 50MB per file. Pro users can upload up to 500MB. If your dataset exceeds this, try splitting it into smaller chunks or using our API for stream-based ingestion.
-              </div>
-            </details>
-
-            <details className="group rounded-xl border border-[#282e39] bg-[#141922] overflow-hidden">
-              <summary className="flex items-center justify-between p-5 cursor-pointer list-none font-medium text-white hover:bg-white/5 transition-colors">
-                <span>Can I export visualizations to PowerPoint?</span>
-                <span className="material-symbols-outlined transition-transform group-open:rotate-180 text-gray-400">keyboard_arrow_down</span>
-              </summary>
-              <div className="px-5 pb-5 pt-0 text-gray-400 text-sm leading-relaxed border-t border-transparent group-open:border-[#282e39]/50 group-open:pt-4">
-                Yes! You can export any visualization as a high-resolution PNG, SVG, or directly as an editable PowerPoint slide (.pptx) if you are on the Business plan.
-              </div>
-            </details>
-
-            <details className="group rounded-xl border border-[#282e39] bg-[#141922] overflow-hidden">
-              <summary className="flex items-center justify-between p-5 cursor-pointer list-none font-medium text-white hover:bg-white/5 transition-colors">
-                <span>How do I change the color theme of a chart?</span>
-                <span className="material-symbols-outlined transition-transform group-open:rotate-180 text-gray-400">keyboard_arrow_down</span>
-              </summary>
-              <div className="px-5 pb-5 pt-0 text-gray-400 text-sm leading-relaxed border-t border-transparent group-open:border-[#282e39]/50 group-open:pt-4">
-                In the editor mode, navigate to the "Appearance" tab on the right sidebar. You can select from our preset palettes or define custom HEX codes for your series data.
-              </div>
-            </details>
-          </div>
-        </section>
-
-        {/* Support Footer */}
-        <section className="mb-16 rounded-xl bg-gradient-to-r from-[#141922] to-[#161b26] border border-[#282e39] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex flex-col gap-2 text-center md:text-left">
-            <h2 className="text-2xl font-bold text-white">Still need help?</h2>
-            <p className="text-gray-400 max-w-md">Our support team is available 24/7 to assist you with any issues or questions you might have.</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4">
-            <button className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition-colors">
-              <span className="material-symbols-outlined text-[20px]">mail</span>
-              Contact Support
-            </button>
-            <button className="flex items-center gap-2 bg-transparent border border-[#282e39] hover:bg-white/5 text-white px-6 py-3 rounded-lg font-bold transition-colors">
-              <span className="material-symbols-outlined text-[20px]">forum</span>
-              Community Forum
-            </button>
-          </div>
-        </section>
       </div>
     </div>
   );

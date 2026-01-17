@@ -1,351 +1,222 @@
 import Link from 'next/link';
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { Sparkles, Edit3, Network, Share2, Activity, Calendar, BarChart2, Code, GraduationCap, Building } from 'lucide-react';
 
-export default function HomePage() {
+export default function LandingPage() {
   return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col bg-[#0f1419]">
-      {/* Header */}
-      <div className="w-full border-b border-solid border-[#282e39] bg-[#101622]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex justify-center w-full">
-          <div className="flex max-w-[1280px] w-full items-center justify-between px-6 py-4 lg:px-10">
-            <Link href="/" className="flex items-center gap-3 text-white cursor-pointer group">
-              <div className="size-9 flex items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
-                <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>auto_awesome</span>
-              </div>
-              <h2 className="text-xl font-bold leading-tight tracking-tight">VisualMe</h2>
-            </Link>
-            <div className="hidden md:flex items-center gap-8">
-              <a className="text-sm font-medium text-slate-300 hover:text-primary transition-colors" href="#pricing">Pricing</a>
-              <a className="text-sm font-medium text-slate-300 hover:text-primary transition-colors" href="#gallery">Gallery</a>
-              <a className="text-sm font-medium text-slate-300 hover:text-primary transition-colors" href="#community">Community</a>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/sign-in" className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 hover:bg-[#282e39] transition-all text-sm font-bold tracking-wide text-slate-300">
-                <span className="truncate">Log In</span>
-              </Link>
-              <Link href="/dashboard" className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-5 bg-primary hover:bg-blue-600 transition-all text-white text-sm font-bold tracking-wide shadow-lg shadow-primary/25 hover:shadow-primary/40 transform active:scale-95">
-                <span className="truncate">Get Started</span>
-              </Link>
-            </div>
-          </div>
-        </div>
+    <div className="bg-[#101622] text-white overflow-hidden relative selection:bg-primary/30">
+      {/* Background Gradients */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] opacity-30 animate-pulse-slow"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] opacity-20 animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
       </div>
+
+      {/* Navigation */}
+      <nav className="relative z-10 container mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary/20">V</div>
+          <span className="text-xl font-bold tracking-tight">VisualMe</span>
+        </div>
+        <div className="flex items-center gap-6">
+           <SignedOut>
+              <Link href="/sign-in" className="text-stone-300 hover:text-white transition-colors text-sm font-medium">Log In</Link>
+              <Link href="/sign-up" className="px-5 py-2.5 bg-white text-black rounded-lg font-semibold text-sm hover:bg-stone-100 transition-colors shadow-lg shadow-white/5">
+                Sign Up Free
+              </Link>
+           </SignedOut>
+           <SignedIn>
+              <Link href="/dashboard" className="px-5 py-2.5 bg-primary text-white rounded-lg font-semibold text-sm hover:bg-primary-hover transition-colors shadow-lg shadow-primary/20">
+                Go to Dashboard
+              </Link>
+              <UserButton afterSignOutUrl="/" />
+           </SignedIn>
+        </div>
+      </nav>
 
       {/* Hero Section */}
-      <div className="flex flex-col w-full justify-center items-center py-16 lg:py-24 relative overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
-        <div className="absolute bottom-0 right-0 w-[600px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+      <header className="relative z-10 container mx-auto px-6 pt-20 pb-32 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-stone-300 text-xs font-medium mb-8 backdrop-blur-sm animate-fade-in-up">
+          <Sparkles size={16} />
+          <span>AI-Powered Visualization Engine</span>
+        </div>
 
-        <div className="flex flex-col max-w-[960px] w-full px-6 lg:px-10 gap-10 z-10">
-          <div className="flex flex-col gap-8 items-center text-center">
-            <div className="flex flex-col gap-6 max-w-4xl">
-              <div className="inline-flex mx-auto items-center gap-2 px-3 py-1 rounded-full bg-blue-900/20 border border-blue-800 text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-                Now available for Teams
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight max-w-4xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          Visualize Anything <br/>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-primary to-purple-400">In Seconds</span>
+        </h1>
+
+        <p className="text-lg md:text-xl text-stone-400 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          Transform complex ideas, data, and notes into professional diagrams instantly. No drag-and-drop required—just describe it.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+          <Link href="/sign-up" className="px-8 py-4 bg-primary text-white rounded-xl font-semibold text-lg hover:bg-primary-hover transition-all hover:scale-105 shadow-xl shadow-primary/25 flex items-center gap-2 w-full sm:w-auto justify-center">
+            <Edit3 size={20} />
+            Start Visualizing Free
+          </Link>
+          <Link href="#features" className="px-8 py-4 bg-surface-dark border border-white/10 text-white rounded-xl font-semibold text-lg hover:bg-white/5 transition-all w-full sm:w-auto justify-center">
+            View Examples
+          </Link>
+        </div>
+
+        {/* Hero Visual */}
+        <div className="mt-20 relative max-w-5xl mx-auto rounded-2xl border border-white/10 bg-[#161b22]/80 backdrop-blur-xl shadow-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+          <div className="absolute top-0 left-0 w-full h-8 bg-white/5 border-b border-white/5 flex items-center px-4 gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500/20"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500/20"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500/20"></div>
+          </div>
+          <div className="p-1 min-h-[400px] flex items-center justify-center relative">
+             {/* Mock Visualization Elements */}
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full p-10 flex items-center justify-center opacity-80">
+                {/* Central Node */}
+                <div className="w-32 h-32 rounded-full border-2 border-primary/50 flex items-center justify-center bg-primary/10 backdrop-blur-md relative z-10">
+                    <span className="font-bold text-primary">Core Idea</span>
+                    {/* Connecting Lines */}
+                    <div className="absolute top-1/2 left-full w-24 h-0.5 bg-gradient-to-r from-primary/50 to-transparent"></div>
+                    <div className="absolute top-1/2 right-full w-24 h-0.5 bg-gradient-to-l from-primary/50 to-transparent"></div>
+                    <div className="absolute left-1/2 bottom-full h-24 w-0.5 bg-gradient-to-t from-primary/50 to-transparent"></div>
+                </div>
+
+                {/* Satellite Nodes */}
+                <div className="absolute top-20 left-20 p-4 rounded-xl bg-surface-dark border border-white/10 flex items-center gap-3 shadow-lg animate-float">
+                    <Activity size={16} className="text-purple-500" />
+                    <span className="text-sm font-medium">Timeline</span>
+                </div>
+                 <div className="absolute bottom-32 right-32 p-4 rounded-xl bg-surface-dark border border-white/10 flex items-center gap-3 shadow-lg animate-float" style={{ animationDelay: '1.5s' }}>
+                    <BarChart2 size={16} className="text-blue-500" />
+                    <span className="text-sm font-medium">Charts</span>
+                </div>
+                 <div className="absolute top-32 right-20 p-4 rounded-xl bg-surface-dark border border-white/10 flex items-center gap-3 shadow-lg animate-float" style={{ animationDelay: '0.8s' }}>
+                    <Network size={16} className="text-emerald-500" />
+                    <span className="text-sm font-medium">Mind Map</span>
+                </div>
+             </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-[#161b22] to-transparent"></div>
+        </div>
+      </header>
+
+      {/* Features Section */}
+      <section id="features" className="py-24 bg-surface-darker/50 relative">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to Visualize</h2>
+            <p className="text-stone-400 max-w-2xl mx-auto">From project planning to brainstorming, our AI engine understands your intent and generates the perfect diagram.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Smart Text-to-Graph",
+                desc: "Paste your notes, reports, or rough ideas. Our AI analyzes the structure and relationships to build accurate visualizations instantly.",
+                icon: Sparkles,
+                color: "text-blue-400"
+              },
+              {
+                title: "Interactive Editing",
+                desc: "Don't like the color? Want to expand a node? Just chat with the AI assistant to refine your diagram in real-time.",
+                icon: Edit3,
+                color: "text-purple-400"
+              },
+              {
+                title: "Multi-Format Support",
+                desc: "Generate mind maps, flowcharts, timelines, Gantt charts, and more. One prompt, endless possibilities.",
+                icon: Network,
+                color: "text-emerald-400"
+              }
+            ].map((feature, i) => (
+              <div key={i} className="p-8 rounded-2xl bg-surface-dark border border-white/5 hover:border-primary/30 transition-all group">
+                <div className={`w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center mb-6 ${feature.color} group-hover:scale-110 transition-transform`}>
+                   <feature.icon size={32} />
+                </div>
+                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+                <p className="text-stone-400 leading-relaxed text-sm">{feature.desc}</p>
               </div>
-
-              <h1 className="text-5xl md:text-7xl font-black leading-[1.1] tracking-tight text-white">
-                Visualize Anything.{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-500">In Seconds.</span>
-              </h1>
-
-              <h2 className="text-slate-300 text-lg md:text-xl font-normal leading-relaxed max-w-2xl mx-auto">
-                Transform ideas, raw data, or unstructured notes into professional diagrams. A refined workspace where your words become visuals instantly.
-              </h2>
-            </div>
-
-            <Link href="/dashboard" className="flex flex-col h-16 w-full max-w-[640px] shadow-2xl shadow-primary/10 rounded-2xl transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 mt-2">
-              <div className="flex w-full flex-1 items-center rounded-2xl h-full border border-[#282e39] bg-[#1c1f27] overflow-hidden hover:ring-2 hover:ring-primary/50 hover:border-primary transition-all p-1">
-                <div className="text-slate-400 flex items-center justify-center pl-4 pr-2">
-                  <span className="material-symbols-outlined">edit_note</span>
-                </div>
-                <div className="flex w-full min-w-0 flex-1 bg-transparent text-slate-400 h-full px-2 text-base font-medium items-center">
-                  Draft a user flow for a coffee shop app...
-                </div>
-                <div className="pr-1">
-                  <div className="flex items-center justify-center rounded-xl h-12 px-6 bg-primary hover:bg-blue-600 text-white text-base font-bold transition-all shadow-md">
-                    <span>Create</span>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <div className="flex flex-wrap justify-center gap-3 w-full max-w-[800px] mt-2">
-              <p className="w-full text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Try an example</p>
-              <Link href="/dashboard?example=roadmap" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-[#282e39] bg-[#1c1f27]/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
-                <span className="material-symbols-outlined text-purple-500 text-[16px]">timeline</span>
-                <span className="text-xs font-medium text-slate-300">Project Roadmap</span>
-              </Link>
-              <Link href="/dashboard?example=revenue" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-[#282e39] bg-[#1c1f27]/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
-                <span className="material-symbols-outlined text-blue-500 text-[16px]">pie_chart</span>
-                <span className="text-xs font-medium text-slate-300">Revenue Dashboard</span>
-              </Link>
-              <Link href="/dashboard?example=org" className="group flex h-8 items-center justify-center gap-x-2 rounded-full border border-[#282e39] bg-[#1c1f27]/50 px-3 transition-all hover:border-primary/30 hover:shadow-sm">
-                <span className="material-symbols-outlined text-emerald-500 text-[16px]">account_tree</span>
-                <span className="text-xs font-medium text-slate-300">Org Structure</span>
-              </Link>
-            </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* 19 Ways to Visualize Section */}
-      <div className="flex flex-col items-center py-16 px-6 bg-[#1c1f27]/20 border-y border-[#282e39]">
-        <div className="max-w-[1100px] w-full flex flex-col gap-10">
-          <div className="flex flex-col md:flex-row items-end justify-between gap-4">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-white">19 Ways to Visualize</h2>
-              <p className="text-slate-400 max-w-lg text-lg">Don&apos;t limit yourself. From simple flowcharts to complex data dashboards, we support the formats you use every day.</p>
-            </div>
-            <a className="group text-white text-sm font-bold flex items-center gap-2 border border-[#282e39] px-4 py-2 rounded-lg hover:bg-[#1c1f27] transition-all" href="#types">
-              View All Types
-              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-[280px]">
-            {/* Featured Card */}
-            <div className="md:col-span-2 md:row-span-2 rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
-              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDus-G8AatxW31wfMxnry99kVSdB2-MYZ6FGPZPNd42tafG6FEV6t1jFEPg8uqssv92b7vSTQCu-p1pfyhwoe42zD4BuzBEkM0PoiIsxSkiyalAthok2dAQl4IquNikOUXYyS0m3n41pU9mUs_KFF68-AhnTeopOWRQUe_r0IEYm0Uco-JKM9TCxhCyxfBCcZZRN12O9fC8Uk9NaGcYFd2F93pTe77eUlkU2oACZBSXpet5eiG3-Hz1JyKAnzdPMLS4izDzDsNhSSKV")'}}></div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
-              <div className="absolute bottom-0 left-0 p-8">
-                <div className="inline-flex items-center gap-2 mb-3 px-2 py-1 bg-blue-600/90 rounded text-white text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
-                  <span className="material-symbols-outlined text-[14px]">star</span> Featured
+      {/* Use Cases Section */}
+      <section className="py-24 relative overflow-hidden">
+        <div className="container mx-auto px-6">
+            <div className="flex flex-col md:flex-row items-center gap-16">
+                <div className="flex-1">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-6">Built for Every Workflow</h2>
+                    <div className="space-y-6">
+                        {[
+                            { title: "Project Managers", desc: "Turn project briefs into Gantt charts and timelines instantly.", icon: Calendar },
+                            { title: "Researchers", desc: "Visualize complex relationships and knowledge graphs from papers.", icon: Network },
+                            { title: "Students", desc: "Create study guides and mind maps from your lecture notes.", icon: GraduationCap },
+                            { title: "Developers", desc: "Generate architecture diagrams and flowcharts from code logic.", icon: Code }
+                        ].map((item, i) => (
+                            <div key={i} className="flex gap-4 p-4 rounded-xl hover:bg-white/5 transition-colors cursor-default group">
+                                <div className="w-12 h-12 rounded-lg bg-surface-dark flex items-center justify-center text-stone-400 group-hover:text-primary transition-colors border border-white/5">
+                                    <item.icon size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-white mb-1">{item.title}</h4>
+                                    <p className="text-sm text-stone-400">{item.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <h3 className="text-white text-3xl font-bold mb-2">Interactive Dashboards</h3>
-                <p className="text-slate-200 text-base max-w-md">Turn spreadsheets or database exports into full executive dashboards instantly. No coding required.</p>
-              </div>
-            </div>
-
-            {/* Small Cards */}
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCsUF98mFXhID8n4oWKk-cu7QXif3MP_fkSMbXvvTsLhOy08ZomWBh_k7Fh-HitGXgPUYtUs897fgICcEzJVF2p--nD0q9BJ_3gJvgOKDS-9J5FdovBISZlW2c1Xg0-kHFmjCqj4CkRPN6_vIpR5VTK5zs0iJvDNyV9m-2TzUN_vhqbXIzCo_2xHDLP9Suf1-K4NAn4OmMygiAcabKYZRgaQKUaQL85XgINCCsnMoTVTwJZxnwX0bnOw-Xtt12I8o_pzY2-MZZIGe71")'}}></div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
-              <div className="absolute bottom-0 left-0 p-6">
-                <div className="flex items-center gap-2 mb-1 text-emerald-400">
-                  <span className="material-symbols-outlined text-lg">share</span>
+                <div className="flex-1 relative">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-purple-500/20 blur-[100px] rounded-full"></div>
+                    <div className="relative bg-[#161b22] border border-white/10 rounded-2xl p-6 shadow-2xl">
+                         {/* Code/Prompt Example */}
+                         <div className="font-mono text-sm space-y-4">
+                            <div className="flex gap-2 text-stone-500 border-b border-white/5 pb-2 mb-4">
+                                <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
+                                <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                                <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
+                            </div>
+                            <div className="text-stone-400">
+                                <span className="text-primary">User:</span> Create a timeline of the Space Race highlights.
+                            </div>
+                            <div className="text-stone-300 pl-4 border-l-2 border-primary/30">
+                                <span className="text-purple-400">AI:</span> Generating timeline visualization...
+                                <div className="mt-2 p-3 bg-surface-dark rounded border border-white/5 flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                                        <span className="text-xs">1957: Sputnik 1 Launched</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                                        <span className="text-xs">1961: Yuri Gagarin in Space</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                                        <span className="text-xs">1969: Apollo 11 Moon Landing</span>
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
                 </div>
-                <h3 className="text-white text-lg font-bold">Mind Maps</h3>
-                <p className="text-slate-400 text-xs mt-1">Brainstorming sessions visualized.</p>
-              </div>
             </div>
-
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAIIPEZI8ycPvxCXkZr6EfGa-smMsVcj23joyyql2rdQrGQqYkUSo2A6XF1cN_r9vi50tVuc9pnQG77D4QyBykCm9kr9T5uTn_jqlrKgdJkYPMDz-ULRLA2ofnJhK0Mj_dwjmGeeezvkWh0d2seD-PYau8yUYrntq_ldlgEp10A469VUizbr-BaLTKwXf0PKUvxH04GaRWCAibPcRnQmQGBM5bUHL-LWZNSA-Br35xbNGQuPMupu_It90DBjPoECDu1g3fomE8UyLy3")'}}></div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
-              <div className="absolute bottom-0 left-0 p-6">
-                <div className="flex items-center gap-2 mb-1 text-purple-400">
-                  <span className="material-symbols-outlined text-lg">account_tree</span>
-                </div>
-                <h3 className="text-white text-lg font-bold">User Flows</h3>
-                <p className="text-slate-400 text-xs mt-1">Map customer journeys.</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDIjWfks2lCpLXYvvSkvK02FqNT2OV0phaxV2yOYNkI-yWryxOtjtb4dtE9Wwgf-OEiwPNLzgZGNA59c8G1iFRUxEy1X7YB88VZ1CgYUeMulBH6K8sTMtKkJ5s1jjeG9dy32EZSSNLolKwYLjy2iJ8aHP6iWTCmX78fYUYZxbqBOWRWSYclsI7VNjAGg4athbzjrRiMbT6YS6Z-8namwDIvsTEgtRW5ZCxeTgjO4rQjyamn9oMaQk2DHJOPKG6LIMiRGIKzAuu3wOQn")'}}></div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-80"></div>
-              <div className="absolute bottom-0 left-0 p-6">
-                <div className="flex items-center gap-2 mb-1 text-orange-400">
-                  <span className="material-symbols-outlined text-lg">corporate_fare</span>
-                </div>
-                <h3 className="text-white text-lg font-bold">Org Charts</h3>
-                <p className="text-slate-400 text-xs mt-1">Visualize team structures.</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden relative group cursor-pointer border border-[#282e39] bg-[#1c1f27] flex flex-col items-center justify-center p-6 text-center hover:bg-[#282e39] transition-colors">
-              <div className="size-16 rounded-full bg-white/5 text-slate-400 flex items-center justify-center mb-4 shadow-sm">
-                <span className="material-symbols-outlined text-3xl">apps</span>
-              </div>
-              <h3 className="text-white text-lg font-bold">Explore Library</h3>
-              <p className="text-slate-500 text-xs mt-2 max-w-[120px]">Gantt, Sequence, ERD, and 12 more types.</p>
-            </div>
-          </div>
         </div>
-      </div>
-
-      {/* Three Steps Section */}
-      <div className="flex flex-col items-center py-20 px-6 bg-[#101622]">
-        <div className="max-w-[960px] w-full">
-          <div className="flex flex-col gap-4 mb-16 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">Clarity in Three Steps</h2>
-            <p className="text-slate-400 text-lg">No drag-and-drop fatigue. Just results.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-[#282e39] to-transparent -z-10"></div>
-
-            <div className="flex flex-col items-center text-center gap-6 group">
-              <div className="size-20 rounded-2xl bg-[#1c1f27] border border-[#282e39] shadow-sm flex items-center justify-center text-primary group-hover:scale-110 group-hover:border-primary/30 group-hover:shadow-primary/10 group-hover:shadow-lg transition-all duration-300">
-                <span className="material-symbols-outlined text-4xl">keyboard</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-3 text-white">1. Describe</h3>
-                <p className="text-sm text-slate-400 leading-relaxed px-4">Type a prompt, paste raw data, or upload a document. We interpret the context instantly.</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center text-center gap-6 group">
-              <div className="size-20 rounded-2xl bg-[#1c1f27] border border-[#282e39] shadow-sm flex items-center justify-center text-purple-500 group-hover:scale-110 group-hover:border-purple-500/30 group-hover:shadow-purple-500/10 group-hover:shadow-lg transition-all duration-300">
-                <span className="material-symbols-outlined text-4xl">auto_fix_high</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-3 text-white">2. Generate</h3>
-                <p className="text-sm text-slate-400 leading-relaxed px-4">Our engine selects the best visualization type and constructs it in real-time.</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center text-center gap-6 group">
-              <div className="size-20 rounded-2xl bg-[#1c1f27] border border-[#282e39] shadow-sm flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:border-emerald-500/30 group-hover:shadow-emerald-500/10 group-hover:shadow-lg transition-all duration-300">
-                <span className="material-symbols-outlined text-4xl">ios_share</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-3 text-white">3. Export</h3>
-                <p className="text-sm text-slate-400 leading-relaxed px-4">Fine-tune the style, then export as high-res PNG, SVG, or editable code.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* See It In Action Section */}
-      <div className="w-full bg-[#0d1017] border-y border-[#282e39] py-20 px-6">
-        <div className="flex flex-col max-w-[1080px] w-full mx-auto gap-16">
-          <div className="text-center mb-4">
-            <h2 className="text-3xl font-bold tracking-tight mb-4 text-white">See It In Action</h2>
-            <p className="text-slate-400 max-w-2xl mx-auto">From a simple sentence to a comprehensive visual structure. Here is what you can build.</p>
-          </div>
-
-          <div className="flex flex-col lg:flex-row items-center gap-12">
-            <div className="flex-1 flex flex-col gap-6 w-full">
-              <div className="inline-flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-xs">
-                <span className="material-symbols-outlined text-sm">analytics</span> Business Intelligence
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-white">Instant Dashboards</h3>
-              <p className="text-slate-400 leading-relaxed text-lg">Stop wrestling with spreadsheet charts. Just paste your CSV data or describe your KPIs, and get a complete, interactive dashboard ready for your presentation.</p>
-              <div className="bg-[#1c1f27] p-4 rounded-xl border border-[#282e39] shadow-sm">
-                <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Input Prompt</p>
-                <p className="text-slate-300 font-medium italic">&quot;Create a quarterly revenue dashboard showing growth by region, top 5 products, and customer retention trends.&quot;</p>
-              </div>
-            </div>
-            <div className="flex-1 w-full relative">
-              <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full opacity-20"></div>
-              <img
-                alt="Dashboard Example"
-                className="relative w-full rounded-2xl shadow-2xl border border-[#282e39] transform transition-transform hover:scale-[1.02]"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDus-G8AatxW31wfMxnry99kVSdB2-MYZ6FGPZPNd42tafG6FEV6t1jFEPg8uqssv92b7vSTQCu-p1pfyhwoe42zD4BuzBEkM0PoiIsxSkiyalAthok2dAQl4IquNikOUXYyS0m3n41pU9mUs_KFF68-AhnTeopOWRQUe_r0IEYm0Uco-JKM9TCxhCyxfBCcZZRN12O9fC8Uk9NaGcYFd2F93pTe77eUlkU2oACZBSXpet5eiG3-Hz1JyKAnzdPMLS4izDzDsNhSSKV"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
-            <div className="flex-1 flex flex-col gap-6 w-full">
-              <div className="inline-flex items-center gap-2 text-purple-500 font-bold uppercase tracking-wider text-xs">
-                <span className="material-symbols-outlined text-sm">hub</span> System Design
-              </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-white">Complex Architectures</h3>
-              <p className="text-slate-400 leading-relaxed text-lg">Visualize your cloud infrastructure or software architecture without dragging a single box. Perfect for technical documentation.</p>
-              <div className="bg-[#1c1f27] p-4 rounded-xl border border-[#282e39] shadow-sm">
-                <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Input Prompt</p>
-                <p className="text-slate-300 font-medium italic">&quot;Diagram a microservices architecture using AWS with a load balancer, 3 EC2 instances, and an RDS database.&quot;</p>
-              </div>
-            </div>
-            <div className="flex-1 w-full relative">
-              <div className="absolute inset-0 bg-purple-500/20 blur-3xl rounded-full opacity-20"></div>
-              <img
-                alt="Architecture Example"
-                className="relative w-full rounded-2xl shadow-2xl border border-[#282e39] transform transition-transform hover:scale-[1.02]"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsUF98mFXhID8n4oWKk-cu7QXif3MP_fkSMbXvvTsLhOy08ZomWBh_k7Fh-HitGXgPUYtUs897fgICcEzJVF2p--nD0q9BJ_3gJvgOKDS-9J5FdovBISZlW2c1Xg0-kHFmjCqj4CkRPN6_vIpR5VTK5zs0iJvDNyV9m-2TzUN_vhqbXIzCo_2xHDLP9Suf1-K4NAn4OmMygiAcabKYZRgaQKUaQL85XgINCCsnMoTVTwJZxnwX0bnOw-Xtt12I8o_pzY2-MZZIGe71"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Testimonials Section */}
-      <div className="py-20 px-6 bg-[#0f1419]">
-        <div className="max-w-[1080px] w-full mx-auto flex flex-col gap-12">
-          <h2 className="text-3xl font-bold tracking-tight text-center text-white">Trusted by Creators</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
-              <div className="flex text-yellow-400 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="material-symbols-outlined text-sm">star</span>
-                ))}
-              </div>
-              <p className="text-slate-300 leading-relaxed mb-6">&quot;VisualMe has completely changed how I present data to stakeholders. I used to spend hours in PowerPoint, now I just type what I need.&quot;</p>
-              <div className="mt-auto flex items-center gap-3">
-                <div className="size-10 rounded-full bg-blue-900 flex items-center justify-center text-blue-300 font-bold">SJ</div>
-                <div>
-                  <p className="text-sm font-bold text-white">Sarah Jenkins</p>
-                  <p className="text-xs text-slate-500">Product Manager</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
-              <div className="flex text-yellow-400 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="material-symbols-outlined text-sm">star</span>
-                ))}
-              </div>
-              <p className="text-slate-300 leading-relaxed mb-6">&quot;The ability to turn my messy meeting notes into a coherent flowchart instantly is basically magic. It&apos;s become an essential tool for our team.&quot;</p>
-              <div className="mt-auto flex items-center gap-3">
-                <div className="size-10 rounded-full bg-purple-900 flex items-center justify-center text-purple-300 font-bold">MT</div>
-                <div>
-                  <p className="text-sm font-bold text-white">Mike Torres</p>
-                  <p className="text-xs text-slate-500">Tech Lead</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col p-8 rounded-2xl bg-[#1c1f27] border border-[#282e39]">
-              <div className="flex text-yellow-400 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="material-symbols-outlined text-sm">star</span>
-                ))}
-              </div>
-              <p className="text-slate-300 leading-relaxed mb-6">&quot;I was skeptical about AI visualization, but the control you have over the output is amazing. The exported code is clean and usable.&quot;</p>
-              <div className="mt-auto flex items-center gap-3">
-                <div className="size-10 rounded-full bg-emerald-900 flex items-center justify-center text-emerald-300 font-bold">ER</div>
-                <div>
-                  <p className="text-sm font-bold text-white">Elena Rodriguez</p>
-                  <p className="text-xs text-slate-500">UX Designer</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
 
       {/* Footer */}
-      <footer className="w-full border-t border-[#282e39] bg-[#101622] py-12">
-        <div className="flex flex-col items-center justify-center px-6">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="size-8 flex items-center justify-center rounded-lg bg-primary text-white">
-              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>auto_awesome</span>
+      <footer className="bg-surface-darker border-t border-white/5 py-12">
+        <div className="container mx-auto px-6">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">V</div>
+                    <span className="font-bold">VisualMe</span>
+                </div>
+                <div className="flex gap-8 text-sm text-stone-400">
+                    <a href="#" className="hover:text-white transition-colors">Privacy</a>
+                    <a href="#" className="hover:text-white transition-colors">Terms</a>
+                    <a href="#" className="hover:text-white transition-colors">Contact</a>
+                </div>
+                <div className="text-sm text-stone-500">
+                    © 2024 VisualMe. All rights reserved.
+                </div>
             </div>
-            <span className="text-xl font-bold text-white">VisualMe</span>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-8 mb-8 text-sm font-medium text-slate-400">
-            <a className="hover:text-primary transition-colors" href="#pricing">Pricing</a>
-            <a className="hover:text-primary transition-colors" href="#gallery">Gallery</a>
-            <a className="hover:text-primary transition-colors" href="#api">API Docs</a>
-            <a className="hover:text-primary transition-colors" href="#community">Community</a>
-            <a className="hover:text-primary transition-colors" href="#support">Support</a>
-          </div>
-
-          <div className="flex gap-6 mb-8">
-            <a className="text-slate-400 hover:text-primary transition-colors" href="#"><span className="material-symbols-outlined">public</span></a>
-            <a className="text-slate-400 hover:text-primary transition-colors" href="#"><span className="material-symbols-outlined">mail</span></a>
-          </div>
-
-          <p className="text-xs text-slate-500">© 2023 VisualMe AI Inc. All rights reserved.</p>
         </div>
       </footer>
     </div>
