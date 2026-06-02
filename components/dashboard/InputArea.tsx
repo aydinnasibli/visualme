@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Globe, Lock, ArrowUp, UploadCloud, ChevronDown, Check, Settings, Network, Share2, Binary, GitFork, Calendar, BarChart2 } from "lucide-react";
+import { Sparkles, X, Globe, Lock, ArrowUp, ChevronDown, Check, Settings, Network, Share2, Binary, GitFork, Calendar, BarChart2, ScatterChart, LayoutGrid, Target, PieChart, Table2, SlidersHorizontal, Cloud, Code2, Play, Columns2, TrendingUp, Waves } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from '@clerk/nextjs';
 import { getTokenBalance } from '@/lib/utils/tokens';
@@ -13,6 +13,9 @@ interface InputAreaProps {
   setAutoSelect: (value: boolean) => void;
   selectedType: string | null;
   setSelectedType: (value: string | null) => void;
+  isPublic: boolean;
+  setIsPublic: (value: boolean) => void;
+  onOptions: () => void;
 }
 
 const InputArea = ({
@@ -24,6 +27,9 @@ const InputArea = ({
   setAutoSelect,
   selectedType,
   setSelectedType,
+  isPublic,
+  setIsPublic,
+  onOptions,
 }: InputAreaProps) => {
   const { user } = useUser();
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
@@ -55,14 +61,25 @@ const InputArea = ({
   };
 
   const visualizationTypes = [
-    { id: 'network_graph', name: 'Network Graph', icon: Network },
-    { id: 'mind_map', name: 'Mind Map', icon: Share2 },
-    { id: 'tree_diagram', name: 'Tree Diagram', icon: Binary },
-    { id: 'flowchart', name: 'Flowchart', icon: GitFork },
-    { id: 'timeline', name: 'Timeline', icon: Calendar },
-    { id: 'gantt_chart', name: 'Gantt Chart', icon: Calendar },
-    { id: 'sankey_diagram', name: 'Sankey Diagram', icon: GitFork },
-    { id: 'bar_chart', name: 'Bar Chart', icon: BarChart2 },
+    { id: 'network_graph',        name: 'Network Graph',        icon: Network },
+    { id: 'mind_map',             name: 'Mind Map',             icon: Share2 },
+    { id: 'tree_diagram',         name: 'Tree Diagram',         icon: Binary },
+    { id: 'flowchart',            name: 'Flowchart',            icon: GitFork },
+    { id: 'timeline',             name: 'Timeline',             icon: Calendar },
+    { id: 'gantt_chart',          name: 'Gantt Chart',          icon: Calendar },
+    { id: 'animated_timeline',    name: 'Animated Timeline',    icon: Play },
+    { id: 'sankey_diagram',       name: 'Sankey Diagram',       icon: Waves },
+    { id: 'swimlane_diagram',     name: 'Swimlane Diagram',     icon: Columns2 },
+    { id: 'line_chart',           name: 'Line Chart',           icon: TrendingUp },
+    { id: 'bar_chart',            name: 'Bar Chart',            icon: BarChart2 },
+    { id: 'scatter_plot',         name: 'Scatter Plot',         icon: ScatterChart },
+    { id: 'heatmap',              name: 'Heatmap',              icon: LayoutGrid },
+    { id: 'radar_chart',          name: 'Radar Chart',          icon: Target },
+    { id: 'pie_chart',            name: 'Pie Chart',            icon: PieChart },
+    { id: 'comparison_table',     name: 'Comparison Table',     icon: Table2 },
+    { id: 'parallel_coordinates', name: 'Parallel Coordinates', icon: SlidersHorizontal },
+    { id: 'word_cloud',           name: 'Word Cloud',           icon: Cloud },
+    { id: 'syntax_diagram',       name: 'Syntax Diagram',       icon: Code2 },
   ];
 
   const selectedTypeInfo = visualizationTypes.find(t => t.id === selectedType);
@@ -170,6 +187,7 @@ const InputArea = ({
 
                      <button
                         type="button"
+                        onClick={onOptions}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/5 border border-white/5 text-stone-400 hover:text-stone-200 hover:bg-white/10 transition-colors"
                     >
                         <Settings size={14} />
@@ -179,7 +197,7 @@ const InputArea = ({
                     <div className="flex-1"></div>
 
                     <span className="text-[10px] text-stone-500 font-mono">
-                         {input.length}/2000
+                         {input.length}/10000
                     </span>
                 </div>
             </div>
@@ -214,13 +232,21 @@ const InputArea = ({
         </form>
 
         {/* Footer Info */}
-        <div className="mt-3 flex items-center justify-center gap-4 text-[10px] text-stone-500 font-medium">
-            <span className="flex items-center gap-1">
+        <div className="mt-3 flex items-center justify-center gap-4 text-[10px] font-medium">
+            <button
+              type="button"
+              onClick={() => setIsPublic(true)}
+              className={`flex items-center gap-1 transition-colors ${isPublic ? 'text-primary' : 'text-stone-500 hover:text-stone-300'}`}
+            >
                <Globe className="w-3 h-3" /> Public
-            </span>
-            <span className="flex items-center gap-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPublic(false)}
+              className={`flex items-center gap-1 transition-colors ${!isPublic ? 'text-primary' : 'text-stone-500 hover:text-stone-300'}`}
+            >
                <Lock className="w-3 h-3" /> Private
-            </span>
+            </button>
              <span className="flex items-center gap-1 text-primary/70">
                <Sparkles className="w-3 h-3" /> {tokenBalance !== null ? `${tokenBalance} tokens` : 'Loading...'}
             </span>

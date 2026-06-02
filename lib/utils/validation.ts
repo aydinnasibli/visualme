@@ -152,7 +152,7 @@ export function validateArraySize(
   maxSize: number
 ): { valid: boolean; error?: string } {
   if (!Array.isArray(arr)) {
-    return { valid: false, error: 'Must be a array' };
+    return { valid: false, error: 'Must be an array' };
   }
 
   if (arr.length > maxSize) {

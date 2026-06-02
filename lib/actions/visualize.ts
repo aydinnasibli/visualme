@@ -327,18 +327,15 @@ export async function editVisualizationAction(
          visualization.data = result.data;
          visualization.updatedAt = new Date();
 
-         // Update history if provided
+         // Update history — messages already includes the new user message, so only append assistant reply
          if (messages) {
-            // Add the new interaction to the history
-            // Use explicit type assertion for the whole array to avoid type mismatch
             const historyItems: { role: "user" | "assistant"; content: string; timestamp: Date }[] = [
                 ...messages.map(h => ({
                     role: h.role as "user" | "assistant",
                     content: h.content,
                     timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
                 })),
-                { role: 'user', content: editPrompt, timestamp: new Date() },
-                { role: 'assistant', content: result.message, timestamp: new Date() }
+                { role: 'assistant' as const, content: result.message, timestamp: new Date() }
             ];
             visualization.history = historyItems;
          }

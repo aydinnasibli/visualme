@@ -214,7 +214,7 @@ export default function LandingPage() {
                     <a href="#" className="hover:text-white transition-colors">Contact</a>
                 </div>
                 <div className="text-sm text-stone-500">
-                    © 2024 VisualMe. All rights reserved.
+                    © {new Date().getFullYear()} VisualMe. All rights reserved.
                 </div>
             </div>
         </div>

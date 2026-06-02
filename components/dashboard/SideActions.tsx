@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { useUser } from '@clerk/nextjs';
-import { toast } from 'sonner';
+import React from "react";
+import Link from 'next/link';
 import { Save, CheckCircle, Share2, Code, History, FolderOpen } from 'lucide-react';
 
 interface SideActionsProps {
@@ -8,9 +7,11 @@ interface SideActionsProps {
   isSaved: boolean;
   saving: boolean;
   toggleEditPanel: () => void;
+  onShare: () => void;
+  onExportCode: () => void;
 }
 
-const SideActions = ({ handleSave, isSaved, saving, toggleEditPanel }: SideActionsProps) => {
+const SideActions = ({ handleSave, isSaved, saving, toggleEditPanel, onShare, onExportCode }: SideActionsProps) => {
   return (
     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
         <button
@@ -29,15 +30,17 @@ const SideActions = ({ handleSave, isSaved, saving, toggleEditPanel }: SideActio
         </button>
 
         <button
+          onClick={onShare}
           className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-stone-400 hover:text-white hover:bg-white/5 transition-colors tooltip"
-          title="Share"
+          title="Share (copy link)"
         >
           <Share2 className="w-5 h-5" />
         </button>
 
         <button
+          onClick={onExportCode}
           className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-stone-400 hover:text-white hover:bg-white/5 transition-colors tooltip"
-          title="Export Code"
+          title="Export"
         >
           <Code className="w-5 h-5" />
         </button>
@@ -52,14 +55,13 @@ const SideActions = ({ handleSave, isSaved, saving, toggleEditPanel }: SideActio
           <History className="w-5 h-5" />
         </button>
 
-        <button
+        <Link
+          href="/my-visualizations"
           className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-stone-400 hover:text-white hover:bg-white/5 transition-colors tooltip"
           title="My Visualizations"
         >
-            <a href="/my-visualizations">
-                <FolderOpen className="w-5 h-5" />
-            </a>
-        </button>
+          <FolderOpen className="w-5 h-5" />
+        </Link>
     </div>
   );
 };

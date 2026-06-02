@@ -337,7 +337,7 @@ export default function GanttChart({ data }: GanttChartProps) {
                     />
                   </pattern>
                   <marker
-                    id="arrowhead"
+                    id="gantt-arrowhead"
                     markerWidth="10"
                     markerHeight="10"
                     refX="9"
@@ -501,7 +501,7 @@ export default function GanttChart({ data }: GanttChartProps) {
                         stroke="#64748b"
                         strokeWidth="2"
                         fill="none"
-                        markerEnd="url(#arrowhead)"
+                        markerEnd="url(#gantt-arrowhead)"
                         opacity="0.5"
                         strokeDasharray={isDashed ? "5,5" : "none"}
                       />
@@ -599,24 +599,6 @@ export default function GanttChart({ data }: GanttChartProps) {
                   );
                 })}
 
-                {/* Shadow Filter */}
-                <defs>
-                  <filter
-                    id="shadow"
-                    x="-50%"
-                    y="-50%"
-                    width="200%"
-                    height="200%"
-                  >
-                    <feDropShadow
-                      dx="0"
-                      dy="4"
-                      stdDeviation="8"
-                      floodColor="#000"
-                      floodOpacity="0.3"
-                    />
-                  </filter>
-                </defs>
               </svg>
             </div>
           </div>

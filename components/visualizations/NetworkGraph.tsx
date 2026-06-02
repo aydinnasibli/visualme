@@ -1,62 +1,46 @@
 "use client";
 
-import React, {
-  useRef,
+import {
+  useCallback,
   useMemo,
   useState,
   useImperativeHandle,
   forwardRef,
   useEffect,
+  useRef,
 } from "react";
-import CytoscapeComponent from "react-cytoscapejs";
-import cytoscape, {
-  Core,
-  EventObject,
-  NodeSingular,
-  StylesheetStyle,
-} from "cytoscape";
-import fcose from "cytoscape-fcose";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  ReactFlow,
+  Node,
+  Edge,
+  useNodesState,
+  useEdgesState,
+  ReactFlowProvider,
+  Background,
+  Handle,
+  Position,
+  useReactFlow,
+  NodeProps,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import type { NetworkGraphData, NetworkNode } from "@/lib/types/visualization";
 import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
 import NodeDetailPanel from "./NodeDetailPanel";
+import { Sparkles } from "lucide-react";
 
-/* -------------------------------------------------------------------------- */
-/* 1. SETUP                                                                   */
-/* -------------------------------------------------------------------------- */
-
-// Register layout safely
-if (
-  !(cytoscape as any).prototype.hasLayout ||
-  !(cytoscape as any).prototype.hasLayout("fcose")
-) {
-  cytoscape.use(fcose);
-}
-
-// Vibrant Modern Color Palette - Neon/Glow aesthetic
 const CATEGORY_COLORS = [
-  "#8b5cf6", // Vivid Purple
-  "#06b6d4", // Cyan
-  "#10b981", // Emerald
-  "#f59e0b", // Amber
-  "#ec4899", // Pink
-  "#6366f1", // Indigo
-  "#14b8a6", // Teal
-  "#f97316", // Orange
+  "#8b5cf6",
+  "#06b6d4",
+  "#10b981",
+  "#f59e0b",
+  "#ec4899",
+  "#6366f1",
+  "#14b8a6",
+  "#f97316",
 ];
 
-// Consistent random seed for stable layouts
-const seededRandom = (seed: string) => {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0) / 4294967296;
-};
-
 /* -------------------------------------------------------------------------- */
-/* 2. TYPES                                                                   */
+/* TYPES                                                                       */
 /* -------------------------------------------------------------------------- */
 
 interface NetworkGraphProps {
@@ -86,416 +70,321 @@ interface SelectedNodeInfo {
   relatedConcepts?: string[];
 }
 
+interface NetworkNodeData extends Record<string, unknown> {
+  label: string;
+  category: string;
+  color: string;
+  description?: string;
+  size: number;
+  degree: number;
+  extendable: boolean;
+  dimmed: boolean;
+  highlighted: boolean;
+  onHover: (id: string | null) => void;
+  onSelect: (id: string) => void;
+}
+
 /* -------------------------------------------------------------------------- */
-/* 3. COMPONENT                                                               */
+/* CUSTOM NODE                                                                 */
 /* -------------------------------------------------------------------------- */
 
-const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
+const NetworkNodeComponent = ({ id, data }: NodeProps) => {
+  const d = data as NetworkNodeData;
+  const color = d.color;
+  const size = d.size ?? 40;
+
+  return (
+    <div
+      onMouseEnter={() => d.onHover(id)}
+      onMouseLeave={() => d.onHover(null)}
+      onClick={() => d.onSelect(id)}
+      className="cursor-pointer select-none"
+      style={{ position: "relative", width: size, height: size }}
+    >
+      <Handle type="source" position={Position.Top} style={{ opacity: 0, width: 4, height: 4, top: "50%", left: "50%" }} />
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, width: 4, height: 4, top: "50%", left: "50%" }} />
+
+      {/* Node circle */}
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: d.highlighted
+            ? `radial-gradient(circle, ${color}50, ${color}20)`
+            : `radial-gradient(circle, ${color}25, ${color}10)`,
+          border: `2.5px solid ${color}${d.highlighted ? "ff" : "cc"}`,
+          boxShadow: d.highlighted
+            ? `0 0 20px ${color}80, 0 0 40px ${color}40`
+            : `0 0 10px ${color}40`,
+          opacity: d.dimmed ? 0.15 : 1,
+          transition: "all 0.2s ease",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      />
+
+      {/* Label below node */}
+      <div
+        style={{
+          position: "absolute",
+          top: size + 6,
+          left: "50%",
+          transform: "translateX(-50%)",
+          color: d.dimmed ? "transparent" : "#e4e4e7",
+          fontSize: 10,
+          fontWeight: 600,
+          whiteSpace: "nowrap",
+          maxWidth: 90,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          fontFamily: "Inter, ui-sans-serif",
+          textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+          pointerEvents: "none",
+          transition: "color 0.2s ease",
+        }}
+      >
+        {d.label}
+      </div>
+
+      {d.extendable && (
+        <Sparkles
+          style={{ position: "absolute", top: -8, right: -8, width: 12, height: 12, color }}
+        />
+      )}
+    </div>
+  );
+};
+
+const nodeTypes = { networkNode: NetworkNodeComponent };
+
+/* -------------------------------------------------------------------------- */
+/* LAYOUT: simple force-relaxation                                             */
+/* -------------------------------------------------------------------------- */
+
+function computeForceLayout(
+  rawNodes: NetworkNode[],
+  rawEdges: { source: string; target: string }[]
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  const n = rawNodes.length;
+  if (n === 0) return positions;
+
+  const pos: Record<string, { x: number; y: number }> = {};
+  rawNodes.forEach((node, i) => {
+    const angle = (i / n) * 2 * Math.PI;
+    const radius = Math.max(200, n * 30);
+    pos[node.id] = { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+  });
+
+  for (let iter = 0; iter < 150; iter++) {
+    const forces: Record<string, { fx: number; fy: number }> = {};
+    rawNodes.forEach((node) => { forces[node.id] = { fx: 0, fy: 0 }; });
+
+    // Repulsion
+    for (let i = 0; i < rawNodes.length; i++) {
+      for (let j = i + 1; j < rawNodes.length; j++) {
+        const a = rawNodes[i].id;
+        const b = rawNodes[j].id;
+        const dx = pos[b].x - pos[a].x;
+        const dy = pos[b].y - pos[a].y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = 8000 / (dist * dist);
+        forces[a].fx -= (dx / dist) * force;
+        forces[a].fy -= (dy / dist) * force;
+        forces[b].fx += (dx / dist) * force;
+        forces[b].fy += (dy / dist) * force;
+      }
+    }
+
+    // Attraction along edges
+    rawEdges.forEach((e) => {
+      if (!pos[e.source] || !pos[e.target]) return;
+      const dx = pos[e.target].x - pos[e.source].x;
+      const dy = pos[e.target].y - pos[e.source].y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const force = (dist - 180) * 0.05;
+      forces[e.source].fx += (dx / dist) * force;
+      forces[e.source].fy += (dy / dist) * force;
+      forces[e.target].fx -= (dx / dist) * force;
+      forces[e.target].fy -= (dy / dist) * force;
+    });
+
+    // Gravity
+    rawNodes.forEach((node) => {
+      forces[node.id].fx -= pos[node.id].x * 0.01;
+      forces[node.id].fy -= pos[node.id].y * 0.01;
+    });
+
+    const damping = Math.max(0.1, 0.85 - iter * 0.004);
+    rawNodes.forEach((node) => {
+      pos[node.id].x += forces[node.id].fx * damping;
+      pos[node.id].y += forces[node.id].fy * damping;
+    });
+  }
+
+  rawNodes.forEach((node) => { positions.set(node.id, pos[node.id]); });
+  return positions;
+}
+
+/* -------------------------------------------------------------------------- */
+/* INNER COMPONENT                                                             */
+/* -------------------------------------------------------------------------- */
+
+const NetworkGraphInner = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
   ({ data, onExpand, readOnly = false, visualizationKey = "default" }, ref) => {
-    const cyRef = useRef<Core | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(
-      null
-    );
+    const { fitView, zoomIn: rfZoomIn, zoomOut: rfZoomOut } = useReactFlow();
+    const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(null);
     const [isExpanding, setIsExpanding] = useState(false);
     const { addExtendedNode, isNodeExtended } = useExtendedNodes();
-    const [hoveredNode, setHoveredNode] = useState<{
-      label: string;
-      category: string;
-      description?: string;
-      x: number;
-      y: number;
-    } | null>(null);
 
-    // Store original nodes for metadata lookup
     const nodeDataMap = useMemo(() => {
       const map = new Map<string, NetworkNode>();
-      if (data?.nodes) {
-        data.nodes.forEach((node) => {
-          map.set(node.id, node);
-        });
-      }
+      data?.nodes?.forEach((n) => map.set(n.id, n));
       return map;
     }, [data]);
 
-    // --- Data Processing (Memoized) ---
-    const { elements } = useMemo(() => {
-      // Guard clause to prevent crash if data is missing or malformed
-      if (!data || !data.nodes || !data.edges) {
-        return { elements: [] };
-      }
-
-      // 1. Calculate Degree
-      const degrees: Record<string, number> = {};
-      data.edges.forEach((edge) => {
-        degrees[edge.source] = (degrees[edge.source] || 0) + 1;
-        degrees[edge.target] = (degrees[edge.target] || 0) + 1;
+    const neighborMap = useMemo(() => {
+      const map = new Map<string, Set<string>>();
+      data?.nodes?.forEach((n) => map.set(n.id, new Set()));
+      data?.edges?.forEach((e) => {
+        map.get(e.source)?.add(e.target);
+        map.get(e.target)?.add(e.source);
       });
+      return map;
+    }, [data]);
 
-      // 2. Map Colors
-      const uniqueCategories = Array.from(
-        new Set(data.nodes.map((n) => n.category || "default"))
-      );
-      const colorMap = new Map<string, string>();
-      uniqueCategories.forEach((cat, i) => {
-        colorMap.set(cat, CATEGORY_COLORS[i % CATEGORY_COLORS.length]);
-      });
+    const colorMap = useMemo(() => {
+      const uniqueCats = Array.from(new Set(data?.nodes?.map((n) => n.category || "default")));
+      const map = new Map<string, string>();
+      uniqueCats.forEach((cat, i) => map.set(cat, CATEGORY_COLORS[i % CATEGORY_COLORS.length]));
+      return map;
+    }, [data]);
 
-      // 3. Create Nodes with Initial Positions
-      const nodes = data.nodes.map((node) => {
-        const degree = degrees[node.id] || 0;
-        // Improved size: larger base + better scaling for visibility
-        const size = Math.min(55, 24 + Math.sqrt(degree) * 5);
+    const positions = useMemo(
+      () => computeForceLayout(data?.nodes || [], data?.edges || []),
+      [data]
+    );
 
-        // Seed positions to guarantee valid initial state
-        const seedX = seededRandom(node.id + "x");
-        const seedY = seededRandom(node.id + "y");
-
-        const nodeColor = node.color || colorMap.get(node.category || "default") || "#6366f1";
-
-        return {
-          data: {
+    const buildNodes = useCallback(
+      (hovered: string | null): Node[] => {
+        if (!data?.nodes) return [];
+        const degrees: Record<string, number> = {};
+        data.edges?.forEach((e) => {
+          degrees[e.source] = (degrees[e.source] || 0) + 1;
+          degrees[e.target] = (degrees[e.target] || 0) + 1;
+        });
+        const neighbors = hovered ? neighborMap.get(hovered) || new Set() : new Set();
+        return data.nodes.map((node) => {
+          const degree = degrees[node.id] || 0;
+          const size = Math.min(55, 24 + Math.sqrt(degree) * 5);
+          const color = node.color || colorMap.get(node.category || "default") || "#6366f1";
+          const pos = positions.get(node.id) || { x: 0, y: 0 };
+          const dimmed = hovered !== null && node.id !== hovered && !neighbors.has(node.id);
+          const highlighted = node.id === hovered;
+          return {
             id: node.id,
-            label: node.label,
-            category: node.category || "General",
-            color: nodeColor,
-            description: node.description,
-            size: size,
-            degree: degree,
-            extendable: node.extendable || false,
-          },
-          position: {
-            x: seedX * 1000 - 500,
-            y: seedY * 800 - 400,
-          },
-        };
-      });
+            type: "networkNode",
+            position: { x: pos.x - size / 2, y: pos.y - size / 2 },
+            data: {
+              label: node.label,
+              category: node.category || "General",
+              color,
+              description: node.description,
+              size,
+              degree,
+              extendable: node.extendable || false,
+              dimmed,
+              highlighted,
+              onHover: handleHoverRef.current,
+              onSelect: handleSelectRef.current,
+            } satisfies NetworkNodeData,
+            draggable: true,
+          };
+        });
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [data, colorMap, positions, neighborMap]
+    );
 
-      const edges = data.edges.map((edge, i) => ({
-        data: {
+    const buildEdges = useCallback(
+      (hovered: string | null): Edge[] => {
+        if (!data?.edges) return [];
+        return data.edges.map((edge, i) => ({
           id: edge.id || `e-${i}`,
           source: edge.source,
           target: edge.target,
-          label: edge.label || "",
-        },
-      }));
-
-      return {
-        elements: CytoscapeComponent.normalizeElements({ nodes, edges }),
-      };
-    }, [data]);
-
-    // --- Improved Layout - Stable and well-distributed ---
-    const layout = useMemo(
-      () =>
-        ({
-          name: "fcose",
-          animate: false, // First render without animation for faster initial load
-          randomize: true, // Important: randomize for better distribution
-          fit: true, // Fit only on initial render
-        padding: 120,
-          nodeRepulsion: 8500,
-          idealEdgeLength: 180,
-          edgeElasticity: 0.5,
-          nestingFactor: 0.1,
-          gravity: 0.3,
-          numIter: 3500,
-          tile: true,
-          tilingPaddingVertical: 30,
-          tilingPaddingHorizontal: 30,
-          quality: "proof",
-          nodeSeparation: 100,
-          initialEnergyOnIncremental: 0.8, // Energy for incremental layout
-        } as any),
-      []
+          label: edge.label,
+          style: {
+            stroke: hovered && (edge.source === hovered || edge.target === hovered)
+              ? "#a1a1aa"
+              : "#3f3f46",
+            strokeWidth: hovered && (edge.source === hovered || edge.target === hovered) ? 2.5 : 1.5,
+            opacity: hovered && edge.source !== hovered && edge.target !== hovered ? 0.1 : 0.4,
+          },
+        }));
+      },
+      [data]
     );
 
-    // --- Modern Stylesheet with Glow Effects ---
-    const stylesheet = useMemo<StylesheetStyle[]>(
-      () => [
-        {
-          selector: "node",
-          style: {
-            "background-color": "data(color)",
-            "background-opacity": 0.15,
-            width: "data(size)",
-            height: "data(size)",
-            label: "data(label)",
-            shape: "ellipse",
+    // Use refs so stable callbacks inside buildNodes don't re-create on each render
+    const handleHoverRef = useRef<(id: string | null) => void>(() => {});
+    const handleSelectRef = useRef<(id: string) => void>(() => {});
 
-            // Smooth, rounded border with better visibility
-            "border-width": 2.5,
-            "border-color": "data(color)",
-            "border-opacity": 0.85,
+    const handleHover = useCallback((id: string | null) => {
+      setNodes(buildNodes(id));
+      setEdges(buildEdges(id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [buildNodes, buildEdges]);
 
-            // Improved typography for better readability
-            color: "#e4e4e7",
-            "font-family": "Inter, ui-sans-serif, system-ui",
-            "font-size": 10,
-            "font-weight": 600,
-            "text-valign": "bottom",
-            "text-margin-y": 8,
-            "text-wrap": "wrap",
-            "text-max-width": "90px",
-            "line-height": 1.3,
-            "min-zoomed-font-size": 6,
-
-            // Enhanced glow for better visual appeal
-            "shadow-blur": 15,
-            "shadow-color": "data(color)",
-            "shadow-opacity": 0.4,
-
-            "transition-property":
-              "background-color, background-opacity, border-width, border-color, opacity, shadow-opacity, shadow-blur",
-            "transition-duration": 250,
-            "transition-timing-function": "ease-in-out",
-          } as any,
-        },
-        {
-          selector: "edge",
-          style: {
-            width: 1.5,
-            "line-color": "#3f3f46",
-            "curve-style": "bezier",
-            opacity: 0.4,
-            // Removed arrow and label properties for cleaner look
-            "transition-property": "opacity, width, line-color",
-            "transition-duration": 250,
-            "transition-timing-function": "ease-in-out",
-          } as any,
-        },
-        {
-          selector: ".dimmed",
-          style: {
-            opacity: 0.15,
-            "text-opacity": 0,
-            "border-color": "#18181b",
-            "shadow-opacity": 0,
-          } as any,
-        },
-        {
-          selector: ".highlighted",
-          style: {
-            opacity: 1,
-            "z-index": 9999,
-            "background-color": "data(color)",
-            "background-opacity": 0.25,
-            "border-width": 3,
-            "border-opacity": 1,
-            "text-background-color": "#000000",
-            "text-background-opacity": 0.95,
-            "text-background-padding": "4px",
-            "text-background-shape": "roundrectangle",
-            color: "#ffffff",
-            "font-weight": 700,
-            "font-size": 11,
-            "shadow-blur": 20,
-            "shadow-color": "data(color)",
-            "shadow-opacity": 0.65,
-          } as any,
-        },
-        {
-          selector: "edge.highlighted",
-          style: {
-            opacity: 0.8,
-            width: 2.5,
-            "line-color": "data(color)",
-            "z-index": 9998,
-            "shadow-blur": 12,
-            "shadow-color": "data(color)",
-            "shadow-opacity": 0.5,
-          } as any,
-        },
-        {
-          selector: "node[extendable = true]",
-          style: {
-            "border-style": "dashed",
-            "border-width": 2.5,
-            "border-opacity": 0.7,
-            "border-dash-pattern": [6, 4],
-          } as any,
-        },
-      ],
-      []
-    );
-
-    // --- Lifecycle & Handlers ---
-
-    const hasInitialFitRef = useRef(false);
-    const layoutRunCountRef = useRef(0);
-
-    useEffect(() => {
-      if (!containerRef.current) return;
-      const resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-            requestAnimationFrame(() => {
-              if (cyRef.current) {
-                cyRef.current.resize();
-                // Only fit on initial load, not on every resize
-                if (!hasInitialFitRef.current) {
-                  cyRef.current.fit(undefined, 120);
-                  // Clamp zoom level if needed
-                  const currentZoom = cyRef.current.zoom();
-                  if (currentZoom > 1.2) {
-                    cyRef.current.zoom(1.2);
-                    cyRef.current.center();
-                  }
-                  hasInitialFitRef.current = true;
-                }
-              }
-            });
-          }
-        }
-      });
-      resizeObserver.observe(containerRef.current);
-      return () => resizeObserver.disconnect();
-    }, []);
-
-    // Re-run layout when data changes (e.g., after expansion)
-    useEffect(() => {
-      if (!cyRef.current) return;
-
-      // Skip the first run since initial layout is handled by CytoscapeComponent
-      if (layoutRunCountRef.current === 0) {
-        layoutRunCountRef.current++;
-        return;
-      }
-
-      // Run layout again when data changes
-      const layoutConfig = {
-        name: "fcose",
-        animate: true,
-        animationDuration: 800,
-        animationEasing: "ease-out",
-        randomize: true,
-        fit: false, // Don't auto-fit to prevent view jumps
-        padding: 80,
-        nodeRepulsion: 8500,
-        idealEdgeLength: 180,
-        edgeElasticity: 0.5,
-        nestingFactor: 0.1,
-        gravity: 0.3,
-        numIter: 3500,
-        tile: true,
-        tilingPaddingVertical: 30,
-        tilingPaddingHorizontal: 30,
-        quality: "proof",
-        nodeSeparation: 100,
-        initialEnergyOnIncremental: 0.8,
-      };
-
-      const layoutInstance = cyRef.current.layout(layoutConfig as any);
-      layoutInstance.run();
-
-      layoutRunCountRef.current++;
-    }, [elements]);
-
-    const setupListeners = (cy: Core) => {
-      cyRef.current = cy;
-
-      cy.on("mouseover", "node", (e: EventObject) => {
-        const node = e.target as NodeSingular;
-        const neighbors = node.neighborhood();
-
-        cy.batch(() => {
-          cy.elements().addClass("dimmed").removeClass("highlighted");
-          node.removeClass("dimmed").addClass("highlighted");
-          neighbors.removeClass("dimmed").addClass("highlighted");
-          neighbors.edges().addClass("highlighted");
+    const handleSelect = useCallback(
+      (id: string) => {
+        const node = nodeDataMap.get(id);
+        if (!node) return;
+        const degrees: Record<string, number> = {};
+        data?.edges?.forEach((e) => {
+          degrees[e.source] = (degrees[e.source] || 0) + 1;
+          degrees[e.target] = (degrees[e.target] || 0) + 1;
         });
-
-        // Show tooltip with node info
-        const renderedPosition = node.renderedPosition();
-        if (containerRef.current) {
-          containerRef.current.style.cursor = "pointer";
-          const description = node.data("description");
-          if (description) {
-            setHoveredNode({
-              label: node.data("label"),
-              category: node.data("category"),
-              description: description,
-              x: renderedPosition.x,
-              y: renderedPosition.y,
-            });
-          }
-        }
-      });
-
-      cy.on("mouseout", "node", () => {
-        cy.batch(() => {
-          cy.elements().removeClass("dimmed highlighted");
-        });
-        setHoveredNode(null);
-        if (containerRef.current) containerRef.current.style.cursor = "default";
-      });
-
-      cy.on("tap", "node", (e: EventObject) => {
-        const node = e.target as NodeSingular;
-        const nodeId = node.id();
-        const originalNode = nodeDataMap.get(nodeId);
-
         setSelectedNode({
-          id: nodeId,
-          label: node.data("label"),
-          category: node.data("category"),
-          description: node.data("description"),
-          color: node.data("color"),
-          degree: node.data("degree"),
-          extendable: node.data("extendable"),
-          keyPoints: originalNode?.metadata?.keyPoints,
-          relatedConcepts: originalNode?.metadata?.relatedConcepts,
+          id,
+          label: node.label,
+          category: node.category || "General",
+          description: node.description,
+          color: node.color || colorMap.get(node.category || "default") || "#6366f1",
+          degree: degrees[id] || 0,
+          extendable: node.extendable,
+          keyPoints: node.metadata?.keyPoints,
+          relatedConcepts: node.metadata?.relatedConcepts,
         });
-      });
-
-      cy.on("tap", (e: EventObject) => {
-        if (e.target === cy) {
-          setSelectedNode(null);
-          cy.elements().removeClass("dimmed highlighted");
-        }
-      });
-    };
-
-    useImperativeHandle(ref, () => ({
-      exportPNG: async (scale = 2) => {
-        if (!cyRef.current) return;
-        const pngBlob = cyRef.current.png({
-          output: "blob",
-          bg: "#0a0a0f",
-          scale,
-          full: true,
-        });
-        const url = URL.createObjectURL(pngBlob);
-        const link = document.createElement("a");
-        link.download = `graph-${Date.now()}.png`;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
       },
-      getContainer: () => containerRef.current,
-      fit: () => cyRef.current?.fit(),
-      zoomIn: () => {
-        if (!cyRef.current) return;
-        const zoom = cyRef.current.zoom();
-        cyRef.current.zoom(zoom * 1.2);
-      },
-      zoomOut: () => {
-        if (!cyRef.current) return;
-        const zoom = cyRef.current.zoom();
-        cyRef.current.zoom(zoom / 1.2);
-      }
-    }));
+      [nodeDataMap, colorMap, data]
+    );
+
+    useEffect(() => {
+      handleHoverRef.current = handleHover;
+      handleSelectRef.current = handleSelect;
+    }, [handleHover, handleSelect]);
+
+    const [nodes, setNodes, onNodesChange] = useNodesState(buildNodes(null));
+    const [edges, setEdges, onEdgesChange] = useEdgesState(buildEdges(null));
+
+    useEffect(() => {
+      setNodes(buildNodes(null));
+      setEdges(buildEdges(null));
+      setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data]);
 
     const handleExpand = async () => {
       if (!selectedNode || !onExpand || !selectedNode.extendable) return;
       setIsExpanding(true);
       try {
         await onExpand(selectedNode.id, selectedNode.label);
-        // Mark node as extended for this visualization (save to database)
         await addExtendedNode(selectedNode.id, visualizationKey);
         setSelectedNode(null);
-        // Don't auto-fit after expansion to prevent view jumps
-        // User can manually reset view if needed
       } catch (e) {
         console.error("Extension failed", e);
       } finally {
@@ -503,52 +392,49 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       }
     };
 
+    useImperativeHandle(ref, () => ({
+      exportPNG: async (scale = 2) => {
+        const el = containerRef.current;
+        if (!el) return;
+        const { default: html2canvas } = await import("html2canvas");
+        const canvas = await html2canvas(el, { backgroundColor: "#09090b", scale });
+        const link = document.createElement("a");
+        link.download = `graph-${Date.now()}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      },
+      getContainer: () => containerRef.current,
+      fit: () => fitView({ padding: 0.15, duration: 400 }),
+      zoomIn: () => rfZoomIn({ duration: 200 }),
+      zoomOut: () => rfZoomOut({ duration: 200 }),
+    }));
+
     return (
-      <div ref={containerRef} className="w-full h-full relative group">
-          {/* The Graph */}
-        <CytoscapeComponent
-          elements={elements}
-          style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}
-          stylesheet={stylesheet}
-          layout={layout}
-          cy={setupListeners}
-          wheelSensitivity={0.1}
+      <div ref={containerRef} className="w-full h-full relative">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          onPaneClick={() => {
+            setSelectedNode(null);
+            setNodes(buildNodes(null));
+            setEdges(buildEdges(null));
+          }}
+          fitView
+          fitViewOptions={{ padding: 0.15 }}
           minZoom={0.1}
           maxZoom={3}
-        />
-
-        {/* Hover Tooltip */}
-        <AnimatePresence>
-          {hoveredNode && !selectedNode && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.15 }}
-              className="absolute pointer-events-none z-30 max-w-xs"
-              style={{
-                left: `${hoveredNode.x + 20}px`,
-                top: `${hoveredNode.y - 10}px`,
-              }}
-            >
-              <div className="bg-zinc-900/98 border border-zinc-700/60 rounded-lg px-3 py-2 shadow-2xl backdrop-blur-sm">
-                <div className="text-xs font-bold text-white mb-0.5">
-                  {hoveredNode.label}
-                </div>
-                <div className="text-[10px] font-medium text-zinc-400 mb-1">
-                  {hoveredNode.category}
-                </div>
-                {hoveredNode.description && (
-                  <div className="text-xs text-zinc-300 leading-snug max-w-[250px]">
-                    {hoveredNode.description.length > 120
-                      ? hoveredNode.description.slice(0, 120) + "..."
-                      : hoveredNode.description}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          panOnScroll
+          zoomOnScroll
+          zoomOnPinch
+          nodesDraggable
+          nodesConnectable={false}
+          style={{ width: "100%", height: "100%" }}
+        >
+          <Background gap={16} size={1} color="#27272a" />
+        </ReactFlow>
 
         <NodeDetailPanel
           selectedNode={selectedNode}
@@ -561,6 +447,20 @@ const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       </div>
     );
   }
+);
+
+NetworkGraphInner.displayName = "NetworkGraphInner";
+
+/* -------------------------------------------------------------------------- */
+/* WRAPPER WITH PROVIDER                                                       */
+/* -------------------------------------------------------------------------- */
+
+const NetworkGraph = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
+  (props, ref) => (
+    <ReactFlowProvider>
+      <NetworkGraphInner {...props} ref={ref} />
+    </ReactFlowProvider>
+  )
 );
 
 NetworkGraph.displayName = "NetworkGraph";

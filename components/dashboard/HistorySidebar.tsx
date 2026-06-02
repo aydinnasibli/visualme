@@ -27,7 +27,7 @@ export default function HistorySidebar() {
     try {
       const result = await getUserVisualizations(50);
       if (result.success && result.data) {
-        setVisualizations(result.data as any[]);
+        setVisualizations(result.data as SavedVizLite[]);
       }
     } catch (error) {
       console.error("Failed to fetch history", error);

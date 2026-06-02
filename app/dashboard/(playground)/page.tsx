@@ -1,406 +1,354 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
-import { generateVisualization, saveVisualization, expandNodeAction, expandMindMapNodeAction, getVisualizationById, editVisualizationAction } from '@/lib/actions/visualize';
-import type { VisualizationResponse, NetworkGraphData, MindMapData, VisualizationType, MindMapNode, TreeDiagramData, TimelineData, GanttChartData, SavedVisualization } from '@/lib/types/visualization';
+import {
+  generateVisualization, saveVisualization, expandNodeAction,
+  expandMindMapNodeAction, getVisualizationById, editVisualizationAction,
+} from '@/lib/actions/visualize';
+import type {
+  VisualizationResponse, NetworkGraphData, MindMapData,
+  VisualizationType, MindMapNode, SavedVisualization,
+} from '@/lib/types/visualization';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
 
-// Import the new components
 import Header from '@/components/dashboard/Header';
-import Canvas from '@/components/dashboard/Canvas';
 import Toolbar from '@/components/dashboard/Toolbar';
 import InputArea from '@/components/dashboard/InputArea';
 import SideActions from '@/components/dashboard/SideActions';
 import EditPanel from '@/components/dashboard/EditPanel';
+import type { GridCanvasHandle } from '@/components/canvas/GridCanvas';
 
-// Define handle types
-import type { NetworkGraphHandle } from '@/components/visualizations/NetworkGraph';
-import type { MindMapHandle } from '@/components/visualizations/MindMap';
-
-const LoadingPlaceholder = () => (
-  <div className="w-full h-full bg-surface-dark rounded-lg flex items-center justify-center border border-border-color animate-pulse">
-    <span className="text-stone-500 font-medium text-sm">Loading visualization...</span>
+const Loading = () => (
+  <div className="w-full h-full flex items-center justify-center">
+    <div className="w-5 h-5 border-2 border-zinc-700 border-t-violet-500 rounded-full animate-spin" />
   </div>
 );
 
-// Dynamic imports for visualization components
-const DynamicNetworkGraph = dynamic(() => import('@/components/visualizations/NetworkGraph'), { ssr: false, loading: LoadingPlaceholder });
-const DynamicMindMap = dynamic(() => import('@/components/visualizations/MindMap'), { ssr: false, loading: LoadingPlaceholder });
-const DynamicTreeDiagram = dynamic(() => import('@/components/visualizations/TreeDiagram'), { ssr: false, loading: LoadingPlaceholder });
-const DynamicTimeline = dynamic(() => import('@/components/visualizations/Timeline'), { ssr: false, loading: LoadingPlaceholder });
-const DynamicGanttChart = dynamic(() => import('@/components/visualizations/GanttChart'), { ssr: false, loading: LoadingPlaceholder });
+const DynamicGridCanvas = dynamic(
+  () => import('@/components/canvas/GridCanvas'),
+  { ssr: false, loading: Loading }
+);
 
+/* ── Helpers ── */
+const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
+  if (root.id === nodeId) return { ...root, children: [...(root.children || []), ...newChildren] };
+  if (root.children) return { ...root, children: root.children.map((c) => updateMindMapNode(c, nodeId, newChildren)) };
+  return root;
+};
+
+/* ── Dashboard ── */
 function DashboardContent() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const searchParams = useSearchParams();
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState<'analyzing' | 'generating' | 'finalizing' | null>(null);
-  const [result, setResult] = useState<VisualizationResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+
+  const [input, setInput]         = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [loadingStep, setLoadingStep] = useState<'analyzing'|'generating'|'finalizing'|null>(null);
+  const [error, setError]         = useState<string | null>(null);
   const [autoSelect, setAutoSelect] = useState(true);
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [isSaved, setIsSaved]     = useState(false);
+  const [isPublic, setIsPublic]   = useState(false);
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [manualEditJson, setManualEditJson] = useState('');
-  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: Date | string}>>([]);
-  const [vizId, setVizId] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<Array<{role:'user'|'assistant'; content:string; timestamp:Date|string}>>([]);
+  const [vizId, setVizId]         = useState<string | null>(null);
+  const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+  const [activeResult, setActiveResult] = useState<VisualizationResponse | null>(null);
 
-  // References for visualization controls
-  const networkGraphRef = useRef<NetworkGraphHandle>(null);
-  const mindMapRef = useRef<MindMapHandle>(null);
+  // Canvas state
+  const canvasRef   = useRef<GridCanvasHandle>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasW, setCanvasW] = useState(800);
+  const [canvasH, setCanvasH] = useState(600);
+  const [zoom, setZoomLocal]  = useState(1);
+  const [widgetCount, setWidgetCount] = useState(0);
+  const [connectMode, setConnectMode] = useState(false);
 
-  // Search Param Handling
+  // Track canvas dimensions
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      setCanvasW(width);
+      setCanvasH(height);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Zoom: canvas is always the source of truth — it fires onZoomChange for every change (button OR ctrl+scroll)
+  const handleZoomIn  = () => canvasRef.current?.zoomIn();
+  const handleZoomOut = () => canvasRef.current?.zoomOut();
+  const handleFitAll  = () => canvasRef.current?.fitAll();
+  const handleClear   = () => {
+    if (!widgetCount) return;
+    canvasRef.current?.clear();
+    setWidgetCount(0);
+    setActiveResult(null);
+    setActiveWidgetId(null);
+    setVizId(null);
+    setIsSaved(false);
+    setChatHistory([]);
+  };
+  const handleToggleConnect = () => setConnectMode((p) => !p);
+
+  const handleShare = () => {
+    if (!vizId) { toast.error('Save the visualization first to share'); return; }
+    const url = `${window.location.origin}/dashboard?id=${vizId}`;
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success('Link copied to clipboard!'))
+      .catch(() => toast.error('Failed to copy link'));
+  };
+
+  const handleExportCode = () => toast.info('Export feature coming soon!');
+  const handleOptions = () => toast.info('Options coming soon!');
+
+  // Keyboard shortcuts: Ctrl+= / Ctrl+-
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); handleZoomIn(); }
+      if (e.key === '-') { e.preventDefault(); handleZoomOut(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load from URL / session
   useEffect(() => {
     const idFromUrl = searchParams.get('id');
-
-    const loadFromId = async (id: string) => {
-      // Prevent redundant loading if already loaded
+    const loadById = async (id: string) => {
       if (vizId === id) return;
-
-      setLoading(true);
-      setLoadingStep('analyzing');
+      setLoading(true); setLoadingStep('analyzing');
       try {
         const res = await getVisualizationById(id);
         if (res.success && res.data) {
           const viz = res.data as SavedVisualization;
-          setResult({
-             success: true,
-             type: viz.type,
-             data: viz.data,
-             title: viz.title,
-             reason: 'Loaded from history',
-             metadata: viz.metadata,
-          });
+          const wId = canvasRef.current?.addWidget({ type: viz.type, data: viz.data, title: viz.title || 'Visualization' });
+          setWidgetCount((c) => c + 1);
+          setActiveWidgetId(wId ?? null);
+          setActiveResult({ success: true, type: viz.type, data: viz.data, title: viz.title, reason: '', metadata: viz.metadata });
           setVizId(viz._id || null);
           setIsSaved(true);
           setChatHistory(viz.history || []);
           setManualEditJson(JSON.stringify(viz.data, null, 2));
           toast.success(`Loaded "${viz.title}"`);
-        } else {
-          toast.error(res.error || 'Failed to load visualization');
-        }
-      } catch (err) {
-        console.error("Load by ID failed", err);
-        toast.error("Failed to load visualization");
-      } finally {
-        setLoading(false);
-        setLoadingStep(null);
-      }
+        } else toast.error(res.error || 'Failed to load');
+      } catch { toast.error('Failed to load visualization'); }
+      finally { setLoading(false); setLoadingStep(null); }
     };
 
-    if (idFromUrl) {
-      loadFromId(idFromUrl);
-    } else {
-      // Legacy session check only if no ID in URL
-      const revisualizeData = sessionStorage.getItem('revisualize_data');
-      if (revisualizeData) {
-        try {
-          const parsed: SavedVisualization = JSON.parse(revisualizeData);
-          setResult({
-            success: true,
-            type: parsed.type,
-            data: parsed.data,
-            title: parsed.title,
-            reason: 'Loaded from saved visualization',
-            metadata: parsed.metadata
-          });
-          setVizId(parsed._id || null);
-          setIsSaved(true);
-          if (parsed.history) {
-            setChatHistory(parsed.history);
-          }
-          setManualEditJson(JSON.stringify(parsed.data, null, 2));
-          sessionStorage.removeItem('revisualize_data');
-          toast.success(`Loaded "${parsed.title}" for editing`);
-        } catch (e) {
-          console.error("Failed to load revisualize data", e);
-          toast.error("Failed to load visualization data");
-        }
-      } else {
-        // Reset if no ID and no session data (user navigated to new visualization)
-        setResult(null);
-        setVizId(null);
-        setIsSaved(false);
-        setChatHistory([]);
-        setInput('');
-      }
-    }
-  }, [searchParams]); // Depend on searchParams to trigger re-run
+    if (idFromUrl) { loadById(idFromUrl); return; }
 
-  const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
-    if (root.id === nodeId) {
-      return { ...root, children: [...(root.children || []), ...newChildren] };
+    const rev = sessionStorage.getItem('revisualize_data');
+    if (rev) {
+      try {
+        const parsed: SavedVisualization = JSON.parse(rev);
+        const wId = canvasRef.current?.addWidget({ type: parsed.type, data: parsed.data, title: parsed.title || 'Visualization' });
+        setWidgetCount((c) => c + 1);
+        setActiveWidgetId(wId ?? null);
+        setActiveResult({ success: true, type: parsed.type, data: parsed.data, title: parsed.title, reason: '', metadata: parsed.metadata });
+        setVizId(parsed._id || null);
+        setIsSaved(true);
+        if (parsed.history) setChatHistory(parsed.history);
+        setManualEditJson(JSON.stringify(parsed.data, null, 2));
+        sessionStorage.removeItem('revisualize_data');
+        toast.success(`Loaded "${parsed.title}"`);
+      } catch { toast.error('Failed to load visualization data'); }
     }
-    if (root.children) {
-      return {
-        ...root,
-        children: root.children.map(child => updateMindMapNode(child, nodeId, newChildren))
-      };
-    }
-    return root;
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
-  const handleExpand = async (nodeId: string, nodeLabel: string) => {
-    if (!result) return;
+  const handleExpand = useCallback(async (_wId: string, nodeId: string, nodeLabel: string) => {
+    if (!activeResult) return;
     try {
-      if (result.type === 'network_graph') {
-        const currentData = result.data as NetworkGraphData;
-        const existingNodeLabels = currentData.nodes.map(n => n.label);
-        const response = await expandNodeAction(nodeId, nodeLabel, input, existingNodeLabels);
-        if (response.success && response.data) {
-          const newData = response.data as NetworkGraphData;
-          setResult(prev => prev ? { ...prev, data: { ...currentData, nodes: [...currentData.nodes, ...newData.nodes], edges: [...currentData.edges, ...newData.edges] } } : null);
+      if (activeResult.type === 'network_graph') {
+        const d = activeResult.data as NetworkGraphData;
+        const res = await expandNodeAction(nodeId, nodeLabel, input, d.nodes.map((n) => n.label));
+        if (res.success && res.data) {
+          const nd = res.data as NetworkGraphData;
+          const newData = { ...d, nodes: [...d.nodes, ...nd.nodes], edges: [...d.edges, ...nd.edges] };
+          setActiveResult({ ...activeResult, data: newData });
+          canvasRef.current?.updateWidget(_wId, newData);
         }
-      } else if (result.type === 'mind_map') {
-        const currentData = result.data as MindMapData;
-        const getAllIds = (node: MindMapNode): string[] => [node.id, ...(node.children?.flatMap(getAllIds) || [])];
-        const existingNodeIds = getAllIds(currentData.root);
-        const response = await expandMindMapNodeAction(nodeId, nodeLabel, input, existingNodeIds);
-        if (response.success && response.data) {
-          const newChildren = response.data as MindMapNode[];
-          setResult(prev => prev ? { ...prev, data: { ...(prev.data as MindMapData), root: updateMindMapNode((prev.data as MindMapData).root, nodeId, newChildren) } } : null);
+      } else if (activeResult.type === 'mind_map') {
+        const d = activeResult.data as MindMapData;
+        const getAllIds = (n: MindMapNode): string[] => [n.id, ...(n.children?.flatMap(getAllIds) || [])];
+        const res = await expandMindMapNodeAction(nodeId, nodeLabel, input, getAllIds(d.root));
+        if (res.success && res.data) {
+          const newData = { root: updateMindMapNode(d.root, nodeId, res.data as MindMapNode[]) };
+          setActiveResult({ ...activeResult, data: newData });
+          canvasRef.current?.updateWidget(_wId, newData);
         }
       }
-    } catch (err) {
-      console.error('Error expanding node:', err);
-      toast.error('Failed to expand node.');
-    }
-  };
+    } catch { toast.error('Failed to expand node.'); }
+  }, [activeResult, input]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) {
-      setError('Please enter some text');
+    if (!input.trim()) { setError('Please enter some text'); return; }
+
+    if (activeResult) {
+      // Edit mode
+      setLoading(true);
+      const cur = input; setInput('');
+      try { await handleChatMessage(cur); } catch { setInput(cur); }
+      finally { setLoading(false); }
       return;
     }
 
-    // Branching Logic: Edit existing OR Generate new
-    if (result) {
-      // --- EDIT MODE ---
-      setLoading(true); // Show loading state
-      const currentInput = input;
-      setInput(''); // Optimistic clear
+    // Generate new widget
+    setLoading(true); setError(null); setVizId(null); setChatHistory([]);
+    try {
+      setLoadingStep('analyzing');
+      const genTimer = setTimeout(() => setLoadingStep('generating'), 250);
+      const data = await generateVisualization(
+        input.trim(),
+        (!autoSelect && selectedType) ? (selectedType as VisualizationType) : undefined
+      );
+      clearTimeout(genTimer);
 
-      try {
-        await handleChatMessage(currentInput);
-      } catch (err) {
-        setInput(currentInput); // Restore on error
-        console.error("Edit failed", err);
-      } finally {
-        setLoading(false);
+      if (!data.success) {
+        setError(data.error || 'Generation failed');
+        toast.error(data.error || 'Generation failed');
+        return;
       }
-    } else {
-      // --- GENERATE MODE ---
-      setLoading(true);
-      setError(null);
-      setResult(null);
-      setVizId(null);
-      setChatHistory([]);
-      try {
-        setLoadingStep('analyzing');
-        const generatingTimer = setTimeout(() => setLoadingStep('generating'), 200);
 
-        const data = await generateVisualization(input.trim(), (!autoSelect && selectedType) ? (selectedType as VisualizationType) : undefined);
-        clearTimeout(generatingTimer);
+      setLoadingStep('finalizing');
+      await new Promise((r) => setTimeout(r, 350));
 
-        if (!data.success) {
-          setError(data.error || 'Failed to generate visualization');
-          toast.error(data.error || 'Failed to generate visualization');
-          setLoading(false);
-          setLoadingStep(null);
-          return;
-        }
-
-        setLoadingStep('finalizing');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        setResult(data);
-        setManualEditJson(JSON.stringify(data.data, null, 2));
-        setInput(''); // Clear input after generation
-      } catch (err) {
-        setError('An error occurred. Please try again.');
-        console.error('Error:', err);
-        toast.error('An unexpected error occurred.');
-      } finally {
-        setLoading(false);
-        setLoadingStep(null);
-      }
+      const wId = canvasRef.current?.addWidget({
+        type: data.type,
+        data: data.data,
+        title: data.title || input.slice(0, 60),
+      });
+      setWidgetCount((c) => c + 1);
+      setActiveWidgetId(wId ?? null);
+      setActiveResult(data);
+      setManualEditJson(JSON.stringify(data.data, null, 2));
+      setIsSaved(false);
+      setInput('');
+    } catch (err) {
+      setError('An error occurred.');
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setLoading(false); setLoadingStep(null);
     }
   };
 
   const handleSave = async () => {
-    if (!result || !isSignedIn) {
-      toast.error('Please sign in to save visualizations');
-      return;
-    }
+    if (!activeResult || !isSignedIn) { toast.error('Please sign in to save'); return; }
     setSaving(true);
-    setError(null);
     try {
-      const title = result.title || input.substring(0, 100) || 'Untitled Visualization';
-      const metadata = {
-        generatedAt: new Date(),
-        aiModel: 'gpt-4o-mini',
-        originalInput: input,
-        ...(result.metadata || {}),
-      };
-      const saveResult = await saveVisualization(
-        title,
-        result.type,
-        result.data,
-        metadata,
-        false, // isPublic default
-        vizId || undefined,
-        chatHistory as { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[]
-      );
-      if (!saveResult.success) {
-        setError(saveResult.error || 'Failed to save visualization');
-        toast.error(saveResult.error || 'Failed to save visualization');
-        return;
-      }
-      if (saveResult.data && saveResult.data._id) {
-        setVizId(saveResult.data._id);
-      }
-      const wasAlreadySaved = isSaved;
-      setIsSaved(true);
-      toast.success(wasAlreadySaved ? 'Visualization updated successfully!' : 'Visualization saved successfully!');
-    } catch (err) {
-      setError('An error occurred while saving');
-      console.error('Error saving visualization:', err);
-      toast.error('An error occurred while saving');
-    } finally {
-      setSaving(false);
-    }
+      const title = activeResult.title || input.slice(0, 100) || 'Untitled';
+      const metadata = { generatedAt: new Date(), aiModel: 'gpt-4o-mini', originalInput: input, ...(activeResult.metadata || {}) };
+      const res = await saveVisualization(title, activeResult.type, activeResult.data, metadata, isPublic, vizId || undefined,
+        chatHistory as { role:'user'|'assistant'; content:string; timestamp:Date|string }[]);
+      if (!res.success) { toast.error(res.error || 'Save failed'); return; }
+      if (res.data?._id) setVizId(res.data._id);
+      const was = isSaved; setIsSaved(true);
+      toast.success(was ? 'Updated!' : 'Saved!');
+    } catch { toast.error('Error saving'); }
+    finally { setSaving(false); }
   };
 
-  const handleChatMessage = async (message: string): Promise<void> => {
-    if (!result) return;
+  const handleChatMessage = async (message: string) => {
+    if (!activeResult) return;
     setIsEditing(true);
-
-    const newHistory = [
-      ...chatHistory,
-      { role: 'user' as const, content: message, timestamp: new Date() }
-    ];
-    setChatHistory(newHistory);
-
+    const newHist = [...chatHistory, { role: 'user' as const, content: message, timestamp: new Date() }];
+    setChatHistory(newHist);
     try {
-      const response = await editVisualizationAction(
-        message.trim(),
-        result.data,
-        result.type,
-        vizId || undefined,
-        newHistory
-      );
-
-      if (!response.success) {
-        throw new Error(response.error || "Failed to edit visualization");
+      const res = await editVisualizationAction(message.trim(), activeResult.data, activeResult.type, vizId || undefined, newHist);
+      if (!res.success) throw new Error(res.error || 'Edit failed');
+      if (res.data) {
+        setActiveResult({ ...activeResult, data: res.data });
+        setManualEditJson(JSON.stringify(res.data, null, 2));
+        if (activeWidgetId) canvasRef.current?.updateWidget(activeWidgetId, res.data);
       }
-
-      // If data was returned, update it. If null, it means it was just a question.
-      if (response.data) {
-        setResult({
-          ...result,
-          data: response.data,
-        });
-        setManualEditJson(JSON.stringify(response.data, null, 2));
-      }
-
-      setChatHistory([
-        ...newHistory,
-        { role: 'assistant' as const, content: response.message || 'I have processed your request.', timestamp: new Date() }
-      ]);
-      toast.success(response.data ? 'Visualization updated successfully!' : 'Response received');
-    } catch (error) {
-       console.error("Edit error:", error);
-       toast.error(error instanceof Error ? error.message : "Failed to edit visualization");
-       setChatHistory([
-        ...newHistory,
-        { role: 'assistant' as const, content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`, timestamp: new Date() }
-      ]);
-    } finally {
-      setIsEditing(false);
-    }
+      setChatHistory([...newHist, { role: 'assistant' as const, content: res.message || 'Done.', timestamp: new Date() }]);
+      toast.success(res.data ? 'Updated!' : 'Response received');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Edit failed');
+      setChatHistory([...newHist, { role: 'assistant' as const, content: `Error: ${err instanceof Error ? err.message : 'Unknown'}`, timestamp: new Date() }]);
+    } finally { setIsEditing(false); }
   };
 
   const handleManualEdit = () => {
-    if (!manualEditJson.trim()) {
-      toast.error('Please enter valid JSON data');
-      return;
-    }
+    if (!manualEditJson.trim()) { toast.error('Enter valid JSON'); return; }
     try {
-      const parsedData = JSON.parse(manualEditJson);
-      if (!result) return;
-      setResult({
-        ...result,
-        data: parsedData,
-      });
+      const parsed = JSON.parse(manualEditJson);
+      if (!activeResult) return;
+      setActiveResult({ ...activeResult, data: parsed });
+      if (activeWidgetId) canvasRef.current?.updateWidget(activeWidgetId, parsed);
       setIsEditPanelOpen(false);
-      toast.success('Visualization updated successfully!');
-    } catch (error) {
-      toast.error('Invalid JSON format. Please check your data.');
-    }
-  };
-
-  const handleZoomIn = () => {
-    if (result?.type === 'network_graph' && networkGraphRef.current) {
-      networkGraphRef.current.zoomIn();
-    } else if (result?.type === 'mind_map' && mindMapRef.current) {
-      mindMapRef.current.zoomIn();
-    } else {
-      toast.info("Zoom in not available for this visualization type.");
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (result?.type === 'network_graph' && networkGraphRef.current) {
-      networkGraphRef.current.zoomOut();
-    } else if (result?.type === 'mind_map' && mindMapRef.current) {
-      mindMapRef.current.zoomOut();
-    } else {
-      toast.info("Zoom out not available for this visualization type.");
-    }
-  };
-
-  const handleReset = () => {
-    if (result?.type === 'network_graph' && networkGraphRef.current) {
-        networkGraphRef.current.fit();
-    } else if (result?.type === 'mind_map' && mindMapRef.current) {
-        mindMapRef.current.fitView();
-    } else {
-        toast.info("Reset view not available for this visualization type.");
-    }
+      toast.success('Updated!');
+    } catch { toast.error('Invalid JSON.'); }
   };
 
   return (
-    <div className="bg-background-dark text-stone-200 font-display overflow-hidden flex flex-col h-screen w-full antialiased selection:bg-primary/20 relative">
+    <div className="bg-background-dark text-stone-200 overflow-hidden flex flex-col h-screen w-full antialiased">
       <Header user={user || null} />
-      <main className="flex-1 w-full h-full relative z-0 flex flex-col">
-        <Toolbar
-            onReset={handleReset}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-        />
-        <div className="w-full h-full bg-background-dark grid-bg relative flex items-center justify-center overflow-hidden p-4">
-            <div className="w-full h-full relative">
-            {result ? (
-                <>
-                {result.type === 'network_graph' && <DynamicNetworkGraph ref={networkGraphRef} data={result.data as NetworkGraphData} onExpand={handleExpand} />}
-                {result.type === 'mind_map' && <DynamicMindMap ref={mindMapRef} data={result.data as MindMapData} onExpand={handleExpand} />}
-                {result.type === 'tree_diagram' && <DynamicTreeDiagram data={result.data as TreeDiagramData} onExpand={handleExpand} />}
-                {result.type === 'timeline' && <DynamicTimeline data={result.data as TimelineData} />}
-                {result.type === 'gantt_chart' && <DynamicGanttChart data={result.data as GanttChartData} />}
-                </>
-            ) : (
-                <Canvas />
-            )}
+
+      <main className="flex-1 relative flex flex-col overflow-hidden">
+        {/* Canvas area */}
+        <div ref={containerRef} className="flex-1 relative grid-bg overflow-hidden">
+          {/* Canvas-level toolbar — floats above canvas */}
+          <div className="absolute inset-x-0 top-0 pointer-events-none z-20">
+            <div className="pointer-events-auto">
+              <Toolbar
+                zoom={zoom}
+                widgetCount={widgetCount}
+                connectMode={connectMode}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onFitAll={handleFitAll}
+                onClear={handleClear}
+                onToggleConnect={handleToggleConnect}
+              />
             </div>
+          </div>
+
+          {/* Generation loading overlay */}
+          {loading && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+              <div
+                className="flex items-center gap-3 px-5 py-3 rounded-2xl text-sm font-medium"
+                style={{
+                  background: "rgba(13,17,23,0.9)",
+                  border: "1px solid rgba(139,92,246,0.3)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.1)",
+                  backdropFilter: "blur(16px)",
+                  color: "#c4b5fd",
+                }}
+              >
+                <div className="w-4 h-4 border-2 border-violet-500/30 border-t-violet-400 rounded-full animate-spin shrink-0" />
+                <span>
+                  {loadingStep === "analyzing"  && "Analyzing your input…"}
+                  {loadingStep === "generating" && "Generating visualization…"}
+                  {loadingStep === "finalizing" && "Finalizing…"}
+                  {!loadingStep               && "Processing…"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DynamicGridCanvas
+            ref={canvasRef}
+            containerWidth={canvasW}
+            containerHeight={canvasH}
+            onExpand={handleExpand}
+            onZoomChange={setZoomLocal}
+          />
         </div>
+
         <InputArea
           input={input}
           setInput={setInput}
@@ -410,14 +358,21 @@ function DashboardContent() {
           setAutoSelect={setAutoSelect}
           selectedType={selectedType}
           setSelectedType={setSelectedType}
+          isPublic={isPublic}
+          setIsPublic={setIsPublic}
+          onOptions={handleOptions}
         />
+
         <SideActions
           handleSave={handleSave}
           isSaved={isSaved}
           saving={saving}
-          toggleEditPanel={() => setIsEditPanelOpen(!isEditPanelOpen)}
+          toggleEditPanel={() => setIsEditPanelOpen((p) => !p)}
+          onShare={handleShare}
+          onExportCode={handleExportCode}
         />
-        {isEditPanelOpen && result && (
+
+        {isEditPanelOpen && activeResult && (
           <EditPanel
             chatHistory={chatHistory}
             handleChatMessage={handleChatMessage}
@@ -434,7 +389,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<LoadingPlaceholder />}>
+    <Suspense fallback={<Loading />}>
       <DashboardContent />
     </Suspense>
   );
