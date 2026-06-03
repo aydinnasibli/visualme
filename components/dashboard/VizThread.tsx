@@ -342,18 +342,37 @@ export default function VizThread({
       {/* Thread list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar min-h-0">
         {threads.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 py-8">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(82,110,250,0.06)', border: '1px solid rgba(82,110,250,0.12)' }}
-            >
-              <Sparkles className="w-6 h-6 text-indigo-400/40" />
-            </div>
+          <div className="flex flex-col items-center gap-5 pt-6 pb-4 px-1">
             <div className="text-center">
-              <p className="text-xs font-semibold text-zinc-600">Nothing here yet</p>
-              <p className="text-[11px] text-zinc-700 mt-1 leading-relaxed">
-                Describe anything below — AI picks<br />the best visualization type
-              </p>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
+                style={{ background: 'rgba(82,110,250,0.07)', border: '1px solid rgba(82,110,250,0.13)' }}
+              >
+                <Sparkles className="w-4.5 h-4.5 text-indigo-400/50" />
+              </div>
+              <p className="text-xs font-semibold text-zinc-500">Try an example</p>
+              <p className="text-[11px] text-zinc-700 mt-1">Click any prompt to get started</p>
+            </div>
+            <div className="w-full space-y-1.5">
+              {[
+                { label: 'Mind map of machine learning concepts', icon: '🧠' },
+                { label: 'Software deployment pipeline flowchart', icon: '🔀' },
+                { label: 'Timeline of World War II key events', icon: '📅' },
+                { label: 'Compare React vs Vue vs Angular', icon: '📋' },
+                { label: 'Network graph of blockchain technology', icon: '🕸️' },
+              ].map(({ label, icon }) => (
+                <button
+                  key={label}
+                  onClick={() => setInput(label)}
+                  className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors group"
+                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(82,110,250,0.06)'; e.currentTarget.style.borderColor = 'rgba(82,110,250,0.2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+                >
+                  <span className="text-sm shrink-0">{icon}</span>
+                  <span className="text-[11px] text-zinc-400 leading-snug group-hover:text-zinc-200 transition-colors">{label}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}

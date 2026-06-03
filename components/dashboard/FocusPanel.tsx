@@ -1,12 +1,13 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import {
-  ZoomIn, ZoomOut, RotateCcw, Save, Share2, CheckCircle,
-  Pencil, Sparkles, X,
+  ZoomIn, ZoomOut, RotateCcw, Share2, CheckCircle,
+  Pencil, Sparkles, X, Download, ImageIcon, Code2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import type {
   NetworkGraphData, MindMapData, TreeDiagramData,
   TimelineData, GanttChartData, AnimatedTimelineData,
@@ -157,10 +158,67 @@ export default function FocusPanel({
   manualEditJson, setManualEditJson, handleManualEdit,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  const networkRef  = useRef<NetworkGraphHandle | null>(null);
-  const mindMapRef  = useRef<MindMapHandle | null>(null);
+  useEffect(() => {
+    if (!exportOpen) return;
+    const close = () => setExportOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [exportOpen]);
+
+  const networkRef   = useRef<NetworkGraphHandle | null>(null);
+  const mindMapRef   = useRef<MindMapHandle | null>(null);
   const flowchartRef = useRef<FlowchartHandle | null>(null);
+  const vizAreaRef   = useRef<HTMLDivElement | null>(null);
+
+  const safeTitle = (t: ThreadEntry) =>
+    t.title.replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 60) || 'visualization';
+
+  const handleExportPNG = useCallback(async () => {
+    if (!vizAreaRef.current || !thread) return;
+    setExporting(true);
+    setExportOpen(false);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(vizAreaRef.current, {
+        backgroundColor: '#0a0d11',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const link = document.createElement('a');
+      link.download = `${safeTitle(thread)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast.success('Exported as PNG');
+    } catch {
+      toast.error('PNG export failed');
+    } finally {
+      setExporting(false);
+    }
+  }, [thread]);
+
+  const handleExportSVG = useCallback(() => {
+    if (!vizAreaRef.current || !thread) return;
+    setExportOpen(false);
+    const svg = vizAreaRef.current.querySelector('svg');
+    if (!svg) {
+      toast.error('SVG not available for this type — try PNG instead');
+      return;
+    }
+    const clone = svg.cloneNode(true) as SVGElement;
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `${safeTitle(thread)}.svg`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported as SVG');
+  }, [thread]);
 
   const handleZoomIn  = useCallback(() => {
     if (!thread) return;
@@ -296,6 +354,48 @@ export default function FocusPanel({
               <span>Share</span>
             </ActionBtn>
 
+            {/* Export dropdown */}
+            <div className="relative">
+              <ActionBtn
+                title="Export"
+                onClick={() => setExportOpen(p => !p)}
+                active={exportOpen}
+              >
+                {exporting
+                  ? <div className="w-3 h-3 border-2 border-zinc-400/30 border-t-zinc-300 rounded-full animate-spin" />
+                  : <Download size={13} />
+                }
+                <span>Export</span>
+              </ActionBtn>
+              <AnimatePresence>
+                {exportOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                    transition={{ duration: 0.13 }}
+                    className="absolute right-0 top-full mt-1.5 w-40 rounded-xl overflow-hidden z-50"
+                    style={{ background: '#131b26', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }}
+                  >
+                    <button
+                      onClick={handleExportPNG}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
+                    >
+                      <ImageIcon size={13} className="text-blue-400" />
+                      Export as PNG
+                    </button>
+                    <button
+                      onClick={handleExportSVG}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
+                    >
+                      <Code2 size={13} className="text-violet-400" />
+                      Export as SVG
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <div className="w-px h-4 bg-white/10 mx-0.5" />
 
             <ActionBtn
@@ -310,7 +410,7 @@ export default function FocusPanel({
         </div>
 
         {/* Viz */}
-        <div className="flex-1 relative overflow-hidden min-h-0" key={thread.id}>
+        <div ref={vizAreaRef} className="flex-1 relative overflow-hidden min-h-0" key={thread.id}>
           {renderViz(thread)}
         </div>
       </div>
