@@ -20,7 +20,6 @@ const VisualizationSchema = new Schema<SavedVisualization>(
         'network_graph',
         'mind_map',
         'tree_diagram',
-        'force_directed_graph',
         'timeline',
         'gantt_chart',
         'animated_timeline',

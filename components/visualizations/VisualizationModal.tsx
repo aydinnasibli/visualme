@@ -6,24 +6,38 @@ import { X, Edit3, Send, ArrowRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { NetworkGraphHandle } from "./NetworkGraph";
-import MindMapVisualization, { MindMapHandle } from "./MindMap";
+import { MindMapHandle } from "./MindMap";
 import { editVisualizationAction } from "@/lib/actions/visualize";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 
-const DynamicNetworkGraph = dynamic(() => import("./NetworkGraph"), {
-  ssr: false,
-});
-const DynamicTreeDiagram = dynamic(() => import("./TreeDiagram"), {
-  ssr: false,
-});
-const DynamicTimeline = dynamic(() => import("./Timeline"), {
-  ssr: false,
-});
+const DynLoader = () => (
+  <div className="w-full h-full flex items-center justify-center">
+    <div className="w-5 h-5 border-2 border-zinc-800 border-t-indigo-500 rounded-full animate-spin" />
+  </div>
+);
+const dyn = (fn: () => Promise<{ default: React.ComponentType<any> }>) =>
+  dynamic(fn, { ssr: false, loading: DynLoader });
 
-const DynamicGanttChart = dynamic(() => import("./GanttChart"), {
-  ssr: false,
-});
+const DynamicNetworkGraph      = dyn(() => import("./NetworkGraph"));
+const DynamicMindMap           = dyn(() => import("./MindMap"));
+const DynamicTreeDiagram       = dyn(() => import("./TreeDiagram"));
+const DynamicTimeline          = dyn(() => import("./Timeline"));
+const DynamicGanttChart        = dyn(() => import("./GanttChart"));
+const DynamicAnimatedTimeline  = dyn(() => import("./AnimatedTimeline"));
+const DynamicFlowchart         = dyn(() => import("./Flowchart"));
+const DynamicSankeyDiagram     = dyn(() => import("./SankeyDiagram"));
+const DynamicSwimlaneDiagram   = dyn(() => import("./SwimlaneDiagram"));
+const DynamicLineChart         = dyn(() => import("./LineChart"));
+const DynamicBarChart          = dyn(() => import("./BarChart"));
+const DynamicScatterPlot       = dyn(() => import("./ScatterPlot"));
+const DynamicHeatmap           = dyn(() => import("./Heatmap"));
+const DynamicRadarChart        = dyn(() => import("./RadarChart"));
+const DynamicPieChart          = dyn(() => import("./PieChart"));
+const DynamicComparisonTable   = dyn(() => import("./ComparisonTable"));
+const DynamicParallelCoords    = dyn(() => import("./ParallelCoordinates"));
+const DynamicWordCloud         = dyn(() => import("./WordCloud"));
+const DynamicSyntaxDiagram     = dyn(() => import("./SyntaxDiagram"));
 
 interface VisualizationModalProps {
   visualization: SavedVisualization | null;
@@ -203,41 +217,63 @@ export default function VisualizationModal({
 
               {/* Visualization Content */}
               <div className="flex-1 overflow-auto p-6 bg-[#0f1419]/50">
-            {currentVisualization.type === "network_graph" && (
-              <DynamicNetworkGraph
-                ref={networkGraphRef}
-                data={currentVisualization.data as any}
-                readOnly={true}
-              />
-            )}
-
-            {currentVisualization.type === "gantt_chart" && (
-              <DynamicGanttChart
-                data={currentVisualization.data as any}
-              />
-            )}
-
-            {currentVisualization.type === "mind_map" && (
-              <MindMapVisualization
-                ref={mindMapRef}
-                data={currentVisualization.data as any}
-                readOnly={true}
-              />
-            )}
-
-            {currentVisualization.type === "tree_diagram" && (
-              <DynamicTreeDiagram
-                data={currentVisualization.data as any}
-                readOnly={true}
-              />
-            )}
-
-            {currentVisualization.type === "timeline" && (
-              <DynamicTimeline
-                data={currentVisualization.data as any}
-                readOnly={true}
-              />
-            )}
+                {currentVisualization.type === "network_graph" && (
+                  <DynamicNetworkGraph ref={networkGraphRef} data={currentVisualization.data as any} readOnly={true} />
+                )}
+                {currentVisualization.type === "mind_map" && (
+                  <DynamicMindMap ref={mindMapRef} data={currentVisualization.data as any} readOnly={true} />
+                )}
+                {currentVisualization.type === "tree_diagram" && (
+                  <DynamicTreeDiagram data={currentVisualization.data as any} readOnly={true} />
+                )}
+                {currentVisualization.type === "timeline" && (
+                  <DynamicTimeline data={currentVisualization.data as any} readOnly={true} />
+                )}
+                {currentVisualization.type === "gantt_chart" && (
+                  <DynamicGanttChart data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "animated_timeline" && (
+                  <DynamicAnimatedTimeline data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "flowchart" && (
+                  <DynamicFlowchart data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "sankey_diagram" && (
+                  <DynamicSankeyDiagram data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "swimlane_diagram" && (
+                  <DynamicSwimlaneDiagram data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "line_chart" && (
+                  <DynamicLineChart data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "bar_chart" && (
+                  <DynamicBarChart data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "scatter_plot" && (
+                  <DynamicScatterPlot data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "heatmap" && (
+                  <DynamicHeatmap data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "radar_chart" && (
+                  <DynamicRadarChart data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "pie_chart" && (
+                  <DynamicPieChart data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "comparison_table" && (
+                  <DynamicComparisonTable data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "parallel_coordinates" && (
+                  <DynamicParallelCoords data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "word_cloud" && (
+                  <DynamicWordCloud data={currentVisualization.data as any} />
+                )}
+                {currentVisualization.type === "syntax_diagram" && (
+                  <DynamicSyntaxDiagram data={currentVisualization.data as any} />
+                )}
               </div>
             </div>
           </div>

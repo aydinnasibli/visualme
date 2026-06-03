@@ -241,7 +241,7 @@ export async function expandMindMapNodeAction(
     }
 
     // Call the AI service to get new child nodes
-    const newNodes = await expandMindMapNode(nodeContent, nodeId, originalInput, existingNodeIds);
+    const newNodes = await expandMindMapNode(nodeId, nodeContent, originalInput, existingNodeIds);
 
     // TOKEN SYSTEM: Deduct tokens for successful expansion
     await deductTokens(userId, TOKEN_COSTS.EXPAND_NODE);

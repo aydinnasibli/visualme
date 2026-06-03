@@ -24,7 +24,7 @@ const EditPanel = ({
   const [activeTab, setActiveTab] = useState('ai');
 
   return (
-    <div className="absolute top-0 right-0 h-full w-96 bg-surface-dark border-l border-border-color p-4">
+    <div className="h-full w-full bg-surface-dark p-4 overflow-y-auto">
       <div className="flex flex-col h-full">
         <h2 className="text-xl font-bold text-white mb-4">Edit Visualization</h2>
         <div className="flex gap-2 mb-4">

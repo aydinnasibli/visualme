@@ -115,7 +115,7 @@ export default function HistorySidebar() {
                     {viz.title || 'Untitled'}
                   </p>
                   <p className="text-[10px] text-zinc-500 truncate mt-0.5 capitalize">
-                     {viz.type ? viz.type.replace('_', ' ') : 'Unknown'} • {new Date(viz.createdAt).toLocaleDateString()}
+                     {viz.type ? viz.type.replace(/_/g, ' ') : 'Unknown'} • {new Date(viz.createdAt).toLocaleDateString()}
                   </p>
                 </div>
 
