@@ -5,12 +5,15 @@ const isDev = process.env.NODE_ENV === "development";
 const cspHeader = [
   "default-src 'self'",
   // Clerk requires unsafe-inline; Next.js hydration needs it too
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai`,
+  // Cloudflare Turnstile (Clerk CAPTCHA) scripts must also be allowed
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai https://challenges.cloudflare.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' blob: data: https://img.clerk.com https://images.clerk.dev",
-  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai",
-  "frame-src 'none'",
+  // Cloudflare Turnstile API calls
+  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai https://challenges.cloudflare.com",
+  // Clerk CAPTCHA and OAuth popups run in iframes
+  "frame-src https://challenges.cloudflare.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
