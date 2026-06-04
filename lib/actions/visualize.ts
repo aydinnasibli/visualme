@@ -18,6 +18,8 @@ import {
   TOKEN_COSTS
 } from '@/lib/utils/validation';
 import { checkTokenBalance, deductTokens, getTokenBalance } from '@/lib/utils/tokens';
+import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { getCachedVisualization, setCachedVisualization } from '@/lib/utils/cache';
 import type {
   VisualizationType,
   VisualizationResponse,
@@ -34,48 +36,26 @@ export async function generateVisualization(
 ): Promise<VisualizationResponse> {
   const startTime = Date.now();
 
+  const fail = (error: string, reason = ''): VisualizationResponse => ({
+    success: false, type: 'network_graph', data: {} as VisualizationData, reason, error,
+  });
+
   try {
-    // SECURITY: Validate input length
     const inputValidation = validateInputLength(input);
-    if (!inputValidation.valid) {
-      return {
-        success: false,
-        type: 'network_graph',
-        data: {} as VisualizationData,
-        reason: '',
-        error: inputValidation.error || 'Invalid input',
-      };
-    }
+    if (!inputValidation.valid) return fail(inputValidation.error || 'Invalid input');
 
-    // Get authenticated user
     const { userId } = await auth();
+    if (!userId) return fail('Authentication required');
 
-    if (!userId) {
-      return {
-        success: false,
-        type: 'network_graph',
-        data: {} as VisualizationData,
-        reason: '',
-        error: 'Authentication required',
-      };
+    // ── Rate limiting (before any DB / AI work) ──────────────────────────────
+    const rateCheck = await checkRateLimit(userId, 'generate');
+    if (!rateCheck.allowed) {
+      return fail(
+        `Too many requests. Please wait ${rateCheck.retryAfter ?? 60} seconds before trying again.`
+      );
     }
 
-    // Connect to database
-    await connectToDatabase();
-
-    // TOKEN SYSTEM: Check if user has enough tokens
-    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
-
-    if (!tokenCheck.allowed) {
-      return {
-        success: false,
-        type: 'network_graph',
-        data: {} as VisualizationData,
-        reason: '',
-        error: tokenCheck.error || 'Insufficient tokens',
-      };
-    }
-
+    // ── Determine format ─────────────────────────────────────────────────────
     let format: VisualizationType;
     let reason: string;
 
@@ -83,65 +63,72 @@ export async function generateVisualization(
       format = preferredFormat;
       reason = 'User selected this format manually';
     } else {
-      // Step 1: Analyze input and select format
       const formatSelection = await selectVisualizationFormat(input);
-
       if (!formatSelection.visualizable || formatSelection.format === 'none') {
-        return {
-          success: false,
-          type: 'network_graph',
-          data: {} as VisualizationData,
-          reason: formatSelection.reason,
-          error: 'This content is not suitable for visualization',
-        };
+        return fail('This content is not suitable for visualization', formatSelection.reason);
       }
       format = formatSelection.format;
       reason = formatSelection.reason;
     }
 
-    // Step 2: Generate visualization data
+    // ── Token balance check (always — cache benefit is speed, not free usage) ─
+    await connectToDatabase();
+
+    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
+    if (!tokenCheck.allowed) return fail(tokenCheck.error || 'Insufficient tokens');
+
+    // ── Cache lookup (instant result, tokens still charged) ───────────────────
+    const cached = await getCachedVisualization(input, format);
+    if (cached) {
+      await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
+      await UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } });
+
+      return {
+        success: true,
+        type: format,
+        data: cached,
+        reason,
+        fromCache: true,
+        metadata: {
+          generatedAt: new Date(),
+          processingTime: Date.now() - startTime,
+          aiModel: 'cached',
+          cost: 0,
+          originalInput: input,
+        },
+      };
+    }
+
+    // ── Generate with AI ─────────────────────────────────────────────────────
     const data = await generateVisualizationData(format, input);
 
-    // Calculate metadata
+    // ── Store in cache (fire-and-forget, not on the critical path) ────────────
+    setCachedVisualization(input, format, data).catch(() => {});
+
+    // ── Deduct tokens + update usage stats ───────────────────────────────────
+    await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
+    await UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } });
+
     const processingTime = Date.now() - startTime;
     const formatInfo = FORMAT_INFO[format];
-    const cost = calculateCost(input.length, formatInfo.estimatedCost);
 
-    const metadata: VisualizationMetadata = {
-      generatedAt: new Date(),
-      processingTime,
-      aiModel: 'gpt-4o-mini',
-      cost,
-      originalInput: input,
-    };
-
-    const response: VisualizationResponse = {
+    return {
       success: true,
       type: format,
       data,
       reason,
-      metadata,
+      fromCache: false,
+      metadata: {
+        generatedAt: new Date(),
+        processingTime,
+        aiModel: 'gpt-4.1-mini',
+        cost: calculateCost(input.length, formatInfo.estimatedCost),
+        originalInput: input,
+      },
     };
-
-    // TOKEN SYSTEM: Deduct tokens for successful generation
-    await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
-
-    // Update user usage
-    await UserUsageModel.updateOne(
-      { userId },
-      { $inc: { visualizationsCreated: 1 } }
-    );
-
-    return response;
   } catch (error) {
     console.error('Error generating visualization:', error);
-    return {
-      success: false,
-      type: 'network_graph',
-      data: {} as VisualizationData,
-      reason: '',
-      error: error instanceof Error ? error.message : 'Failed to generate visualization',
-    };
+    return fail(sanitizeError(error, 'Failed to generate visualization'));
   }
 }
 export async function expandNodeAction(
@@ -153,6 +140,11 @@ export async function expandNodeAction(
   try {
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
+
+    const rateCheck = await checkRateLimit(userId, 'expand');
+    if (!rateCheck.allowed) {
+      return { success: false, error: `Too many requests. Please wait ${rateCheck.retryAfter ?? 60} seconds.` };
+    }
 
     // SECURITY: Validate inputs
     const labelValidation = validateInputLength(nodeLabel, VALIDATION_LIMITS.MAX_NODE_LABEL_LENGTH);
@@ -213,6 +205,11 @@ export async function expandMindMapNodeAction(
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
 
+    const rateCheck = await checkRateLimit(userId, 'expand');
+    if (!rateCheck.allowed) {
+      return { success: false, error: `Too many requests. Please wait ${rateCheck.retryAfter ?? 60} seconds.` };
+    }
+
     // SECURITY: Validate inputs
     const contentValidation = validateInputLength(nodeContent, VALIDATION_LIMITS.MAX_NODE_LABEL_LENGTH);
     if (!contentValidation.valid) {
@@ -272,6 +269,11 @@ export async function editVisualizationAction(
   try {
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
+
+    const rateCheck = await checkRateLimit(userId, 'edit');
+    if (!rateCheck.allowed) {
+      return { success: false, error: `Too many requests. Please wait ${rateCheck.retryAfter ?? 60} seconds.` };
+    }
 
     // SECURITY: Validate inputs
     const promptValidation = validateInputLength(editPrompt);
@@ -589,19 +591,25 @@ export async function deleteVisualization(visualizationId: string) {
 
     const result = await VisualizationModel.deleteOne({
       _id: visualizationId,
-      userId, // Ensure user owns this visualization
+      userId,
     });
 
     if (result.deletedCount === 0) {
       return { success: false, error: 'Visualization not found or unauthorized' };
     }
 
+    // Remove stale reference from user's savedVisualizations array
+    await UserModel.findOneAndUpdate(
+      { clerkId: userId },
+      { $pull: { savedVisualizations: visualizationId } }
+    );
+
     return { success: true };
   } catch (error) {
     console.error('Error deleting visualization:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete visualization',
+      error: sanitizeError(error, 'Failed to delete visualization'),
     };
   }
 }

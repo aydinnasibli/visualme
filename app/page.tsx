@@ -1,8 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import {
-  Sparkles, ArrowRight, Download, Share2, Zap,
-  Network, GitFork, BarChart2, Calendar, Brain,
+  Sparkles, ArrowRight, Download, Zap,
+  GitFork, BarChart2, Calendar, Brain,
   CheckCircle, ArrowUpRight,
 } from 'lucide-react';
 
@@ -211,7 +213,7 @@ export default function LandingPage() {
               >
                 Dashboard <ArrowRight size={14} />
               </Link>
-              <UserButton afterSignOutUrl="/" />
+              <UserButton />
             </SignedIn>
           </div>
         </div>

@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import {
   ZoomIn, ZoomOut, RotateCcw, Share2, CheckCircle,
   Pencil, Sparkles, X, Download, ImageIcon, Code2,
+  Globe, FileJson, FileSpreadsheet, FileCode, Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type {
@@ -143,6 +144,7 @@ export interface FocusPanelProps {
   saving: boolean;
   onSave: () => void;
   onShare: () => void;
+  onExportData: (format: 'json' | 'csv' | 'html') => Promise<void>;
   onExpand: (nodeId: string, nodeLabel: string) => Promise<void>;
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date | string }>;
   handleChatMessage: (message: string) => Promise<void>;
@@ -153,7 +155,7 @@ export interface FocusPanelProps {
 }
 
 export default function FocusPanel({
-  thread, saving, onSave, onShare, onExpand,
+  thread, saving, onSave, onShare, onExportData, onExpand,
   chatHistory, handleChatMessage, isEditing,
   manualEditJson, setManualEditJson, handleManualEdit,
 }: FocusPanelProps) {
@@ -324,6 +326,21 @@ export default function FocusPanel({
             {thread.title}
           </h2>
 
+          {/* Metadata chip */}
+          {thread.metadata?.aiModel && (
+            <div
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0"
+              style={{ background: thread.metadata.fromCache ? 'rgba(6,182,212,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${thread.metadata.fromCache ? 'rgba(6,182,212,0.2)' : 'rgba(139,92,246,0.2)'}` }}
+              title={thread.metadata.processingTime ? `Generated in ${(thread.metadata.processingTime / 1000).toFixed(1)}s` : undefined}
+            >
+              <Zap className="w-2.5 h-2.5" style={{ color: thread.metadata.fromCache ? '#06b6d4' : '#a78bfa' }} />
+              <span className="text-[10px] font-medium" style={{ color: thread.metadata.fromCache ? '#67e8f9' : '#c4b5fd' }}>
+                {thread.metadata.fromCache ? 'Cached' : thread.metadata.aiModel}
+                {thread.metadata.processingTime && !thread.metadata.fromCache ? ` · ${(thread.metadata.processingTime / 1000).toFixed(1)}s` : ''}
+              </span>
+            </div>
+          )}
+
           {/* Zoom controls */}
           {canZoom && (
             <div className="flex items-center gap-0.5">
@@ -349,9 +366,14 @@ export default function FocusPanel({
               <span>{thread.isSaved ? 'Saved' : 'Save'}</span>
             </ActionBtn>
 
-            <ActionBtn title="Share (copy link)" onClick={onShare}>
-              <Share2 size={13} />
-              <span>Share</span>
+            <ActionBtn
+              title={thread.isPublic ? 'Copy public link' : 'Create public share link'}
+              onClick={onShare}
+              variant={thread.isPublic ? 'success' : 'default'}
+              active={thread.isPublic}
+            >
+              {thread.isPublic ? <Globe size={13} /> : <Share2 size={13} />}
+              <span>{thread.isPublic ? 'Public' : 'Share'}</span>
             </ActionBtn>
 
             {/* Export dropdown */}
@@ -390,6 +412,31 @@ export default function FocusPanel({
                     >
                       <Code2 size={13} className="text-violet-400" />
                       Export as SVG
+                    </button>
+                    <div className="h-px bg-white/[0.06] mx-3 my-1" />
+                    <button
+                      onClick={() => { setExportOpen(false); onExportData('json'); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
+                      title={!thread.vizId ? 'Save first to export' : undefined}
+                    >
+                      <FileJson size={13} className={thread.vizId ? 'text-amber-400' : 'text-zinc-600'} />
+                      <span className={!thread.vizId ? 'text-zinc-600' : ''}>Export as JSON</span>
+                    </button>
+                    <button
+                      onClick={() => { setExportOpen(false); onExportData('csv'); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
+                      title={!thread.vizId ? 'Save first to export' : undefined}
+                    >
+                      <FileSpreadsheet size={13} className={thread.vizId ? 'text-emerald-400' : 'text-zinc-600'} />
+                      <span className={!thread.vizId ? 'text-zinc-600' : ''}>Export as CSV</span>
+                    </button>
+                    <button
+                      onClick={() => { setExportOpen(false); onExportData('html'); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
+                      title={!thread.vizId ? 'Save first to export' : undefined}
+                    >
+                      <FileCode size={13} className={thread.vizId ? 'text-cyan-400' : 'text-zinc-600'} />
+                      <span className={!thread.vizId ? 'text-zinc-600' : ''}>Export as HTML</span>
                     </button>
                   </motion.div>
                 )}

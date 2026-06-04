@@ -237,6 +237,7 @@ export async function getUserLimits(): Promise<{
     tier: 'free' | 'pro' | 'enterprise';
     costs: {
       generateVisualization: number;
+      editVisualization: number;
       expandNode: number;
       exportVisualization: number;
       saveVisualization: number;
@@ -244,6 +245,7 @@ export async function getUserLimits(): Promise<{
     };
     estimatedOperations: {
       visualizations: number;
+      edits: number;
       expansions: number;
       exports: number;
     };
@@ -263,6 +265,7 @@ export async function getUserLimits(): Promise<{
     // Calculate how many operations they can still do
     const estimatedOperations = {
       visualizations: Math.floor(balance.tokensRemaining / costs.generateVisualization),
+      edits: Math.floor(balance.tokensRemaining / costs.editVisualization),
       expansions: Math.floor(balance.tokensRemaining / costs.expandNode),
       exports: Math.floor(balance.tokensRemaining / costs.exportVisualization),
     };

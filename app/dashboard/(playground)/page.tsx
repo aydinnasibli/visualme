@@ -7,8 +7,9 @@ import {
   generateVisualization, saveVisualization, expandNodeAction,
   expandMindMapNodeAction, getVisualizationById, editVisualizationAction,
 } from '@/lib/actions/visualize';
+import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type {
-  VisualizationResponse, NetworkGraphData, MindMapData,
+  NetworkGraphData, MindMapData,
   VisualizationType, MindMapNode, SavedVisualization,
 } from '@/lib/types/visualization';
 import { toast } from 'sonner';
@@ -55,7 +56,6 @@ function DashboardContent() {
 
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
-  const [isPublic, setIsPublic]     = useState(false);
 
   /* ── Edit panel ── */
   const [isEditing, setIsEditing]   = useState(false);
@@ -84,6 +84,12 @@ function DashboardContent() {
             chatHistory: (viz.history || []) as ThreadEntry['chatHistory'],
             vizId: viz._id || null,
             isSaved: true,
+            isPublic: viz.isPublic ?? false,
+            shareId: viz.shareId ?? null,
+            metadata: viz.metadata ? {
+              generatedAt: typeof viz.metadata.generatedAt === 'string' ? viz.metadata.generatedAt : viz.metadata.generatedAt?.toString(),
+              aiModel: viz.metadata.aiModel,
+            } : undefined,
           };
           setThreads([entry]);
           setActiveId(entry.id);
@@ -109,6 +115,12 @@ function DashboardContent() {
           chatHistory: (parsed.history || []) as ThreadEntry['chatHistory'],
           vizId: parsed._id || null,
           isSaved: false,
+          isPublic: parsed.isPublic ?? false,
+          shareId: parsed.shareId ?? null,
+          metadata: parsed.metadata ? {
+            generatedAt: typeof parsed.metadata.generatedAt === 'string' ? parsed.metadata.generatedAt : parsed.metadata.generatedAt?.toString(),
+            aiModel: parsed.metadata.aiModel,
+          } : undefined,
         };
         setThreads([entry]);
         setActiveId(entry.id);
@@ -157,6 +169,14 @@ function DashboardContent() {
         chatHistory: [],
         vizId: null,
         isSaved: false,
+        isPublic: false,
+        shareId: null,
+        metadata: data.metadata ? {
+          generatedAt: data.metadata.generatedAt?.toString(),
+          processingTime: data.metadata.processingTime,
+          aiModel: data.metadata.aiModel,
+          fromCache: data.fromCache,
+        } : undefined,
       };
       setThreads(p => [...p, entry]);
       setActiveId(entry.id);
@@ -219,12 +239,13 @@ function DashboardContent() {
       const title = activeThread.title || 'Untitled';
       const metadata = {
         generatedAt: new Date(),
-        aiModel: 'gpt-4o-mini',
+        aiModel: activeThread.metadata?.aiModel || 'gpt-4.1-mini',
         originalInput: activeThread.prompt,
+        processingTime: activeThread.metadata?.processingTime,
       };
       const res = await saveVisualization(
         title, activeThread.type, activeThread.data, metadata,
-        isPublic, activeThread.vizId || undefined,
+        activeThread.isPublic ?? false, activeThread.vizId || undefined,
         activeThread.chatHistory as { role:'user'|'assistant'; content:string; timestamp:Date|string }[],
       );
       if (!res.success) { toast.error(res.error || 'Save failed'); return; }
@@ -234,14 +255,40 @@ function DashboardContent() {
       toast.success(wasSaved ? 'Updated!' : 'Saved!');
     } catch { toast.error('Error saving'); }
     finally { setSaving(false); }
-  }, [activeThread, isSignedIn, isPublic]);
+  }, [activeThread, isSignedIn]);
 
-  const handleShare = useCallback(() => {
-    if (!activeThread?.vizId) { toast.error('Save the visualization first to share'); return; }
-    const url = `${window.location.origin}/dashboard?id=${activeThread.vizId}`;
-    navigator.clipboard.writeText(url)
-      .then(() => toast.success('Link copied to clipboard!'))
-      .catch(() => toast.error('Failed to copy link'));
+  const handleShare = useCallback(async () => {
+    if (!activeThread?.vizId) { toast.error('Save the visualization first to share publicly'); return; }
+    const id = activeThread.id;
+    try {
+      if (activeThread.isPublic && activeThread.shareId) {
+        const url = `${window.location.origin}/share/${activeThread.shareId}`;
+        await navigator.clipboard.writeText(url);
+        toast.success('Public link copied!');
+        return;
+      }
+      const res = await createShareLink(activeThread.vizId, { isPublic: true });
+      if (!res.success || !res.data) { toast.error(res.error || 'Failed to create share link'); return; }
+      setThreads(p => p.map(t => t.id === id ? { ...t, isPublic: true, shareId: res.data!.shareId } : t));
+      await navigator.clipboard.writeText(res.data.shareUrl);
+      toast.success('Public link created and copied!');
+    } catch { toast.error('Failed to share'); }
+  }, [activeThread]);
+
+  const handleExportData = useCallback(async (format: 'json' | 'csv' | 'html') => {
+    if (!activeThread?.vizId) { toast.error('Save the visualization first to export as ' + format.toUpperCase()); return; }
+    try {
+      const res = await exportVisualization(activeThread.vizId, format, { includeMetadata: true, title: activeThread.title });
+      if (!res.success || !res.data) { toast.error(res.error || 'Export failed'); return; }
+      const blob = new Blob([res.data.content], { type: res.data.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported as ${format.toUpperCase()}`);
+    } catch { toast.error('Export failed'); }
   }, [activeThread]);
 
   const handleExpand = useCallback(async (nodeId: string, nodeLabel: string) => {
@@ -293,7 +340,7 @@ function DashboardContent() {
     >
       <Header user={user || null} />
 
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex overflow-hidden min-h-0 pt-16">
         {/* ── Left: Thread panel ── */}
         <div
           className="w-[340px] shrink-0 flex flex-col"
@@ -342,6 +389,7 @@ function DashboardContent() {
             saving={saving}
             onSave={handleSave}
             onShare={handleShare}
+            onExportData={handleExportData}
             onExpand={handleExpand}
             chatHistory={activeThread?.chatHistory || []}
             handleChatMessage={handleChatMessage}

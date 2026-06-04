@@ -3,11 +3,9 @@
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { UserUsageModel } from '@/lib/database/models';
 import { TOKEN_LIMITS } from '@/lib/utils/validation';
+import type { HydratedDocument } from 'mongoose';
 import type { UserUsage } from '@/lib/types/visualization';
 
-/**
- * Get tier-specific token limit
- */
 function getTokenLimitForTier(tier: 'free' | 'pro' | 'enterprise'): number {
   switch (tier) {
     case 'free':
@@ -21,45 +19,29 @@ function getTokenLimitForTier(tier: 'free' | 'pro' | 'enterprise'): number {
   }
 }
 
-/**
- * Calculate next reset date (1st of next month)
- */
 function getNextResetDate(): Date {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth() + 1, 1);
 }
 
-/**
- * Check if tokens need to be refreshed and refresh if needed
- */
-async function refreshTokensIfNeeded(usage: any): Promise<boolean> {
+async function refreshTokensIfNeeded(usage: HydratedDocument<UserUsage>): Promise<void> {
   const now = new Date();
-  const resetDate = new Date(usage.tokenResetDate);
-
-  if (now >= resetDate) {
-    // Reset tokens
+  if (now >= new Date(usage.tokenResetDate)) {
     const newLimit = getTokenLimitForTier(usage.tier);
     usage.tokensUsed = 0;
     usage.tokensLimit = newLimit;
     usage.tokenResetDate = getNextResetDate();
     await usage.save();
-    return true; // Tokens were refreshed
   }
-
-  return false; // No refresh needed
 }
 
-/**
- * Get or create user usage record with token tracking
- */
-export async function getUserUsage(userId: string): Promise<any> {
+export async function getUserUsage(userId: string): Promise<HydratedDocument<UserUsage>> {
   await connectToDatabase();
 
   let usage = await UserUsageModel.findOne({ userId });
 
   if (!usage) {
-    // Create new usage record
-    const tier = 'free'; // Default tier
+    const tier = 'free';
     usage = await UserUsageModel.create({
       userId,
       tier,
@@ -70,25 +52,19 @@ export async function getUserUsage(userId: string): Promise<any> {
       lastResetDate: new Date(),
     });
   } else {
-    // CRITICAL FIX: Ensure tokensLimit matches tier
+    // Ensure tokensLimit matches tier in case tier was updated externally
     const expectedLimit = getTokenLimitForTier(usage.tier);
     if (usage.tokensLimit !== expectedLimit) {
-      console.log(`⚠️  Token limit mismatch for user ${userId}. Tier: ${usage.tier}, Limit: ${usage.tokensLimit}, Expected: ${expectedLimit}. Fixing...`);
       usage.tokensLimit = expectedLimit;
       await usage.save();
-      console.log(`✅ Fixed token limit for user ${userId} to ${expectedLimit}`);
     }
 
-    // Check if we need to refresh tokens
     await refreshTokensIfNeeded(usage);
   }
 
   return usage;
 }
 
-/**
- * Check if user has enough tokens for an operation
- */
 export async function checkTokenBalance(
   userId: string,
   tokenCost: number
@@ -111,7 +87,7 @@ export async function checkTokenBalance(
       tokensLimit: usage.tokensLimit,
       tokensRemaining,
       resetDate: usage.tokenResetDate,
-      error: `Insufficient tokens. You need ${tokenCost} tokens but only have ${tokensRemaining} remaining. Resets on ${usage.tokenResetDate.toLocaleDateString()}.`,
+      error: `Insufficient tokens. You need ${tokenCost} tokens but only have ${tokensRemaining} remaining. Resets on ${new Date(usage.tokenResetDate).toLocaleDateString()}.`,
     };
   }
 
@@ -124,9 +100,6 @@ export async function checkTokenBalance(
   };
 }
 
-/**
- * Deduct tokens from user's balance
- */
 export async function deductTokens(
   userId: string,
   tokenCost: number
@@ -136,33 +109,36 @@ export async function deductTokens(
   tokensRemaining: number;
   error?: string;
 }> {
+  // getUserUsage handles refresh and ensures record exists
   const usage = await getUserUsage(userId);
 
-  const tokensRemaining = usage.tokensLimit - usage.tokensUsed;
+  // Atomic conditional increment: only succeeds if tokensUsed + tokenCost <= tokensLimit
+  const result = await UserUsageModel.findOneAndUpdate(
+    {
+      userId,
+      $expr: { $lte: [{ $add: ['$tokensUsed', tokenCost] }, '$tokensLimit'] },
+    },
+    { $inc: { tokensUsed: tokenCost } },
+    { new: true }
+  );
 
-  if (tokensRemaining < tokenCost) {
+  if (!result) {
+    const remaining = usage.tokensLimit - usage.tokensUsed;
     return {
       success: false,
       tokensUsed: usage.tokensUsed,
-      tokensRemaining,
-      error: `Insufficient tokens. You need ${tokenCost} tokens but only have ${tokensRemaining} remaining.`,
+      tokensRemaining: remaining,
+      error: `Insufficient tokens. You need ${tokenCost} tokens but only have ${remaining} remaining.`,
     };
   }
 
-  // Deduct tokens
-  usage.tokensUsed += tokenCost;
-  await usage.save();
-
   return {
     success: true,
-    tokensUsed: usage.tokensUsed,
-    tokensRemaining: usage.tokensLimit - usage.tokensUsed,
+    tokensUsed: result.tokensUsed,
+    tokensRemaining: result.tokensLimit - result.tokensUsed,
   };
 }
 
-/**
- * Get user's token balance and limits
- */
 export async function getTokenBalance(userId: string): Promise<{
   tokensUsed: number;
   tokensLimit: number;
@@ -174,7 +150,7 @@ export async function getTokenBalance(userId: string): Promise<{
   const usage = await getUserUsage(userId);
 
   const tokensRemaining = usage.tokensLimit - usage.tokensUsed;
-  const percentageUsed = (usage.tokensUsed / usage.tokensLimit) * 100;
+  const percentageUsed = Math.round((usage.tokensUsed / usage.tokensLimit) * 1000) / 10;
 
   return {
     tokensUsed: usage.tokensUsed,
@@ -182,14 +158,10 @@ export async function getTokenBalance(userId: string): Promise<{
     tokensRemaining,
     resetDate: usage.tokenResetDate,
     tier: usage.tier,
-    percentageUsed: Math.round(percentageUsed * 10) / 10, // Round to 1 decimal
+    percentageUsed,
   };
 }
 
-
-/**
- * Update user's tier and token limit
- */
 export async function updateUserTier(
   userId: string,
   newTier: 'free' | 'pro' | 'enterprise'
@@ -197,13 +169,8 @@ export async function updateUserTier(
   try {
     const usage = await getUserUsage(userId);
 
-    // Update tier and limit
     usage.tier = newTier;
     usage.tokensLimit = getTokenLimitForTier(newTier);
-
-    // Don't reset tokensUsed - let them keep their usage for the current period
-    // This way if they upgrade mid-month, they get the new limit immediately
-
     await usage.save();
 
     return { success: true };

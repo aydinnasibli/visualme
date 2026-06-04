@@ -2,12 +2,13 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Edit3, Send, ArrowRight } from "lucide-react";
+import { X, Edit3, Send, ArrowRight, Download, FileJson, FileSpreadsheet, FileCode, Globe, Share2, ImageIcon, Code2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { NetworkGraphHandle } from "./NetworkGraph";
 import { MindMapHandle } from "./MindMap";
 import { editVisualizationAction } from "@/lib/actions/visualize";
+import { exportVisualization, createShareLink } from "@/lib/actions/export";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 
@@ -57,6 +58,19 @@ export default function VisualizationModal({
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentVisualization, setCurrentVisualization] = useState(visualization);
   const [manualEditJson, setManualEditJson] = useState('');
+  const [exportOpen, setExportOpen] = useState(false);
+  const [isPublic, setIsPublic] = useState(visualization?.isPublic ?? false);
+  const [shareId, setShareId] = useState(visualization?.shareId ?? null);
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    const close = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-export-menu]')) setExportOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [exportOpen]);
 
   // Sync currentVisualization with visualization prop
   useEffect(() => {
@@ -64,6 +78,54 @@ export default function VisualizationModal({
   }, [visualization]);
 
   if (!currentVisualization) return null;
+
+  const handleExportData = async (format: 'json' | 'csv' | 'html') => {
+    if (!currentVisualization?._id) return;
+    try {
+      const res = await exportVisualization(currentVisualization._id, format, { includeMetadata: true, title: currentVisualization.title });
+      if (!res.success || !res.data) { toast.error(res.error || 'Export failed'); return; }
+      const blob = new Blob([res.data.content], { type: res.data.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported as ${format.toUpperCase()}`);
+    } catch { toast.error('Export failed'); }
+  };
+
+  const handleExportPNG = async () => {
+    const area = document.querySelector('[data-viz-area]') as HTMLElement;
+    if (!area) { toast.error('Could not capture visualization'); return; }
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(area, { backgroundColor: '#0f1419', scale: 2, useCORS: true, logging: false });
+      const link = document.createElement('a');
+      link.download = `${currentVisualization?.title?.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'visualization'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast.success('Exported as PNG');
+    } catch { toast.error('PNG export failed'); }
+  };
+
+  const handleShare = async () => {
+    if (!currentVisualization?._id) return;
+    try {
+      if (isPublic && shareId) {
+        const url = `${window.location.origin}/share/${shareId}`;
+        await navigator.clipboard.writeText(url);
+        toast.success('Public link copied!');
+        return;
+      }
+      const res = await createShareLink(currentVisualization._id, { isPublic: true });
+      if (!res.success || !res.data) { toast.error(res.error || 'Failed to create share link'); return; }
+      setIsPublic(true);
+      setShareId(res.data.shareId);
+      await navigator.clipboard.writeText(res.data.shareUrl);
+      toast.success('Public link created and copied!');
+    } catch { toast.error('Failed to share'); }
+  };
 
   const handleRevisualize = () => {
     try {
@@ -159,8 +221,57 @@ export default function VisualizationModal({
             </div>
             <div className="flex items-center gap-2">
               <button
+                onClick={handleShare}
+                className={`px-3 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium ${
+                  isPublic ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                }`}
+                title={isPublic ? 'Copy public link' : 'Make public & copy link'}
+              >
+                {isPublic ? <Globe className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                {isPublic ? 'Public' : 'Share'}
+              </button>
+
+              {/* Export dropdown */}
+              <div className="relative" data-export-menu>
+                <button
+                  onClick={() => setExportOpen(p => !p)}
+                  className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition flex items-center gap-2 text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </button>
+                <AnimatePresence>
+                  {exportOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                      transition={{ duration: 0.13 }}
+                      className="absolute right-0 top-full mt-1.5 w-44 rounded-xl overflow-hidden z-50"
+                      style={{ background: '#131b26', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }}
+                      data-export-menu
+                    >
+                      <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                        <ImageIcon size={13} className="text-blue-400" /> Export as PNG
+                      </button>
+                      <div className="h-px bg-white/[0.06] mx-3 my-1" />
+                      <button onClick={() => { setExportOpen(false); handleExportData('json'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                        <FileJson size={13} className="text-amber-400" /> Export as JSON
+                      </button>
+                      <button onClick={() => { setExportOpen(false); handleExportData('csv'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                        <FileSpreadsheet size={13} className="text-emerald-400" /> Export as CSV
+                      </button>
+                      <button onClick={() => { setExportOpen(false); handleExportData('html'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                        <FileCode size={13} className="text-cyan-400" /> Export as HTML
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <button
                 onClick={handleRevisualize}
-                className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition flex items-center gap-2 font-medium"
+                className="px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition flex items-center gap-2 text-sm font-medium"
               >
                 Revisualize
                 <ArrowRight className="w-4 h-4" />
@@ -168,19 +279,14 @@ export default function VisualizationModal({
 
               <button
                 onClick={handleEditModeToggle}
-                className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
-                  isEditMode
-                    ? "bg-zinc-700 text-white"
-                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                className={`px-3 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium ${
+                  isEditMode ? "bg-zinc-700 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                 }`}
               >
                 <Edit3 className="w-4 h-4" />
-                {isEditMode ? "Close Manual Edit" : "Manual Edit"}
+                {isEditMode ? "Close Edit" : "Edit JSON"}
               </button>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-zinc-800 rounded-lg transition text-zinc-400 hover:text-white"
-              >
+              <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-lg transition text-zinc-400 hover:text-white">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -216,7 +322,7 @@ export default function VisualizationModal({
               )}
 
               {/* Visualization Content */}
-              <div className="flex-1 overflow-auto p-6 bg-[#0f1419]/50">
+              <div className="flex-1 overflow-auto p-6 bg-[#0f1419]/50" data-viz-area>
                 {currentVisualization.type === "network_graph" && (
                   <DynamicNetworkGraph ref={networkGraphRef} data={currentVisualization.data as any} readOnly={true} />
                 )}

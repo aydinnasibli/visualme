@@ -6,11 +6,6 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');
 }
 
-/**
- * Global is used here to maintain a cached connection across hot reloads
- * in development. This prevents connections growing exponentially
- * during API Route usage.
- */
 interface CachedConnection {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
@@ -33,21 +28,27 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
-    const opts = {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    const opts: Parameters<typeof mongoose.connect>[1] = {
       bufferCommands: false,
+      // Disable auto-index in production — run index builds separately to avoid startup perf hit
+      autoIndex: !isProd,
+      // Serverless-appropriate pool size (Vercel functions are short-lived)
+      maxPoolSize: 10,
+      minPoolSize: 1,
+      // Fail fast in serverless rather than waiting 30 s for a stale connection
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 30000,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log('✅ MongoDB connected successfully');
-      return mongoose;
-    });
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => m);
   }
 
   try {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error('❌ MongoDB connection error:', e);
     throw e;
   }
 

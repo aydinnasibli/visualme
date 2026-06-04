@@ -15,37 +15,53 @@ export const VALIDATION_LIMITS = {
 };
 
 /**
- * Token-based economy system
+ * Token economy — gpt-4.1 family, April 2025 pricing.
  *
- * Economics:
- * - Pro tier: $9.99/month
- * - Target 50% profit margin = ~$5 for AI costs
- * - AI cost per generation: ~$0.05-0.15
- * - AI cost per expansion: ~$0.02-0.05
+ * Models:
+ *   Complex vizs + editing → gpt-4.1-mini  ($0.40/1M in · $1.60/1M out)
+ *   Simple vizs + expand   → gpt-4.1-nano  ($0.10/1M in · $0.40/1M out)
  *
- * Token allocation ensures profitability while providing value
+ * Real cost per call:
+ *   Generate (mini):  ~700 in + 2000 out  = $0.003480
+ *   Edit     (mini): ~4000 in + 3000 out  = $0.006400  ← most expensive
+ *   Expand   (nano):  ~500 in + 1000 out  = $0.000450
+ *
+ * Unit token price anchored to the most expensive op (edit):
+ *   $0.006400 ÷ 18 = $0.000356 / token
+ *
+ * Token costs derived strictly from that rate:
+ *   Generate: $0.003480 ÷ $0.000356 = 9.78  → 10 tokens
+ *   Edit:     $0.006400 ÷ $0.000356 = 17.98 → 18 tokens
+ *   Expand:   $0.000450 ÷ $0.000356 = 1.26  →  2 tokens
+ *
+ * Pro monthly limit = $5.00 ÷ $0.000356 = 14,045 → floored to 14,000.
+ *
+ * PROOF no combination can exceed $5 (no gap):
+ *   Worst case (all edits):    14,000÷18 = 777  × $0.00640 = $4.973 < $5 ✓
+ *   All complex generates:     14,000÷10 = 1400 × $0.00348 = $4.872 < $5 ✓
+ *   All expansions:            14,000÷2  = 7000 × $0.00045 = $3.150 < $5 ✓
+ *   Any mix:  max = 14,000 × $0.000356  =                    $4.984 < $5 ✓
  */
 
 export const TOKEN_LIMITS = {
-  // Monthly token allocation
-  FREE_TIER_MONTHLY_TOKENS: 100,      // ~10 visualizations OR ~20 expansions
-  PRO_TIER_MONTHLY_TOKENS: 2000,      // ~200 visualizations OR ~400 expansions
-  ENTERPRISE_TIER_MONTHLY_TOKENS: 10000, // ~1000 visualizations OR ~2000 expansions
+  FREE_TIER_MONTHLY_TOKENS: 100,           // ~10 generates ($0.035 AI cost)
+  PRO_TIER_MONTHLY_TOKENS: 14_000,         // $5.00 AI budget — no combination exceeds $5
+  ENTERPRISE_TIER_MONTHLY_TOKENS: 70_000,  // $24.92 AI budget
 };
 
 export const TOKEN_COSTS = {
-  // AI operations (expensive)
-  GENERATE_VISUALIZATION: 10,  // Full AI generation with GPT-4
-  EDIT_VISUALIZATION: 8,       // Slightly cheaper than generation as it reuses data
-  EXPAND_NODE: 5,             // AI expansion of existing nodes
+  // Derived from $0.000356/token (anchored to edit, the most expensive op)
+  GENERATE_VISUALIZATION: 10,   // $0.003480 actual → 9.78 → 10
+  EDIT_VISUALIZATION: 18,       // $0.006400 actual → 17.98 → 18
+  EXPAND_NODE: 2,               // $0.000450 actual → 1.26 → 2
 
-  // Database operations (cheap/free)
-  SAVE_VISUALIZATION: 0,      // Just database write
-  DELETE_VISUALIZATION: 0,    // Just database delete
-  EXPORT_VISUALIZATION: 1,    // Minor processing cost
-  SHARE_VISUALIZATION: 0,     // Just database update
+  // Database operations (no AI call)
+  SAVE_VISUALIZATION: 0,
+  DELETE_VISUALIZATION: 0,
+  EXPORT_VISUALIZATION: 0,
+  SHARE_VISUALIZATION: 0,
 
-  // Query operations (free)
+  // Query operations
   GET_VISUALIZATIONS: 0,
   GET_VISUALIZATION: 0,
 };

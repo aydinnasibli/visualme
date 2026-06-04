@@ -1,12 +1,7 @@
-import type { Config } from 'tailwindcss'
+// Tailwind v4 is CSS-first — all configuration lives in app/globals.css via @theme / @variant.
+// This file is kept only for tooling compatibility (IDE plugins that expect it to exist).
+import type { Config } from 'tailwindcss';
 
-const config: Config = {
-  content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
-  darkMode: "class",
-}
+const config: Config = {};
 
-export default config
+export default config;

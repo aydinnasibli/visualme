@@ -1,23 +1,20 @@
 import mongoose, { Schema, Model, Document } from 'mongoose';
 
 export interface IUser extends Document {
-  clerkId: string; // Clerk userId
+  clerkId: string;
   email?: string;
   username?: string;
   firstName?: string;
   lastName?: string;
   imageUrl?: string;
 
-  // User preferences and data
   extendedNodes: string[];
   savedVisualizations: mongoose.Types.ObjectId[];
 
-  // Subscription and usage
   plan: 'free' | 'pro' | 'enterprise';
   usageCount: number;
   lastResetDate: Date;
 
-  // Metadata
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
@@ -48,18 +45,15 @@ const UserSchema = new Schema<IUser>(
     lastName: String,
     imageUrl: String,
 
-    // User data
     extendedNodes: {
       type: [String],
       default: [],
-      index: true,
     },
     savedVisualizations: [{
       type: Schema.Types.ObjectId,
       ref: 'Visualization',
     }],
 
-    // Subscription and usage
     plan: {
       type: String,
       enum: ['free', 'pro', 'enterprise'],
@@ -81,36 +75,29 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-// Indexes for better query performance
-UserSchema.index({ clerkId: 1 });
-UserSchema.index({ email: 1 }, { sparse: true });
 UserSchema.index({ plan: 1, usageCount: 1 });
-UserSchema.index({ 'extendedNodes': 1 }, { sparse: true });
 
-// Static method to find or create user
+// Atomic upsert: prevents duplicate documents under concurrent requests
 UserSchema.statics.findOrCreate = async function(clerkId: string, userData?: Partial<IUser>) {
-  let user = await this.findOne({ clerkId });
+  const update: Record<string, unknown> = { $setOnInsert: { clerkId } };
 
-  if (!user) {
-    user = await this.create({
-      clerkId,
-      ...userData,
-    });
-  } else if (userData) {
-    // Update user data if provided
-    Object.assign(user, userData);
-    await user.save();
+  if (userData) {
+    update.$set = userData;
   }
+
+  const user = await this.findOneAndUpdate(
+    { clerkId },
+    update,
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   return user;
 };
 
-// Instance method to check if node is extended
 UserSchema.methods.hasExtendedNode = function(nodeId: string): boolean {
   return this.extendedNodes.includes(nodeId);
 };
 
-// Instance method to add extended node
 UserSchema.methods.addExtendedNode = async function(nodeId: string) {
   if (!this.extendedNodes.includes(nodeId)) {
     this.extendedNodes.push(nodeId);
@@ -119,14 +106,12 @@ UserSchema.methods.addExtendedNode = async function(nodeId: string) {
   return this;
 };
 
-// Instance method to remove extended node
 UserSchema.methods.removeExtendedNode = async function(nodeId: string) {
   this.extendedNodes = this.extendedNodes.filter((id: string) => id !== nodeId);
   await this.save();
   return this;
 };
 
-// Instance method to clear all extended nodes
 UserSchema.methods.clearExtendedNodes = async function() {
   this.extendedNodes = [];
   await this.save();

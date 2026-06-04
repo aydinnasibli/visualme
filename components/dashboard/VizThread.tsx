@@ -20,6 +20,14 @@ export interface ThreadEntry {
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date | string }>;
   vizId: string | null;
   isSaved: boolean;
+  isPublic?: boolean;
+  shareId?: string | null;
+  metadata?: {
+    generatedAt?: string;
+    processingTime?: number;
+    aiModel?: string;
+    fromCache?: boolean;
+  };
 }
 
 export const TYPE_META: Record<string, { icon: string; color: string; label: string }> = {

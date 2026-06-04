@@ -30,6 +30,14 @@ import type {
   SyntaxDiagramData,
 } from '../types/visualization';
 
+// ── Model tiers ─────────────────────────────────────────────────────────────
+// COMPLEX: relationship-heavy vizs that need reasoning + rich JSON (gpt-4.1-mini)
+// SIMPLE:  numerical/text vizs with predictable structure (gpt-4.1-nano)
+const MODELS = {
+  COMPLEX: 'gpt-4.1-mini',
+  SIMPLE:  'gpt-4.1-nano',
+} as const;
+
 let openai: OpenAI | null = null;
 
 function getOpenAIClient() {
@@ -82,7 +90,7 @@ JSON Format:
   "edges": [{"id": "e1", "source": "n1", "target": "n2", "label": "connection type"}]
 }`;
 
-  return await callOpenAI<NetworkGraphData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<NetworkGraphData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 export async function expandNetworkNode(
   nodeLabel: string,
@@ -123,7 +131,7 @@ JSON Format:
   "edges": [{"id": "new_edge_1", "source": "${nodeId}", "target": "new_id_1", "label": "consists of"}]
 }`;
 
-  return await callOpenAI<NetworkGraphData>(systemPrompt, `Expand on ${nodeLabel} in the context of ${context}`, 'gpt-4o-mini');
+  return await callOpenAI<NetworkGraphData>(systemPrompt, `Expand on ${nodeLabel} in the context of ${context}`, MODELS.SIMPLE);
 }
 export async function generateMindMap(userInput: string): Promise<MindMapData> {
   const systemPrompt = `You are an expert mind map generator. Convert the user's text into a hierarchical mind map structure with rich, explorable nodes.
@@ -179,7 +187,7 @@ JSON Format:
   }
 }`;
 
-  return await callOpenAI<MindMapData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<MindMapData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 export async function expandMindMapNode(
@@ -233,7 +241,7 @@ JSON Format - Return ONLY an array of nodes:
   const result = await callOpenAI<{ nodes?: MindMapNode[] }>(
     systemPrompt,
     `Expand on "${nodeContent}" in the context of "${context}"`,
-    'gpt-4o-mini'
+    MODELS.SIMPLE
   );
 
   // Handle both { nodes: [...] } and direct array response
@@ -273,7 +281,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<TreeDiagramData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<TreeDiagramData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 // ============================================================================
@@ -302,7 +310,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<TimelineData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<TimelineData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 export async function generateGanttChart(userInput: string): Promise<GanttChartData> {
@@ -325,7 +333,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<GanttChartData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<GanttChartData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 export async function generateAnimatedTimeline(userInput: string): Promise<AnimatedTimelineData> {
@@ -344,7 +352,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<AnimatedTimelineData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<AnimatedTimelineData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 // ============================================================================
@@ -373,7 +381,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<FlowchartData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<FlowchartData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 export async function generateSankeyDiagram(userInput: string): Promise<SankeyDiagramData> {
@@ -390,7 +398,7 @@ JSON format:
   "links": [{"source": "visitors", "target": "leads", "value": 1000}]
 }`;
 
-  return await callOpenAI<SankeyDiagramData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<SankeyDiagramData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 export async function generateSwimlaneDiagram(userInput: string): Promise<SwimlaneDiagramData> {
@@ -409,7 +417,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<SwimlaneDiagramData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<SwimlaneDiagramData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 // ============================================================================
@@ -433,7 +441,7 @@ JSON format:
   "lines": ["revenue", "expenses"]
 }`;
 
-  return await callOpenAI<LineChartData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<LineChartData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 export async function generateBarChart(userInput: string): Promise<BarChartData> {
@@ -452,7 +460,7 @@ JSON format:
   "bars": ["sales", "target"]
 }`;
 
-  return await callOpenAI<BarChartData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<BarChartData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 export async function generateScatterPlot(userInput: string): Promise<ScatterPlotData> {
@@ -470,7 +478,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<ScatterPlotData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<ScatterPlotData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 export async function generateHeatmap(userInput: string): Promise<HeatmapData> {
@@ -489,7 +497,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<HeatmapData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<HeatmapData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 export async function generateRadarChart(userInput: string): Promise<RadarChartData> {
@@ -509,7 +517,7 @@ JSON format:
   "metrics": ["productA", "productB"]
 }`;
 
-  return await callOpenAI<RadarChartData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<RadarChartData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 export async function generatePieChart(userInput: string): Promise<PieChartData> {
@@ -528,7 +536,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<PieChartData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<PieChartData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 // ============================================================================
@@ -555,7 +563,7 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<ComparisonTableData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<ComparisonTableData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
 export async function generateParallelCoordinates(userInput: string): Promise<ParallelCoordinatesData> {
@@ -574,7 +582,7 @@ JSON format:
   "dimensions": ["speed", "quality", "price", "durability"]
 }`;
 
-  return await callOpenAI<ParallelCoordinatesData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<ParallelCoordinatesData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 // ============================================================================
@@ -600,7 +608,7 @@ JSON format:
 
   // Using d3-cloud (industry standard, actively maintained)
   // Component will use d3-cloud for layout + custom React rendering
-  return await callOpenAI<WordCloudData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<WordCloudData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 export async function generateSyntaxDiagram(userInput: string): Promise<SyntaxDiagramData> {
@@ -620,14 +628,14 @@ JSON format:
   ]
 }`;
 
-  return await callOpenAI<SyntaxDiagramData>(systemPrompt, userInput, 'gpt-4o-mini');
+  return await callOpenAI<SyntaxDiagramData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
 // ============================================================================
 // HELPER FUNCTION
 // ============================================================================
 
-async function callOpenAI<T>(systemPrompt: string, userInput: string, model: string = 'gpt-4o-mini'): Promise<T> {
+async function callOpenAI<T>(systemPrompt: string, userInput: string, model: string = MODELS.SIMPLE): Promise<T> {
   try {
     const client = getOpenAIClient();
     const completion = await client.chat.completions.create({
@@ -756,7 +764,7 @@ Return valid JSON:
     const response = await callOpenAI<{ message: string; data: VisualizationData | null }>(
       systemPrompt,
       userPrompt,
-      'gpt-4o'
+      MODELS.COMPLEX
     );
 
     return {

@@ -1,6 +1,6 @@
 import type { UserResource } from '@clerk/types';
 import Link from 'next/link';
-import { Settings } from 'lucide-react';
+import { Settings, FolderOpen } from 'lucide-react';
 
 interface HeaderProps {
   user: UserResource | null;
@@ -25,6 +25,9 @@ const Header = ({ user }: HeaderProps) => {
               </div>
             )}
           </div>
+          <Link href="/my-visualizations" className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 hover:text-stone-200 hover:bg-white/5 transition-colors" title="My Visualizations">
+            <FolderOpen className="w-5 h-5" />
+          </Link>
           <Link href="/dashboard/settings" className="w-8 h-8 rounded-full flex items-center justify-center text-stone-500 hover:text-stone-200 hover:bg-white/5 transition-colors" title="Settings">
             <Settings className="w-5 h-5" />
           </Link>

@@ -353,6 +353,8 @@ export interface VisualizationResponse {
   error?: string;
   metadata?: VisualizationMetadata;
   title?: string;
+  /** True when the result was served from cache (no AI call, no token cost). */
+  fromCache?: boolean;
 }
 
 export interface VisualizationMetadata {

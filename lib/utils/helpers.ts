@@ -1,13 +1,10 @@
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 /**
  * Generate a unique share ID for visualizations
  */
 export function generateShareId(): string {
-  return createHash('sha256')
-    .update(Date.now().toString() + Math.random().toString())
-    .digest('hex')
-    .substring(0, 12);
+  return randomBytes(8).toString('hex');
 }
 
 /**

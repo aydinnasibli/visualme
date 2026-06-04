@@ -2,6 +2,13 @@
 @import "react-grid-layout/css/styles.css";
 @import "react-resizable/css/styles.css";
 
+/* ── Tailwind v4: class-based dark mode (html has className="dark") ── */
+@variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+}
+
 /* ── Tailwind v4: CSS-first theme tokens ── */
 @theme {
   /* Colors — must use --color-* prefix to generate bg-*, text-*, border-* utilities */
