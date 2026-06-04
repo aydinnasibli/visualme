@@ -82,7 +82,10 @@ export async function generateVisualization(
     const cached = await getCachedVisualization(input, format);
     if (cached) {
       await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
-      await UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } });
+      await Promise.all([
+        UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
+        UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
+      ]);
 
       return {
         success: true,
@@ -112,7 +115,10 @@ export async function generateVisualization(
     if (!deduction.success) {
       console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
     }
-    await UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } });
+    await Promise.all([
+      UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
+      UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
+    ]);
 
     const processingTime = Date.now() - startTime;
     const formatInfo = FORMAT_INFO[format];
@@ -188,10 +194,10 @@ export async function expandNodeAction(
       console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
     }
 
-    await UserUsageModel.updateOne(
-      { userId },
-      { $inc: { visualizationsCreated: 1 } }
-    );
+    await Promise.all([
+      UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
+      UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
+    ]);
 
     return { success: true, data: newData };
   } catch (error) {
@@ -255,10 +261,10 @@ export async function expandMindMapNodeAction(
       console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
     }
 
-    await UserUsageModel.updateOne(
-      { userId },
-      { $inc: { visualizationsCreated: 1 } }
-    );
+    await Promise.all([
+      UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
+      UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
+    ]);
 
     return { success: true, data: newNodes };
   } catch (error) {
@@ -333,6 +339,11 @@ export async function editVisualizationAction(
     if (!deduction.success) {
       console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
     }
+
+    await Promise.all([
+      UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
+      UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
+    ]);
 
     let updatedVisualization: any = null;
 
