@@ -4,9 +4,10 @@ import { Types } from 'mongoose';
  * Validation limits for security and resource management
  */
 export const VALIDATION_LIMITS = {
-  MAX_INPUT_LENGTH: 10000, // ~10KB max input for AI generation
+  MAX_INPUT_LENGTH: 10000,          // ~10KB max input for AI generation
   MAX_TITLE_LENGTH: 200,
-  MAX_DATA_SIZE: 1024 * 1024, // 1MB max visualization data
+  MAX_DATA_SIZE: 1024 * 1024,       // 1MB max for DB storage
+  MAX_EDIT_DATA_SIZE: 100 * 1024,   // 100KB max data sent to AI for edits (~25K tokens input cap)
   MAX_EXTENDED_NODES: 100,
   MAX_SAVED_VISUALIZATIONS_FREE: 50,
   MAX_SAVED_VISUALIZATIONS_PRO: 1000,
@@ -15,45 +16,43 @@ export const VALIDATION_LIMITS = {
 };
 
 /**
- * Token economy — gpt-4.1 family, April 2025 pricing.
+ * Token economy — gpt-5.4-mini, June 2026 pricing.
  *
- * Models:
- *   Complex vizs + editing → gpt-4.1-mini  ($0.40/1M in · $1.60/1M out)
- *   Simple vizs + expand   → gpt-4.1-nano  ($0.10/1M in · $0.40/1M out)
+ * All operations use gpt-5.4-mini ($0.75/1M in · $4.50/1M out).
  *
  * Real cost per call:
- *   Generate (mini):  ~700 in + 2000 out  = $0.003480
- *   Edit     (mini): ~4000 in + 3000 out  = $0.006400  ← most expensive
- *   Expand   (nano):  ~500 in + 1000 out  = $0.000450
+ *   Generate: ~700 in  + 2000 out = $0.009525
+ *   Edit:    ~4000 in  + 3000 out = $0.016500  ← most expensive
+ *   Expand:   ~500 in  + 1000 out = $0.004875
  *
  * Unit token price anchored to the most expensive op (edit):
- *   $0.006400 ÷ 18 = $0.000356 / token
+ *   $0.016500 ÷ 18 = $0.000917 / token
  *
- * Token costs derived strictly from that rate:
- *   Generate: $0.003480 ÷ $0.000356 = 9.78  → 10 tokens
- *   Edit:     $0.006400 ÷ $0.000356 = 17.98 → 18 tokens
- *   Expand:   $0.000450 ÷ $0.000356 = 1.26  →  2 tokens
+ * Token costs (rounded UP to protect budget):
+ *   Generate: $0.009525 ÷ $0.000917 = 10.39 → 11 tokens
+ *   Edit:     $0.016500 ÷ $0.000917 = 18.00 → 18 tokens
+ *   Expand:   $0.004875 ÷ $0.000917 =  5.32 →  6 tokens
  *
- * Pro monthly limit = $5.00 ÷ $0.000356 = 14,045 → floored to 14,000.
+ * Pro monthly limit = $5.00 ÷ $0.000917 = 5,453 → floored to 5,400.
  *
- * PROOF no combination can exceed $5 (no gap):
- *   Worst case (all edits):    14,000÷18 = 777  × $0.00640 = $4.973 < $5 ✓
- *   All complex generates:     14,000÷10 = 1400 × $0.00348 = $4.872 < $5 ✓
- *   All expansions:            14,000÷2  = 7000 × $0.00045 = $3.150 < $5 ✓
- *   Any mix:  max = 14,000 × $0.000356  =                    $4.984 < $5 ✓
+ * PROOF no combination can exceed $5:
+ *   All edits:    5,400÷18 = 300  × $0.016500 = $4.95 < $5 ✓
+ *   All generates: 5,400÷11 = 490 × $0.009525 = $4.67 < $5 ✓
+ *   All expands:   5,400÷6  = 900 × $0.004875 = $4.39 < $5 ✓
+ *   Any mix: max = 5,400 × $0.000917            = $4.95 < $5 ✓
  */
 
 export const TOKEN_LIMITS = {
-  FREE_TIER_MONTHLY_TOKENS: 100,           // ~10 generates ($0.035 AI cost)
-  PRO_TIER_MONTHLY_TOKENS: 14_000,         // $5.00 AI budget — no combination exceeds $5
-  ENTERPRISE_TIER_MONTHLY_TOKENS: 70_000,  // $24.92 AI budget
+  FREE_TIER_MONTHLY_TOKENS: 110,          // ~10 generates ($0.105 AI cost)
+  PRO_TIER_MONTHLY_TOKENS: 5_400,         // $5.00 AI budget — no combination exceeds $5
+  ENTERPRISE_TIER_MONTHLY_TOKENS: 27_000, // ~$24.76 AI budget
 };
 
 export const TOKEN_COSTS = {
-  // Derived from $0.000356/token (anchored to edit, the most expensive op)
-  GENERATE_VISUALIZATION: 10,   // $0.003480 actual → 9.78 → 10
-  EDIT_VISUALIZATION: 18,       // $0.006400 actual → 17.98 → 18
-  EXPAND_NODE: 2,               // $0.000450 actual → 1.26 → 2
+  // Derived from $0.000917/token (anchored to edit, the most expensive op)
+  GENERATE_VISUALIZATION: 11,   // $0.009525 actual → 10.39 → 11
+  EDIT_VISUALIZATION: 18,       // $0.016500 actual → 18.00 → 18
+  EXPAND_NODE: 6,               // $0.004875 actual →  5.32 →  6
 
   // Database operations (no AI call)
   SAVE_VISUALIZATION: 0,
@@ -73,6 +72,24 @@ export const TOKEN_REFRESH = {
   INTERVAL: 'monthly' as const,
   DAY_OF_MONTH: 1, // Refresh on 1st of each month
 };
+
+// gpt-5.4-mini pricing constants used to convert real OpenAI token usage → internal tokens
+export const MODEL_PRICING = {
+  INPUT_PER_TOKEN:  0.75  / 1_000_000,  // $0.00000075 per input token
+  OUTPUT_PER_TOKEN: 4.50  / 1_000_000,  // $0.0000045  per output token
+  UNIT_TOKEN_PRICE: 0.000917,            // internal token unit (anchored to edit cost ÷ 18)
+} as const;
+
+/**
+ * Convert actual OpenAI token usage to internal tokens.
+ * Used by all action functions instead of flat TOKEN_COSTS estimates.
+ */
+export function calcInternalTokens(promptTokens: number, completionTokens: number): number {
+  const actualCost =
+    promptTokens   * MODEL_PRICING.INPUT_PER_TOKEN +
+    completionTokens * MODEL_PRICING.OUTPUT_PER_TOKEN;
+  return Math.max(1, Math.ceil(actualCost / MODEL_PRICING.UNIT_TOKEN_PRICE));
+}
 
 /**
  * Get token cost breakdown

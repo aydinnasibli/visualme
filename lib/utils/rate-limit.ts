@@ -40,7 +40,7 @@ export async function checkRateLimit(
   const limiter = getLimiter(op);
 
   if (!limiter) {
-    // Redis not configured — fail open so the app works without Upstash
+    console.error('[rate-limit] Redis not configured — rate limiting is DISABLED. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.');
     return { allowed: true, remaining: -1 };
   }
 
@@ -51,8 +51,10 @@ export async function checkRateLimit(
       remaining,
       retryAfter: success ? undefined : Math.ceil((reset - Date.now()) / 1000),
     };
-  } catch {
-    // Redis unavailable — fail open rather than blocking legitimate users
+  } catch (err) {
+    // Redis unavailable — fail open rather than blocking legitimate users.
+    // Token balance acts as the financial backstop.
+    console.error('[rate-limit] Redis unavailable, failing open:', err);
     return { allowed: true, remaining: -1 };
   }
 }

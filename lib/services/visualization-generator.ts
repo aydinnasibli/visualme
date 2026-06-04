@@ -4,7 +4,6 @@
  */
 
 import OpenAI from 'openai';
-import { z } from 'zod';
 import type {
   VisualizationType,
   VisualizationData,
@@ -31,12 +30,18 @@ import type {
 } from '../types/visualization';
 
 // ── Model tiers ─────────────────────────────────────────────────────────────
-// COMPLEX: relationship-heavy vizs that need reasoning + rich JSON (gpt-4.1-mini)
-// SIMPLE:  numerical/text vizs with predictable structure (gpt-4.1-nano)
+// All operations use gpt-5.4-mini for best quality output
 const MODELS = {
-  COMPLEX: 'gpt-4.1-mini',
-  SIMPLE:  'gpt-4.1-nano',
+  COMPLEX: 'gpt-5.4-mini',
+  SIMPLE:  'gpt-5.4-mini',
 } as const;
+
+// Carrier type: every AI call returns its data + real token usage for accurate billing
+export interface AIResult<T> {
+  data: T;
+  promptTokens: number;
+  completionTokens: number;
+}
 
 let openai: OpenAI | null = null;
 
@@ -55,7 +60,7 @@ function getOpenAIClient() {
 // CATEGORY 1: RELATIONSHIPS & NETWORKS
 // ============================================================================
 
-export async function generateNetworkGraph(userInput: string): Promise<NetworkGraphData> {
+async function generateNetworkGraph(userInput: string): Promise<AIResult<NetworkGraphData>> {
   const systemPrompt = `You are an expert knowledge graph generator. Convert the user's text into a detailed network graph with rich, explorable nodes.
 
 CRITICAL RULES:
@@ -92,12 +97,13 @@ JSON Format:
 
   return await callOpenAI<NetworkGraphData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
+
 export async function expandNetworkNode(
   nodeLabel: string,
   nodeId: string,
   context: string,
   existingNodes: string[]
-): Promise<NetworkGraphData> {
+): Promise<AIResult<NetworkGraphData>> {
   const systemPrompt = `You are a knowledge graph expander. The user wants to explore the concept "${nodeLabel}" deeper.
 
 Context: The user is visualizing "${context}".
@@ -133,7 +139,8 @@ JSON Format:
 
   return await callOpenAI<NetworkGraphData>(systemPrompt, `Expand on ${nodeLabel} in the context of ${context}`, MODELS.SIMPLE);
 }
-export async function generateMindMap(userInput: string): Promise<MindMapData> {
+
+async function generateMindMap(userInput: string): Promise<AIResult<MindMapData>> {
   const systemPrompt = `You are an expert mind map generator. Convert the user's text into a hierarchical mind map structure with rich, explorable nodes.
 
 CRITICAL RULES:
@@ -195,7 +202,7 @@ export async function expandMindMapNode(
   nodeContent: string,
   context: string,
   existingNodeIds: string[]
-): Promise<MindMapNode[]> {
+): Promise<AIResult<MindMapNode[]>> {
   const systemPrompt = `You are a mind map expander. The user wants to explore the concept "${nodeContent}" deeper by adding child nodes.
 
 Context: The user is visualizing "${context}".
@@ -238,17 +245,20 @@ JSON Format - Return ONLY an array of nodes:
   }
 ]`;
 
-  const result = await callOpenAI<{ nodes?: MindMapNode[] }>(
+  const { data: result, promptTokens, completionTokens } = await callOpenAI<{ nodes?: MindMapNode[] } | MindMapNode[]>(
     systemPrompt,
     `Expand on "${nodeContent}" in the context of "${context}"`,
     MODELS.SIMPLE
   );
 
-  // Handle both { nodes: [...] } and direct array response
-  return Array.isArray(result) ? result : (result.nodes || []);
+  const nodes = Array.isArray(result)
+    ? result
+    : ((result as { nodes?: MindMapNode[] }).nodes || []);
+
+  return { data: nodes, promptTokens, completionTokens };
 }
 
-export async function generateTreeDiagram(userInput: string): Promise<TreeDiagramData> {
+async function generateTreeDiagram(userInput: string): Promise<AIResult<TreeDiagramData>> {
   const systemPrompt = `Convert text into a hierarchical tree diagram structure with rich attributes.
 
 Rules:
@@ -288,7 +298,7 @@ JSON format:
 // CATEGORY 2: TIME & SEQUENCE
 // ============================================================================
 
-export async function generateTimeline(userInput: string): Promise<TimelineData> {
+async function generateTimeline(userInput: string): Promise<AIResult<TimelineData>> {
   const systemPrompt = `Create a rich historical or project timeline.
 
 Rules:
@@ -313,7 +323,7 @@ JSON format:
   return await callOpenAI<TimelineData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
-export async function generateGanttChart(userInput: string): Promise<GanttChartData> {
+async function generateGanttChart(userInput: string): Promise<AIResult<GanttChartData>> {
   const systemPrompt = `Create Gantt chart data for project planning and scheduling.
 
 Rules:
@@ -336,7 +346,7 @@ JSON format:
   return await callOpenAI<GanttChartData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
-export async function generateAnimatedTimeline(userInput: string): Promise<AnimatedTimelineData> {
+async function generateAnimatedTimeline(userInput: string): Promise<AIResult<AnimatedTimelineData>> {
   const systemPrompt = `Create animated timeline sequence data.
 
 Rules:
@@ -359,7 +369,7 @@ JSON format:
 // CATEGORY 3: PROCESSES & FLOWS
 // ============================================================================
 
-export async function generateFlowchart(userInput: string): Promise<FlowchartData> {
+async function generateFlowchart(userInput: string): Promise<AIResult<FlowchartData>> {
   const systemPrompt = `Create flowchart data for process visualization.
 
 Rules:
@@ -384,7 +394,7 @@ JSON format:
   return await callOpenAI<FlowchartData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
-export async function generateSankeyDiagram(userInput: string): Promise<SankeyDiagramData> {
+async function generateSankeyDiagram(userInput: string): Promise<AIResult<SankeyDiagramData>> {
   const systemPrompt = `Create Sankey diagram data for flow visualization.
 
 Rules:
@@ -401,7 +411,7 @@ JSON format:
   return await callOpenAI<SankeyDiagramData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
-export async function generateSwimlaneDiagram(userInput: string): Promise<SwimlaneDiagramData> {
+async function generateSwimlaneDiagram(userInput: string): Promise<AIResult<SwimlaneDiagramData>> {
   const systemPrompt = `Create swimlane diagram data for cross-functional processes.
 
 Rules:
@@ -424,7 +434,7 @@ JSON format:
 // CATEGORY 4: NUMERICAL DATA
 // ============================================================================
 
-export async function generateLineChart(userInput: string): Promise<LineChartData> {
+async function generateLineChart(userInput: string): Promise<AIResult<LineChartData>> {
   const systemPrompt = `Create line chart data for trends visualization.
 
 Rules:
@@ -444,7 +454,7 @@ JSON format:
   return await callOpenAI<LineChartData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
-export async function generateBarChart(userInput: string): Promise<BarChartData> {
+async function generateBarChart(userInput: string): Promise<AIResult<BarChartData>> {
   const systemPrompt = `Create bar chart data for categorical comparisons.
 
 Rules:
@@ -463,7 +473,7 @@ JSON format:
   return await callOpenAI<BarChartData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
-export async function generateScatterPlot(userInput: string): Promise<ScatterPlotData> {
+async function generateScatterPlot(userInput: string): Promise<AIResult<ScatterPlotData>> {
   const systemPrompt = `Create scatter plot data for correlation visualization.
 
 Rules:
@@ -481,7 +491,7 @@ JSON format:
   return await callOpenAI<ScatterPlotData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
-export async function generateHeatmap(userInput: string): Promise<HeatmapData> {
+async function generateHeatmap(userInput: string): Promise<AIResult<HeatmapData>> {
   const systemPrompt = `Create heatmap data for density visualization.
 
 Rules:
@@ -500,7 +510,7 @@ JSON format:
   return await callOpenAI<HeatmapData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
-export async function generateRadarChart(userInput: string): Promise<RadarChartData> {
+async function generateRadarChart(userInput: string): Promise<AIResult<RadarChartData>> {
   const systemPrompt = `Create radar chart data for multi-dimensional comparison.
 
 Rules:
@@ -520,7 +530,7 @@ JSON format:
   return await callOpenAI<RadarChartData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
-export async function generatePieChart(userInput: string): Promise<PieChartData> {
+async function generatePieChart(userInput: string): Promise<AIResult<PieChartData>> {
   const systemPrompt = `Create pie chart data for proportions visualization.
 
 Rules:
@@ -543,7 +553,7 @@ JSON format:
 // CATEGORY 5: COMPARISONS
 // ============================================================================
 
-export async function generateComparisonTable(userInput: string): Promise<ComparisonTableData> {
+async function generateComparisonTable(userInput: string): Promise<AIResult<ComparisonTableData>> {
   const systemPrompt = `Create comparison table data.
 
 Rules:
@@ -566,7 +576,7 @@ JSON format:
   return await callOpenAI<ComparisonTableData>(systemPrompt, userInput, MODELS.COMPLEX);
 }
 
-export async function generateParallelCoordinates(userInput: string): Promise<ParallelCoordinatesData> {
+async function generateParallelCoordinates(userInput: string): Promise<AIResult<ParallelCoordinatesData>> {
   const systemPrompt = `Create parallel coordinates data for multi-dimensional comparison.
 
 Rules:
@@ -589,7 +599,7 @@ JSON format:
 // CATEGORY 6: TEXT & CONTENT
 // ============================================================================
 
-export async function generateWordCloud(userInput: string): Promise<WordCloudData> {
+async function generateWordCloud(userInput: string): Promise<AIResult<WordCloudData>> {
   const systemPrompt = `Create word cloud data for text frequency visualization.
 
 Rules:
@@ -611,7 +621,7 @@ JSON format:
   return await callOpenAI<WordCloudData>(systemPrompt, userInput, MODELS.SIMPLE);
 }
 
-export async function generateSyntaxDiagram(userInput: string): Promise<SyntaxDiagramData> {
+async function generateSyntaxDiagram(userInput: string): Promise<AIResult<SyntaxDiagramData>> {
   const systemPrompt = `Create syntax diagram data for grammar/syntax visualization.
 
 Rules:
@@ -635,7 +645,11 @@ JSON format:
 // HELPER FUNCTION
 // ============================================================================
 
-async function callOpenAI<T>(systemPrompt: string, userInput: string, model: string = MODELS.SIMPLE): Promise<T> {
+async function callOpenAI<T>(
+  systemPrompt: string,
+  userInput: string,
+  model: string = MODELS.SIMPLE
+): Promise<AIResult<T>> {
   try {
     const client = getOpenAIClient();
     const completion = await client.chat.completions.create({
@@ -646,6 +660,7 @@ async function callOpenAI<T>(systemPrompt: string, userInput: string, model: str
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
+      max_tokens: 16384, // hard cap — prevents runaway output costs
     });
 
     const responseContent = completion.choices[0]?.message?.content;
@@ -653,7 +668,11 @@ async function callOpenAI<T>(systemPrompt: string, userInput: string, model: str
       throw new Error('No response from OpenAI');
     }
 
-    return JSON.parse(responseContent) as T;
+    return {
+      data: JSON.parse(responseContent) as T,
+      promptTokens:     completion.usage?.prompt_tokens     ?? 0,
+      completionTokens: completion.usage?.completion_tokens ?? 0,
+    };
   } catch (error) {
     console.error('Error in OpenAI call:', error);
     throw new Error(`Failed to generate visualization data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -667,46 +686,27 @@ async function callOpenAI<T>(systemPrompt: string, userInput: string, model: str
 export async function generateVisualizationData(
   type: VisualizationType,
   userInput: string
-): Promise<VisualizationData> {
+): Promise<AIResult<VisualizationData>> {
   switch (type) {
-    case 'network_graph':
-      return await generateNetworkGraph(userInput);
-    case 'mind_map':
-      return await generateMindMap(userInput);
-    case 'tree_diagram':
-      return await generateTreeDiagram(userInput);
-    case 'timeline':
-      return await generateTimeline(userInput);
-    case 'gantt_chart':
-      return await generateGanttChart(userInput);
-    case 'animated_timeline':
-      return await generateAnimatedTimeline(userInput);
-    case 'flowchart':
-      return await generateFlowchart(userInput);
-    case 'sankey_diagram':
-      return await generateSankeyDiagram(userInput);
-    case 'swimlane_diagram':
-      return await generateSwimlaneDiagram(userInput);
-    case 'line_chart':
-      return await generateLineChart(userInput);
-    case 'bar_chart':
-      return await generateBarChart(userInput);
-    case 'scatter_plot':
-      return await generateScatterPlot(userInput);
-    case 'heatmap':
-      return await generateHeatmap(userInput);
-    case 'radar_chart':
-      return await generateRadarChart(userInput);
-    case 'pie_chart':
-      return await generatePieChart(userInput);
-    case 'comparison_table':
-      return await generateComparisonTable(userInput);
-    case 'parallel_coordinates':
-      return await generateParallelCoordinates(userInput);
-    case 'word_cloud':
-      return await generateWordCloud(userInput);
-    case 'syntax_diagram':
-      return await generateSyntaxDiagram(userInput);
+    case 'network_graph':       return await generateNetworkGraph(userInput);
+    case 'mind_map':            return await generateMindMap(userInput);
+    case 'tree_diagram':        return await generateTreeDiagram(userInput);
+    case 'timeline':            return await generateTimeline(userInput);
+    case 'gantt_chart':         return await generateGanttChart(userInput);
+    case 'animated_timeline':   return await generateAnimatedTimeline(userInput);
+    case 'flowchart':           return await generateFlowchart(userInput);
+    case 'sankey_diagram':      return await generateSankeyDiagram(userInput);
+    case 'swimlane_diagram':    return await generateSwimlaneDiagram(userInput);
+    case 'line_chart':          return await generateLineChart(userInput);
+    case 'bar_chart':           return await generateBarChart(userInput);
+    case 'scatter_plot':        return await generateScatterPlot(userInput);
+    case 'heatmap':             return await generateHeatmap(userInput);
+    case 'radar_chart':         return await generateRadarChart(userInput);
+    case 'pie_chart':           return await generatePieChart(userInput);
+    case 'comparison_table':    return await generateComparisonTable(userInput);
+    case 'parallel_coordinates':return await generateParallelCoordinates(userInput);
+    case 'word_cloud':          return await generateWordCloud(userInput);
+    case 'syntax_diagram':      return await generateSyntaxDiagram(userInput);
     default:
       throw new Error(`Unsupported visualization type: ${type}`);
   }
@@ -718,20 +718,15 @@ export async function generateVisualizationData(
 
 export class VisualizationGeneratorService {
   /**
-   * Edit an existing visualization using AI
-   * Supports both Q&A (Text only) and Data Modification (Text + Data)
-   * @param type - The type of visualization
-   * @param existingData - The current visualization data
-   * @param editPrompt - User's natural language edit request
-   * @param history - Optional conversation history for context
-   * @returns Object with message and optional updated data
+   * Edit an existing visualization using AI.
+   * Returns the assistant message, optional updated data, and real token usage.
    */
   async editVisualization(
     type: VisualizationType,
     existingData: VisualizationData,
     editPrompt: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }> = []
-  ): Promise<{ message: string; data?: VisualizationData }> {
+  ): Promise<{ message: string; data?: VisualizationData; promptTokens: number; completionTokens: number }> {
     const systemPrompt = this.getEditSystemPrompt(type);
 
     // Format history for context, limited to last 5 turns to save context window
@@ -740,7 +735,7 @@ export class VisualizationGeneratorService {
       : '';
 
     const userPrompt = `EXISTING VISUALIZATION DATA:
-${JSON.stringify(existingData, null, 2)}
+${JSON.stringify(existingData)}
 ${historyContext}
 USER'S REQUEST:
 ${editPrompt}
@@ -761,15 +756,16 @@ Return valid JSON:
   "data": object | null
 }`;
 
-    const response = await callOpenAI<{ message: string; data: VisualizationData | null }>(
-      systemPrompt,
-      userPrompt,
-      MODELS.COMPLEX
-    );
+    const { data: response, promptTokens, completionTokens } = await callOpenAI<{
+      message: string;
+      data: VisualizationData | null;
+    }>(systemPrompt, userPrompt, MODELS.COMPLEX);
 
     return {
       message: response.message,
-      data: response.data || undefined
+      data: response.data || undefined,
+      promptTokens,
+      completionTokens,
     };
   }
 
@@ -822,7 +818,6 @@ For tree diagrams:
 - Preserve tree structure validity
 - Keep node attributes consistent`,
 
-      // Add more type-specific prompts as needed
       animated_timeline: basePrompt,
       flowchart: basePrompt,
       sankey_diagram: basePrompt,

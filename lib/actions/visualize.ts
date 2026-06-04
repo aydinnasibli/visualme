@@ -15,7 +15,8 @@ import {
   validateTitle,
   sanitizeError,
   VALIDATION_LIMITS,
-  TOKEN_COSTS
+  TOKEN_COSTS,
+  calcInternalTokens,
 } from '@/lib/utils/validation';
 import { checkTokenBalance, deductTokens, getTokenBalance } from '@/lib/utils/tokens';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
@@ -100,13 +101,17 @@ export async function generateVisualization(
     }
 
     // ── Generate with AI ─────────────────────────────────────────────────────
-    const data = await generateVisualizationData(format, input);
+    const { data, promptTokens, completionTokens } = await generateVisualizationData(format, input);
 
     // ── Store in cache (fire-and-forget, not on the critical path) ────────────
     setCachedVisualization(input, format, data).catch(() => {});
 
-    // ── Deduct tokens + update usage stats ───────────────────────────────────
-    await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
+    // ── Deduct actual token cost based on real OpenAI usage ───────────────────
+    const actualCost = calcInternalTokens(promptTokens, completionTokens);
+    const deduction = await deductTokens(userId, actualCost);
+    if (!deduction.success) {
+      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
+    }
     await UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } });
 
     const processingTime = Date.now() - startTime;
@@ -121,7 +126,7 @@ export async function generateVisualization(
       metadata: {
         generatedAt: new Date(),
         processingTime,
-        aiModel: 'gpt-4.1-mini',
+        aiModel: 'gpt-5.4-mini',
         cost: calculateCost(input.length, formatInfo.estimatedCost),
         originalInput: input,
       },
@@ -174,12 +179,15 @@ export async function expandNodeAction(
     }
 
     // Call the AI service to get new nodes
-    const newData = await expandNetworkNode(nodeLabel, nodeId, originalInput, existingNodeLabels);
+    const { data: newData, promptTokens, completionTokens } = await expandNetworkNode(nodeLabel, nodeId, originalInput, existingNodeLabels);
 
-    // TOKEN SYSTEM: Deduct tokens for successful expansion
-    await deductTokens(userId, TOKEN_COSTS.EXPAND_NODE);
+    // Deduct actual token cost based on real OpenAI usage
+    const actualCost = calcInternalTokens(promptTokens, completionTokens);
+    const deduction = await deductTokens(userId, actualCost);
+    if (!deduction.success) {
+      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
+    }
 
-    // Track expansion count
     await UserUsageModel.updateOne(
       { userId },
       { $inc: { visualizationsCreated: 1 } }
@@ -238,12 +246,15 @@ export async function expandMindMapNodeAction(
     }
 
     // Call the AI service to get new child nodes
-    const newNodes = await expandMindMapNode(nodeId, nodeContent, originalInput, existingNodeIds);
+    const { data: newNodes, promptTokens, completionTokens } = await expandMindMapNode(nodeId, nodeContent, originalInput, existingNodeIds);
 
-    // TOKEN SYSTEM: Deduct tokens for successful expansion
-    await deductTokens(userId, TOKEN_COSTS.EXPAND_NODE);
+    // Deduct actual token cost based on real OpenAI usage
+    const actualCost = calcInternalTokens(promptTokens, completionTokens);
+    const deduction = await deductTokens(userId, actualCost);
+    if (!deduction.success) {
+      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
+    }
 
-    // Track expansion count
     await UserUsageModel.updateOne(
       { userId },
       { $inc: { visualizationsCreated: 1 } }
@@ -281,7 +292,7 @@ export async function editVisualizationAction(
       return { success: false, error: promptValidation.error };
     }
 
-    const dataValidation = validateDataSize(existingData);
+    const dataValidation = validateDataSize(existingData, VALIDATION_LIMITS.MAX_EDIT_DATA_SIZE);
     if (!dataValidation.valid) {
       return { success: false, error: dataValidation.error };
     }
@@ -316,8 +327,12 @@ export async function editVisualizationAction(
       contextHistory
     );
 
-    // TOKEN SYSTEM: Deduct tokens for successful edit
-    await deductTokens(userId, TOKEN_COSTS.EDIT_VISUALIZATION);
+    // Deduct actual token cost based on real OpenAI usage
+    const actualCost = calcInternalTokens(result.promptTokens, result.completionTokens);
+    const deduction = await deductTokens(userId, actualCost);
+    if (!deduction.success) {
+      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
+    }
 
     let updatedVisualization: any = null;
 

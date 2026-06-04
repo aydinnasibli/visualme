@@ -135,7 +135,7 @@ Respond in JSON format:
       : userInput;
 
     const completion = await client.chat.completions.create({
-      model: 'gpt-4.1-nano',
+      model: 'gpt-5.4-nano',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage },
@@ -184,7 +184,7 @@ Respond in JSON format:
     const client = getOpenAIClient();
 
     const completion = await client.chat.completions.create({
-      model: 'gpt-4.1-nano',
+      model: 'gpt-5.4-nano',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userInput },
