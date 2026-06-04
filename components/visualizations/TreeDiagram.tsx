@@ -159,7 +159,7 @@ export default function TreeDiagram({ data, onExpand, readOnly = false, visualiz
           data={data}
           translate={translate}
           zoom={zoom}
-          nodeSize={{ x: 200, y: 100 }}
+          nodeSize={{ x: 320, y: 120 }}
           renderCustomNodeElement={(rd3tProps) => (
             <CustomNode
               {...rd3tProps}

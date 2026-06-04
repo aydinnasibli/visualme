@@ -26,7 +26,6 @@ import "@xyflow/react/dist/style.css";
 import type { NetworkGraphData, NetworkNode } from "@/lib/types/visualization";
 import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
 import NodeDetailPanel from "./NodeDetailPanel";
-import { Sparkles } from "lucide-react";
 
 const CATEGORY_COLORS = [
   "#8b5cf6",
@@ -104,55 +103,76 @@ const NetworkNodeComponent = ({ id, data }: NodeProps) => {
       <Handle type="source" position={Position.Top} style={{ opacity: 0, width: 4, height: 4, top: "50%", left: "50%" }} />
       <Handle type="target" position={Position.Top} style={{ opacity: 0, width: 4, height: 4, top: "50%", left: "50%" }} />
 
-      {/* Node circle */}
+      {/* Focus ring on hover */}
+      {d.highlighted && (
+        <div
+          style={{
+            position: "absolute",
+            inset: -4,
+            borderRadius: "50%",
+            border: `1px solid ${color}40`,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Node disc */}
       <div
         style={{
           width: size,
           height: size,
           borderRadius: "50%",
           background: d.highlighted
-            ? `radial-gradient(circle, ${color}50, ${color}20)`
-            : `radial-gradient(circle, ${color}25, ${color}10)`,
-          border: `2.5px solid ${color}${d.highlighted ? "ff" : "cc"}`,
+            ? `${color}55`
+            : `${color}30`,
+          border: `1.5px solid ${color}${d.highlighted ? "ee" : "77"}`,
           boxShadow: d.highlighted
-            ? `0 0 20px ${color}80, 0 0 40px ${color}40`
-            : `0 0 10px ${color}40`,
-          opacity: d.dimmed ? 0.15 : 1,
-          transition: "all 0.2s ease",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+            ? `0 0 ${Math.round(size * 0.9)}px ${color}60, 0 0 ${Math.round(size * 0.35)}px ${color}90`
+            : `0 0 ${Math.round(size * 0.55)}px ${color}35`,
+          opacity: d.dimmed ? 0.07 : 1,
+          transition: "background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease",
         }}
       />
 
-      {/* Label below node */}
+      {/* Extendable dot */}
+      {d.extendable && !d.dimmed && (
+        <div
+          style={{
+            position: "absolute",
+            top: 1,
+            right: 1,
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: color,
+            boxShadow: `0 0 5px ${color}cc`,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Label */}
       <div
         style={{
           position: "absolute",
-          top: size + 6,
+          top: size + 7,
           left: "50%",
           transform: "translateX(-50%)",
-          color: d.dimmed ? "transparent" : "#e4e4e7",
-          fontSize: 10,
-          fontWeight: 600,
+          color: d.dimmed ? "transparent" : d.highlighted ? "#f4f4f5" : "#a1a1aa",
+          fontSize: 11,
+          fontWeight: 500,
+          letterSpacing: "0.01em",
           whiteSpace: "nowrap",
-          maxWidth: 90,
+          maxWidth: 120,
           overflow: "hidden",
           textOverflow: "ellipsis",
           fontFamily: "Inter, ui-sans-serif",
-          textShadow: "0 1px 3px rgba(0,0,0,0.8)",
           pointerEvents: "none",
-          transition: "color 0.2s ease",
+          transition: "color 0.18s ease",
         }}
       >
         {d.label}
       </div>
-
-      {d.extendable && (
-        <Sparkles
-          style={{ position: "absolute", top: -8, right: -8, width: 12, height: 12, color }}
-        />
-      )}
     </div>
   );
 };
@@ -190,7 +210,7 @@ function computeForceLayout(
         const dx = pos[b].x - pos[a].x;
         const dy = pos[b].y - pos[a].y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const force = 8000 / (dist * dist);
+        const force = 15000 / (dist * dist);
         forces[a].fx -= (dx / dist) * force;
         forces[a].fy -= (dy / dist) * force;
         forces[b].fx += (dx / dist) * force;
@@ -204,7 +224,7 @@ function computeForceLayout(
       const dx = pos[e.target].x - pos[e.source].x;
       const dy = pos[e.target].y - pos[e.source].y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      const force = (dist - 180) * 0.05;
+      const force = (dist - 250) * 0.05;
       forces[e.source].fx += (dx / dist) * force;
       forces[e.source].fy += (dy / dist) * force;
       forces[e.target].fx -= (dx / dist) * force;
@@ -317,12 +337,14 @@ const NetworkGraphInner = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
           source: edge.source,
           target: edge.target,
           label: edge.label,
+          labelStyle: { fill: "#52525b", fontSize: 9, fontWeight: 400 },
+          labelBgStyle: { fill: "transparent", fillOpacity: 0 },
           style: {
             stroke: hovered && (edge.source === hovered || edge.target === hovered)
-              ? "#a1a1aa"
-              : "#3f3f46",
-            strokeWidth: hovered && (edge.source === hovered || edge.target === hovered) ? 2.5 : 1.5,
-            opacity: hovered && edge.source !== hovered && edge.target !== hovered ? 0.1 : 0.4,
+              ? "#e4e4e7"
+              : "#52525b",
+            strokeWidth: hovered && (edge.source === hovered || edge.target === hovered) ? 2 : 1,
+            opacity: hovered && edge.source !== hovered && edge.target !== hovered ? 0.05 : 0.65,
           },
         }));
       },

@@ -414,15 +414,17 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             style={{ width: '100%', height: '100%' }}
           >
             <Background gap={16} size={1} color="#27272a" />
-            <Panel position="top-right" className="flex gap-2">
-              <button
-                onClick={handleExportPNG}
-                className="px-3 py-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg border border-purple-500 transition text-sm font-medium"
-                title="Export as PNG (Shift + E)"
-              >
-                Export PNG
-              </button>
-            </Panel>
+            {!readOnly && (
+              <Panel position="top-right" className="flex gap-2">
+                <button
+                  onClick={handleExportPNG}
+                  className="px-3 py-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg border border-purple-500 transition text-sm font-medium"
+                  title="Export as PNG (Shift + E)"
+                >
+                  Export PNG
+                </button>
+              </Panel>
+            )}
           </ReactFlow>
         )}
 

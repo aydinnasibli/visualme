@@ -31,12 +31,13 @@ mermaid.initialize({
 function buildMermaidSyntax(data: SyntaxDiagramData): string {
   // If rules are present, render as a flowchart showing grammar rules
   if (data.rules?.length) {
-    const lines = ["flowchart TD"];
+    const lines = ["flowchart LR"];
+    const truncate = (s: string, max = 48) => s.length > max ? s.slice(0, max) + "…" : s;
     data.rules.forEach((rule, i) => {
       const nodeId = `R${i}`;
       const patternId = `P${i}`;
-      lines.push(`    ${nodeId}["${rule.name}"]`);
-      lines.push(`    ${patternId}(["${rule.pattern.replace(/"/g, "'")}"])`);
+      lines.push(`    ${nodeId}["${truncate(rule.name)}"]`);
+      lines.push(`    ${patternId}(["${truncate(rule.pattern.replace(/"/g, "'"))}"])`);
       lines.push(`    ${nodeId} --> ${patternId}`);
     });
     return lines.join("\n");
