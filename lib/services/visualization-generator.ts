@@ -660,7 +660,7 @@ async function callOpenAI<T>(
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 16384, // hard cap — prevents runaway output costs
+      max_completion_tokens: 16384, // hard cap — prevents runaway output costs
     });
 
     const responseContent = completion.choices[0]?.message?.content;
