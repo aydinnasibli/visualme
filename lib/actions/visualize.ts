@@ -534,7 +534,7 @@ export async function saveVisualization(
 /**
  * Get user's visualization history
  */
-export async function getUserVisualizations(limit: number = 20) {
+export async function getUserVisualizations(limit?: number) {
   try {
     const { userId } = await auth();
 
@@ -544,12 +544,11 @@ export async function getUserVisualizations(limit: number = 20) {
 
     await connectToDatabase();
 
-    // SECURITY: Use field projection to only return necessary fields
-    const visualizations = await VisualizationModel.find({ userId })
+    const query = VisualizationModel.find({ userId })
       .select('_id userId title type data metadata isPublic createdAt updatedAt history')
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
+      .sort({ updatedAt: -1 });
+
+    const visualizations = await (limit ? query.limit(limit) : query).lean();
 
     return {
       success: true,

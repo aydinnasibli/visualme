@@ -100,6 +100,12 @@ export default function ParallelCoordinates({ data }: ParallelCoordinatesProps) 
     });
   }, [data, dims]);
 
+  if (!data?.data?.length || !data?.dimensions?.length) return (
+    <div className="w-full h-full flex items-center justify-center">
+      <p className="text-zinc-500 text-sm">No data to display</p>
+    </div>
+  );
+
   return (
     <div ref={containerRef} className="w-full h-full relative">
       <svg ref={svgRef} width={dims.w} height={dims.h} />

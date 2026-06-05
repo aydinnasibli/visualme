@@ -157,6 +157,7 @@ export interface FlowchartNode {
   type: FlowchartNodeType;
   data: {
     label: string;
+    color?: string;
   };
   position: { x: number; y: number };
 }

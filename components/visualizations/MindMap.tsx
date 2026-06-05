@@ -22,15 +22,14 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   MindMapData,
   MindMapNode as MindMapNodeType,
 } from "@/lib/types/visualization";
-import { Sparkles, X } from "lucide-react";
 import FloatingEdge from "./utils/FloatingEdge";
 import FloatingConnectionLine from "./utils/FloatingConnectionLine";
 import { useExtendedNodes } from "@/lib/context/ExtendedNodesContext";
+import NodeDetailPanel from "./NodeDetailPanel";
 
 interface MindMapProps {
   data: MindMapData;
@@ -422,148 +421,33 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             nodesDraggable
             nodesConnectable={false}
             elementsSelectable
+            proOptions={{ hideAttribution: true }}
             style={{ width: '100%', height: '100%' }}
           >
             <Background gap={16} size={1} color="#27272a" />
           </ReactFlow>
         )}
 
-        {/* Details Panel */}
-        <AnimatePresence>
-          {selectedNodeData && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="absolute top-4 left-4 max-w-sm z-50"
-            >
-              <div
-                className="rounded-xl p-5 shadow-2xl border backdrop-blur-xl"
-                style={{
-                  background: `linear-gradient(135deg, ${
-                    COLORS[selectedNodeData.level % COLORS.length]
-                  }15, rgba(9,9,11,0.95))`,
-                  borderColor: `${
-                    COLORS[selectedNodeData.level % COLORS.length]
-                  }60`,
-                }}
-              >
-                <button
-                  onClick={() => setSelectedNodeData(null)}
-                  className="absolute top-3 right-3 p-1 rounded hover:bg-white/10"
-                >
-                  <X className="w-4 h-4 text-zinc-400" />
-                </button>
-
-                <h3 className="text-lg font-bold text-white mb-2 pr-6">
-                  {selectedNodeData.label}
-                </h3>
-
-                {selectedNodeData.description && (
-                  <p className="text-sm text-zinc-300 mb-3">
-                    {selectedNodeData.description}
-                  </p>
-                )}
-
-                {selectedNodeData.keyPoints?.length && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">
-                      Key Points
-                    </h4>
-                    <ul className="space-y-1">
-                      {selectedNodeData.keyPoints.map((point, i) => (
-                        <li
-                          key={i}
-                          className="text-sm text-zinc-200 flex gap-2"
-                        >
-                          <span
-                            className="w-1 h-1 rounded-full mt-2"
-                            style={{
-                              backgroundColor:
-                                COLORS[selectedNodeData.level % COLORS.length],
-                            }}
-                          />
-                          <span>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedNodeData.relatedConcepts?.length && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">
-                      Related
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedNodeData.relatedConcepts.map((concept, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-1 rounded text-xs"
-                          style={{
-                            backgroundColor: `${
-                              COLORS[selectedNodeData.level % COLORS.length]
-                            }20`,
-                            color:
-                              COLORS[selectedNodeData.level % COLORS.length],
-                            border: `1px solid ${
-                              COLORS[selectedNodeData.level % COLORS.length]
-                            }40`,
-                          }}
-                        >
-                          {concept}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedNodeData.extendable && !readOnly && (
-                  isNodeExtended(selectedNodeData.nodeId, visualizationKey) ? (
-                    <div
-                      className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
-                      style={{
-                        background: `linear-gradient(135deg, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }40, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }20)`,
-                        color: COLORS[selectedNodeData.level % COLORS.length],
-                        border: `1px solid ${COLORS[selectedNodeData.level % COLORS.length]}60`,
-                      }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      Extended
-                    </div>
-                  ) : (
-                    <button
-                      onClick={async () => {
-                        await handleExpand(
-                          selectedNodeData.nodeId,
-                          selectedNodeData.label
-                        );
-                        setSelectedNodeData(null);
-                      }}
-                      disabled={isExpanding}
-                      className="w-full mt-2 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
-                      style={{
-                        background: `linear-gradient(135deg, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }80, ${
-                          COLORS[selectedNodeData.level % COLORS.length]
-                        }60)`,
-                        color: "white",
-                      }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      {isExpanding ? "Extending..." : "Extend & Explore"}
-                    </button>
-                  )
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <NodeDetailPanel
+          selectedNode={selectedNodeData ? {
+            id: selectedNodeData.nodeId,
+            label: selectedNodeData.label,
+            category: selectedNodeData.level === 0 ? 'Root' : `Level ${selectedNodeData.level}`,
+            color: selectedNodeData.customColor || COLORS[selectedNodeData.level % COLORS.length],
+            description: selectedNodeData.description,
+            extendable: selectedNodeData.extendable,
+            keyPoints: selectedNodeData.keyPoints,
+            relatedConcepts: selectedNodeData.relatedConcepts,
+          } : null}
+          onClose={() => setSelectedNodeData(null)}
+          onExpand={selectedNodeData?.extendable ? async () => {
+            await handleExpand(selectedNodeData.nodeId, selectedNodeData.label);
+            setSelectedNodeData(null);
+          } : undefined}
+          isExpanding={isExpanding}
+          readOnly={readOnly}
+          isExtended={selectedNodeData ? isNodeExtended(selectedNodeData.nodeId, visualizationKey) : false}
+        />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect } from "react";
+import { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useState } from "react";
 import {
   ReactFlow,
   Node,
@@ -17,6 +17,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
 import type { FlowchartData, FlowchartNodeType } from "@/lib/types/visualization";
+import NodeDetailPanel from "./NodeDetailPanel";
 
 interface FlowchartProps {
   data: FlowchartData;
@@ -29,34 +30,51 @@ export interface FlowchartHandle {
   zoomOut: () => void;
 }
 
-const NODE_STYLES: Record<FlowchartNodeType, { bg: string; border: string; shape: string }> = {
-  start:    { bg: "#10b98130", border: "#10b981", shape: "rounded-full" },
-  end:      { bg: "#ec489930", border: "#ec4899", shape: "rounded-full" },
-  process:  { bg: "#6366f128", border: "#6366f1", shape: "rounded-lg" },
-  decision: { bg: "#f59e0b28", border: "#f59e0b", shape: "rounded-lg" },
-  input:    { bg: "#06b6d428", border: "#06b6d4", shape: "rounded-lg" },
-  output:   { bg: "#8b5cf628", border: "#8b5cf6", shape: "rounded-lg" },
+const NODE_COLORS: Record<FlowchartNodeType, string> = {
+  start:    "#10b981",
+  end:      "#ec4899",
+  process:  "#6366f1",
+  decision: "#f59e0b",
+  input:    "#06b6d4",
+  output:   "#8b5cf6",
+};
+
+const NODE_STYLES: Record<FlowchartNodeType, { bg: string; border: string }> = {
+  start:    { bg: "#10b98130", border: "#10b981" },
+  end:      { bg: "#ec489930", border: "#ec4899" },
+  process:  { bg: "#6366f128", border: "#6366f1" },
+  decision: { bg: "#f59e0b28", border: "#f59e0b" },
+  input:    { bg: "#06b6d428", border: "#06b6d4" },
+  output:   { bg: "#8b5cf628", border: "#8b5cf6" },
 };
 
 interface FlowNodeData extends Record<string, unknown> {
   label: string;
   nodeType: FlowchartNodeType;
+  nodeId: string;
+  color?: string;
+  onSelect: (id: string) => void;
 }
 
 const FlowNode = ({ data }: NodeProps) => {
   const d = data as FlowNodeData;
-  const style = NODE_STYLES[d.nodeType] || NODE_STYLES.process;
+  const baseStyle = NODE_STYLES[d.nodeType] || NODE_STYLES.process;
+  const style = d.color
+    ? { bg: `${d.color}30`, border: d.color }
+    : baseStyle;
   const isDecision = d.nodeType === "decision";
   const isTerminal = d.nodeType === "start" || d.nodeType === "end";
   const hs = { opacity: 0, width: 6, height: 6 };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div
+      style={{ position: "relative", cursor: "pointer" }}
+      onClick={() => d.onSelect(d.nodeId)}
+    >
       <Handle type="target" position={Position.Top} style={hs} />
       <Handle type="target" position={Position.Left} style={hs} />
 
       {isDecision ? (
-        /* Diamond: rotate a square, put text in a counter-rotated inner div */
         <div
           style={{
             width: 90,
@@ -133,8 +151,23 @@ function applyDagreLayout(nodes: Node[], edges: Edge[]) {
 }
 
 const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
-  ({ data }, ref) => {
+  ({ data, readOnly = false }, ref) => {
     const { fitView, zoomIn, zoomOut } = useReactFlow();
+    const [selectedNode, setSelectedNode] = useState<{
+      id: string; label: string; category: string; color: string;
+    } | null>(null);
+
+    const handleSelect = useCallback((id: string) => {
+      const src = data?.nodes?.find(n => n.id === id);
+      if (!src) return;
+      const nodeType = (src.type || "process") as FlowchartNodeType;
+      setSelectedNode(prev => prev?.id === id ? null : {
+        id,
+        label: src.data?.label || id,
+        category: nodeType.charAt(0).toUpperCase() + nodeType.slice(1),
+        color: src.data?.color || NODE_COLORS[nodeType] || "#6366f1",
+      });
+    }, [data]);
 
     const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
       if (!data?.nodes) return { nodes: [], edges: [] };
@@ -143,7 +176,7 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
         id: n.id,
         type: "flowNode",
         position: n.position || { x: 0, y: 0 },
-        data: { label: n.data?.label || n.id, nodeType: n.type || "process" } satisfies FlowNodeData,
+        data: { label: n.data?.label || n.id, nodeType: n.type || "process", nodeId: n.id, color: n.data?.color } as Omit<FlowNodeData, "onSelect">,
       }));
 
       const rawEdges: Edge[] = (data.edges || []).map((e, i) => ({
@@ -160,12 +193,15 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
       return { nodes: applyDagreLayout(rawNodes, rawEdges), edges: rawEdges };
     }, [data]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
+    const [nodes, setNodes, onNodesChange] = useNodesState(
+      layoutedNodes.map(n => ({ ...n, data: { ...n.data, onSelect: handleSelect } }))
+    );
     const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 
     useEffect(() => {
-      setNodes(layoutedNodes);
+      setNodes(layoutedNodes.map(n => ({ ...n, data: { ...n.data, onSelect: handleSelect } })));
       setEdges(layoutedEdges);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
 
     useImperativeHandle(ref, () => ({
@@ -175,26 +211,36 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
     }));
 
     return (
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.2}
-        maxZoom={2}
-        panOnScroll
-        zoomOnScroll
-        zoomOnPinch
-        nodesDraggable
-        nodesConnectable={false}
-        elementsSelectable
-        style={{ width: "100%", height: "100%" }}
-      >
-        <Background gap={16} size={1} color="#27272a" />
-      </ReactFlow>
+      <div className="w-full h-full relative">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          onPaneClick={() => setSelectedNode(null)}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.2}
+          maxZoom={2}
+          panOnScroll
+          zoomOnScroll
+          zoomOnPinch
+          nodesDraggable
+          nodesConnectable={false}
+          elementsSelectable
+          proOptions={{ hideAttribution: true }}
+          style={{ width: "100%", height: "100%" }}
+        >
+          <Background gap={16} size={1} color="#27272a" />
+        </ReactFlow>
+
+        <NodeDetailPanel
+          selectedNode={selectedNode}
+          onClose={() => setSelectedNode(null)}
+          readOnly={readOnly}
+        />
+      </div>
     );
   }
 );

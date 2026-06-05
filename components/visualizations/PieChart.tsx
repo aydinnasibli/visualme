@@ -47,9 +47,15 @@ const CustomTooltip = ({ active, payload }: any) => {
   );
 };
 
+const EmptyState = () => (
+  <div className="w-full h-full flex items-center justify-center">
+    <p className="text-zinc-500 text-sm">No data to display</p>
+  </div>
+);
+
 export default function PieChart({ data }: PieChartProps) {
   const [activeIdx, setActiveIdx] = useState<number | undefined>(undefined);
-  if (!data?.data?.length) return null;
+  if (!data?.data?.length) return <EmptyState />;
 
   const isDoughnut = data.data.length >= 4;
 

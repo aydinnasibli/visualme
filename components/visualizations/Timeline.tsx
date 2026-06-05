@@ -10,8 +10,7 @@ interface TimelineProps {
 }
 
 export default function Timeline({ data, readOnly = false }: TimelineProps) {
-  // Sort items by date
-  const sortedItems = [...data.items].sort((a, b) => {
+  const sortedItems = [...(data?.items || [])].sort((a, b) => {
     return new Date(a.start).getTime() - new Date(b.start).getTime();
   });
 
@@ -19,6 +18,12 @@ export default function Timeline({ data, readOnly = false }: TimelineProps) {
 
   // Generate colors cyclically
   const COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899"];
+
+  if (!sortedItems.length) return (
+    <div className="w-full h-full flex items-center justify-center">
+      <p className="text-zinc-500 text-sm">No data to display</p>
+    </div>
+  );
 
   return (
     <div className="w-full h-full relative">

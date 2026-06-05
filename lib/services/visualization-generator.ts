@@ -819,7 +819,14 @@ For tree diagrams:
 - Keep node attributes consistent`,
 
       animated_timeline: basePrompt,
-      flowchart: basePrompt,
+      flowchart: `${basePrompt}
+
+For flowcharts:
+- Each node has: id, type ('start'|'end'|'process'|'decision'|'input'|'output'), data: { label, color? }, position.
+- To change a node's color, set data.color to a hex code (e.g. "#ef4444" for red, "#3b82f6" for blue).
+- To reset a node to its default color, remove the data.color field or set it to null.
+- To change all nodes to a color, set data.color on every node in the array.
+- Edges have: id, source, target, label (optional).`,
       sankey_diagram: basePrompt,
       swimlane_diagram: basePrompt,
       line_chart: basePrompt,

@@ -56,7 +56,11 @@ export default function ComparisonTable({ data }: ComparisonTableProps) {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  if (!data?.columns?.length) return null;
+  if (!data?.columns?.length) return (
+    <div className="w-full h-full flex items-center justify-center">
+      <p className="text-zinc-500 text-sm">No data to display</p>
+    </div>
+  );
 
   return (
     <div className="w-full h-full overflow-auto p-4">

@@ -320,7 +320,7 @@ export default function VisualizationModal({
               )}
 
               {/* Visualization Content */}
-              <div className="flex-1 overflow-auto p-6 bg-[#0f1419]/50" data-viz-area>
+              <div className="flex-1 overflow-hidden min-h-0 relative bg-[#0f1419]/50" data-viz-area>
                 <VisualizationErrorBoundary>
                 {currentVisualization.type === "network_graph" && (
                   <DynamicNetworkGraph ref={networkGraphRef} data={currentVisualization.data as any} readOnly={true} />

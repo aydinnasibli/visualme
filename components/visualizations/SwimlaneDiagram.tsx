@@ -31,6 +31,12 @@ export default function SwimlaneDiagram({ data }: SwimlaneDiagramProps) {
     return map;
   }, [lanes, tasks]);
 
+  if (!lanes.length) return (
+    <div className="w-full h-full flex items-center justify-center">
+      <p className="text-zinc-500 text-sm">No data to display</p>
+    </div>
+  );
+
   return (
     <div className="w-full h-full overflow-auto p-4">
       <div className="min-w-max">

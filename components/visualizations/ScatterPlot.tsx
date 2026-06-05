@@ -34,8 +34,14 @@ const CustomTooltip = ({ active, payload }: any) => {
   );
 };
 
+const EmptyState = () => (
+  <div className="w-full h-full flex items-center justify-center">
+    <p className="text-zinc-500 text-sm">No data to display</p>
+  </div>
+);
+
 export default function ScatterPlot({ data }: ScatterPlotProps) {
-  if (!data?.data?.length) return null;
+  if (!data?.data?.length) return <EmptyState />;
 
   // Group by category if present
   const categories = Array.from(new Set(data.data.map((d) => d.category || "default")));

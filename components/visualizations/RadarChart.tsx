@@ -32,8 +32,14 @@ const CustomTooltip = ({ active, payload }: any) => {
   );
 };
 
+const EmptyState = () => (
+  <div className="w-full h-full flex items-center justify-center">
+    <p className="text-zinc-500 text-sm">No data to display</p>
+  </div>
+);
+
 export default function RadarChart({ data }: RadarChartProps) {
-  if (!data?.data?.length) return null;
+  if (!data?.data?.length) return <EmptyState />;
 
   return (
     <div className="w-full h-full p-6">

@@ -33,8 +33,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+const EmptyState = () => (
+  <div className="w-full h-full flex items-center justify-center">
+    <p className="text-zinc-500 text-sm">No data to display</p>
+  </div>
+);
+
 export default function LineChart({ data }: LineChartProps) {
-  if (!data?.data?.length) return null;
+  if (!data?.data?.length) return <EmptyState />;
 
   return (
     <div className="w-full h-full p-6">

@@ -440,6 +440,12 @@ const NetworkGraphInner = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
       zoomOut: () => rfZoomOut({ duration: 200 }),
     }));
 
+    if (!data?.nodes?.length) return (
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-zinc-500 text-sm">No data to display</p>
+      </div>
+    );
+
     return (
       <div ref={containerRef} className="w-full h-full relative">
         <ReactFlow
@@ -465,6 +471,7 @@ const NetworkGraphInner = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
           zoomOnPinch
           nodesDraggable
           nodesConnectable={false}
+          proOptions={{ hideAttribution: true }}
           style={{ width: "100%", height: "100%" }}
         >
           <Background gap={16} size={1} color="#27272a" />
