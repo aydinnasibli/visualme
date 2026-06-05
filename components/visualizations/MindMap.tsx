@@ -73,53 +73,63 @@ interface NodeData {
 }
 
 const MindMapNode = ({ data }: { data: NodeData }) => {
-  // Use custom color if available, otherwise fallback to level-based color
   const color = data.customColor || COLORS[data.level % COLORS.length];
   const isRoot = data.level === 0;
+  const hStyle = { opacity: 0, width: 4, height: 4 };
 
   return (
     <div
       onClick={() => data.onShowDetails(data)}
       className="cursor-pointer"
-      style={{ minWidth: isRoot ? "200px" : "150px" }}
+      style={{ minWidth: isRoot ? "160px" : "120px" }}
     >
-      <Handle type="target" position={Position.Top} />
-      <Handle type="target" position={Position.Right} />
-      <Handle type="target" position={Position.Bottom} />
-      <Handle type="target" position={Position.Left} />
-
-      <Handle type="source" position={Position.Top} />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
-      <Handle type="source" position={Position.Left} />
+      <Handle type="target" position={Position.Top} style={hStyle} />
+      <Handle type="target" position={Position.Right} style={hStyle} />
+      <Handle type="target" position={Position.Bottom} style={hStyle} />
+      <Handle type="target" position={Position.Left} style={hStyle} />
+      <Handle type="source" position={Position.Top} style={hStyle} />
+      <Handle type="source" position={Position.Right} style={hStyle} />
+      <Handle type="source" position={Position.Bottom} style={hStyle} />
+      <Handle type="source" position={Position.Left} style={hStyle} />
 
       <div
-        className="px-5 py-3 rounded-2xl shadow-xl transition-all duration-200 hover:scale-105"
         style={{
-          background: isRoot
-            ? `linear-gradient(135deg, ${color}, ${color}dd)`
-            : `linear-gradient(135deg, ${color}35, ${color}25)`,
-          border: `3px solid ${color}`,
-          boxShadow: `0 0 25px ${color}60`,
+          padding: isRoot ? "9px 18px" : "6px 14px",
+          borderRadius: isRoot ? 10 : 7,
+          background: isRoot ? `${color}40` : `${color}1e`,
+          border: `1.5px solid ${color}${isRoot ? "cc" : "77"}`,
+          boxShadow: isRoot ? `0 0 14px ${color}35` : `0 0 6px ${color}20`,
+          transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+          position: "relative",
         }}
       >
-        <div className="flex items-center justify-between gap-2">
-          <p
-            className="font-bold text-white text-center flex-1"
+        <p
+          style={{
+            color: isRoot ? "#f4f4f5" : "#d4d4d8",
+            fontSize: isRoot ? "13px" : "12px",
+            fontWeight: isRoot ? 600 : 500,
+            letterSpacing: "0.01em",
+            fontFamily: "Inter, ui-sans-serif",
+            margin: 0,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {data.label}
+        </p>
+        {data.extendable && !data.readOnly && (
+          <div
             style={{
-              fontSize: isRoot ? "17px" : "14px",
-              textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+              position: "absolute",
+              top: 4,
+              right: 4,
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: color,
+              boxShadow: `0 0 4px ${color}`,
             }}
-          >
-            {data.label}
-          </p>
-
-          {data.extendable && !data.readOnly && (
-            <div className="p-1 rounded-full">
-              <Sparkles className="w-4 h-4 text-yellow-300" />
-            </div>
-          )}
-        </div>
+          />
+        )}
       </div>
     </div>
   );
@@ -215,7 +225,8 @@ const createMindMapLayout = (
         animated: true,
         style: {
           stroke: color,
-          strokeWidth: 4,
+          strokeWidth: 1.5,
+          opacity: 0.6,
         },
       });
     }

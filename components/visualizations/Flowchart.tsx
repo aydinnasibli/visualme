@@ -28,12 +28,12 @@ export interface FlowchartHandle {
 }
 
 const NODE_STYLES: Record<FlowchartNodeType, { bg: string; border: string; shape: string }> = {
-  start:    { bg: "#10b98120", border: "#10b981", shape: "rounded-full" },
-  end:      { bg: "#ec489920", border: "#ec4899", shape: "rounded-full" },
-  process:  { bg: "#6366f120", border: "#6366f1", shape: "rounded-xl" },
-  decision: { bg: "#f59e0b20", border: "#f59e0b", shape: "rounded-lg rotate-0" },
-  input:    { bg: "#06b6d420", border: "#06b6d4", shape: "rounded-xl" },
-  output:   { bg: "#8b5cf620", border: "#8b5cf6", shape: "rounded-xl" },
+  start:    { bg: "#10b98130", border: "#10b981", shape: "rounded-full" },
+  end:      { bg: "#ec489930", border: "#ec4899", shape: "rounded-full" },
+  process:  { bg: "#6366f128", border: "#6366f1", shape: "rounded-lg" },
+  decision: { bg: "#f59e0b28", border: "#f59e0b", shape: "rounded-lg" },
+  input:    { bg: "#06b6d428", border: "#06b6d4", shape: "rounded-lg" },
+  output:   { bg: "#8b5cf628", border: "#8b5cf6", shape: "rounded-lg" },
 };
 
 interface FlowNodeData extends Record<string, unknown> {
@@ -45,45 +45,70 @@ const FlowNode = ({ data }: NodeProps) => {
   const d = data as FlowNodeData;
   const style = NODE_STYLES[d.nodeType] || NODE_STYLES.process;
   const isDecision = d.nodeType === "decision";
+  const isTerminal = d.nodeType === "start" || d.nodeType === "end";
+  const hs = { opacity: 0, width: 6, height: 6 };
 
   return (
     <div style={{ position: "relative" }}>
-      <Handle type="target" position={Position.Top} style={{ background: style.border, border: "none", width: 8, height: 8 }} />
-      <Handle type="target" position={Position.Left} style={{ background: style.border, border: "none", width: 8, height: 8 }} />
+      <Handle type="target" position={Position.Top} style={hs} />
+      <Handle type="target" position={Position.Left} style={hs} />
 
       {isDecision ? (
+        /* Diamond: rotate a square, put text in a counter-rotated inner div */
         <div
-          className="flex items-center justify-center text-center font-semibold text-white text-xs"
           style={{
-            width: 120,
-            height: 60,
+            width: 90,
+            height: 90,
             background: style.bg,
-            border: `2px solid ${style.border}`,
-            borderRadius: 8,
-            boxShadow: `0 0 12px ${style.border}40`,
-            clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-            padding: "0 24px",
+            border: `1.5px solid ${style.border}88`,
+            boxShadow: `0 0 10px ${style.border}25`,
+            transform: "rotate(45deg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 6,
           }}
         >
-          {d.label}
+          <div
+            style={{
+              transform: "rotate(-45deg)",
+              color: "#e4e4e7",
+              fontSize: 10,
+              fontWeight: 600,
+              fontFamily: "Inter, ui-sans-serif",
+              textAlign: "center",
+              padding: "0 12px",
+              maxWidth: 80,
+              lineHeight: 1.3,
+            }}
+          >
+            {d.label}
+          </div>
         </div>
       ) : (
         <div
-          className={`flex items-center justify-center text-center font-semibold text-white text-xs px-4 py-3 ${style.shape}`}
           style={{
-            minWidth: 110,
-            maxWidth: 160,
+            minWidth: isTerminal ? 90 : 120,
+            maxWidth: 180,
+            padding: isTerminal ? "8px 20px" : "8px 16px",
+            borderRadius: isTerminal ? 999 : 8,
             background: style.bg,
-            border: `2px solid ${style.border}`,
-            boxShadow: `0 0 12px ${style.border}40`,
+            border: `1.5px solid ${style.border}88`,
+            boxShadow: `0 0 10px ${style.border}25`,
+            color: "#e4e4e7",
+            fontSize: 11,
+            fontWeight: 500,
+            fontFamily: "Inter, ui-sans-serif",
+            textAlign: "center",
+            lineHeight: 1.4,
           }}
         >
           {d.label}
         </div>
       )}
 
-      <Handle type="source" position={Position.Bottom} style={{ background: style.border, border: "none", width: 8, height: 8 }} />
-      <Handle type="source" position={Position.Right} style={{ background: style.border, border: "none", width: 8, height: 8 }} />
+      <Handle type="source" position={Position.Bottom} style={hs} />
+      <Handle type="source" position={Position.Right} style={hs} />
     </div>
   );
 };

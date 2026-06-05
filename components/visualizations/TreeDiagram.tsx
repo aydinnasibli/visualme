@@ -37,36 +37,35 @@ const CustomNode = ({ nodeDatum, onNodeClick }: { nodeDatum: TreeCustomNode; onN
   return (
     <g>
       <circle
-        r={isRoot ? 20 : 15}
+        r={isRoot ? 20 : 14}
         fill={color}
-        stroke="#fff"
-        strokeWidth={2}
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth={1}
         onClick={onNodeClick}
-        style={{ cursor: 'pointer', filter: `drop-shadow(0 0 8px ${color}80)` }}
+        style={{ cursor: 'pointer', filter: `drop-shadow(0 0 6px ${color}55)` }}
       />
       <text
-        fill="#e4e4e7"
+        fill="#d4d4d8"
         strokeWidth="0"
-        x="25"
+        x={isRoot ? 26 : 20}
         y="5"
         onClick={onNodeClick}
         style={{
-          fontSize: isRoot ? '16px' : '14px',
-          fontFamily: 'Inter, sans-serif',
+          fontSize: isRoot ? '14px' : '12px',
+          fontFamily: 'Inter, ui-sans-serif',
           cursor: 'pointer',
-          fontWeight: isRoot ? 600 : 400,
-          textShadow: '0 1px 3px rgba(0,0,0,0.8)'
+          fontWeight: isRoot ? 600 : 500,
         }}
       >
         {nodeDatum.name}
       </text>
       {nodeDatum.attributes?.extendable && (
         <circle
-          r={4}
-          cx={isRoot ? 20 : 15}
-          cy={-15}
-          fill="#fbbf24"
-          className="animate-pulse"
+          r={3}
+          cx={isRoot ? 20 : 14}
+          cy={-(isRoot ? 20 : 14)}
+          fill={color}
+          style={{ filter: `drop-shadow(0 0 3px ${color})` }}
         />
       )}
     </g>

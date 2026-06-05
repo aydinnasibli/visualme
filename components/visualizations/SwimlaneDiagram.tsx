@@ -60,10 +60,9 @@ export default function SwimlaneDiagram({ data }: SwimlaneDiagramProps) {
                 style={{
                   width: 140,
                   minWidth: 140,
-                  background: `${color}18`,
-                  borderLeft: `3px solid ${color}`,
-                  borderTop: `1px solid ${color}30`,
-                  borderBottom: `1px solid ${color}30`,
+                  background: `${color}22`,
+                  border: `1px solid ${color}35`,
+                  borderRight: "none",
                   color,
                   minHeight: 72,
                 }}
@@ -89,11 +88,10 @@ export default function SwimlaneDiagram({ data }: SwimlaneDiagramProps) {
                           initial={{ opacity: 0, scale: 0.85 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: (laneIdx * maxPosition + pos) * 0.05 }}
-                          className="w-full px-3 py-2 rounded-lg text-xs font-semibold text-white text-center shadow-lg cursor-default hover:scale-105 transition-transform"
+                          className="w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-200 text-center cursor-default"
                           style={{
-                            background: `linear-gradient(135deg, ${color}30, ${color}18)`,
+                            background: `${color}22`,
                             border: `1px solid ${color}50`,
-                            boxShadow: `0 0 12px ${color}20`,
                           }}
                         >
                           {task.content}
