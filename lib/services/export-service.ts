@@ -80,7 +80,7 @@ export function exportAsCSV(visualization: SavedVisualization): string {
   ];
 
   if (!supportedTypes.includes(type)) {
-    throw new Error(`CSV export not supported for ${type}`);
+    return exportAsJSON(visualization);
   }
 
   try {
@@ -145,9 +145,8 @@ export function exportAsCSV(visualization: SavedVisualization): string {
     }
 
     return rows.join('\n');
-  } catch (error) {
-    console.error('CSV export error:', error);
-    throw new Error('Failed to export as CSV');
+  } catch {
+    return exportAsJSON(visualization);
   }
 }
 
@@ -243,12 +242,7 @@ export function exportAsHTML(visualization: SavedVisualization): string {
   </div>
 
   <script>
-    // Data is embedded for potential client-side rendering
     const visualizationData = ${JSON.stringify({ type, data }, null, 2)};
-    console.log('Visualization data:', visualizationData);
-
-    // You can add library-specific rendering code here
-    // For example, load Recharts, D3, etc. from CDN and render the visualization
   </script>
 </body>
 </html>`;

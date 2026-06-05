@@ -14,5 +14,5 @@ export default async function SharePage({ params }: Props) {
     notFound();
   }
 
-  return <SharedVisualizationView visualization={res.data as any} />;
+  return <SharedVisualizationView visualization={res.data} />;
 }

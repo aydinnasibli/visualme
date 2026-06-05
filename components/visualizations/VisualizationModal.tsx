@@ -11,6 +11,7 @@ import { editVisualizationAction } from "@/lib/actions/visualize";
 import { exportVisualization, createShareLink } from "@/lib/actions/export";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
+import { VisualizationErrorBoundary } from "@/components/VisualizationErrorBoundary";
 
 const DynLoader = () => (
   <div className="w-full h-full flex items-center justify-center">
@@ -132,8 +133,7 @@ export default function VisualizationModal({
       // Store current visualization in sessionStorage to pass to dashboard
       sessionStorage.setItem('revisualize_data', JSON.stringify(currentVisualization));
       router.push('/dashboard');
-    } catch (error) {
-      console.error("Failed to store visualization data:", error);
+    } catch {
       toast.error("Failed to prepare visualization for editing");
     }
   };
@@ -321,6 +321,7 @@ export default function VisualizationModal({
 
               {/* Visualization Content */}
               <div className="flex-1 overflow-auto p-6 bg-[#0f1419]/50" data-viz-area>
+                <VisualizationErrorBoundary>
                 {currentVisualization.type === "network_graph" && (
                   <DynamicNetworkGraph ref={networkGraphRef} data={currentVisualization.data as any} readOnly={true} />
                 )}
@@ -378,6 +379,7 @@ export default function VisualizationModal({
                 {currentVisualization.type === "syntax_diagram" && (
                   <DynamicSyntaxDiagram data={currentVisualization.data as any} />
                 )}
+                </VisualizationErrorBoundary>
               </div>
             </div>
           </div>

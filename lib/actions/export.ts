@@ -170,13 +170,21 @@ export async function getSharedVisualization(shareId: string) {
       return { success: false, error: 'Shared visualization not found or is private' };
     }
 
-    return {
-      success: true,
-      data: {
-        ...visualization,
-        _id: visualization._id.toString(),
-      },
+    const data: SavedVisualization = {
+      _id: visualization._id.toString(),
+      userId: visualization.userId,
+      title: visualization.title,
+      type: visualization.type,
+      data: visualization.data as SavedVisualization['data'],
+      metadata: visualization.metadata,
+      isPublic: visualization.isPublic,
+      shareId: visualization.shareId ?? undefined,
+      createdAt: visualization.createdAt,
+      updatedAt: visualization.updatedAt,
+      history: visualization.history,
     };
+
+    return { success: true, data };
   } catch (error) {
     console.error('Get shared visualization error:', error);
     return {

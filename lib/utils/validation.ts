@@ -202,9 +202,6 @@ export function validateArraySize(
  * Sanitize error messages to prevent information disclosure
  */
 export function sanitizeError(error: unknown, fallbackMessage: string = 'An error occurred'): string {
-  // Log full error details server-side for debugging
-  console.error('Internal error:', error);
-
   // Never expose internal error details to client
   // Check for safe error types we can expose
   if (error instanceof Error) {
