@@ -1,12 +1,13 @@
 "use client";
 
-import React, {
+import {
   useCallback,
   useMemo,
   useState,
   useImperativeHandle,
   forwardRef,
   useEffect,
+  useRef,
 } from "react";
 import {
   ReactFlow,
@@ -16,10 +17,8 @@ import {
   useEdgesState,
   ReactFlowProvider,
   Background,
-  MarkerType,
   Handle,
   Position,
-  Panel,
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -257,6 +256,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     const [isExpanding, setIsExpanding] = useState(false);
     const { addExtendedNode, isNodeExtended } = useExtendedNodes();
     const { fitView, zoomIn, zoomOut } = useReactFlow();
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const handleExpand = useCallback(
       async (nodeId: string, content: string) => {
@@ -304,18 +304,18 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
 
     const handleExportPNG = useCallback(async () => {
-      const element = document.querySelector('.react-flow') as HTMLElement;
+      const element = containerRef.current?.querySelector('.react-flow') as HTMLElement | null;
       if (!element) return;
 
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(element, {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(element, {
         backgroundColor: '#09090b',
-        scale: 2,
+        pixelRatio: 2,
       });
 
       const link = document.createElement('a');
       link.download = `mindmap-${Date.now()}.png`;
-      link.href = canvas.toDataURL();
+      link.href = dataUrl;
       link.click();
     }, []);
 
@@ -366,7 +366,7 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
     );
 
     return (
-      <div className="w-full h-full relative floating-edges">
+      <div ref={containerRef} className="w-full h-full relative floating-edges">
         <style>{`
           .floating-edges .react-flow__handle {
             opacity: 0;
@@ -425,17 +425,6 @@ const MindMapInner = forwardRef<MindMapHandle, MindMapProps>(
             style={{ width: '100%', height: '100%' }}
           >
             <Background gap={16} size={1} color="#27272a" />
-            {!readOnly && (
-              <Panel position="top-right" className="flex gap-2">
-                <button
-                  onClick={handleExportPNG}
-                  className="px-3 py-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg border border-purple-500 transition text-sm font-medium"
-                  title="Export as PNG (Shift + E)"
-                >
-                  Export PNG
-                </button>
-              </Panel>
-            )}
           </ReactFlow>
         )}
 

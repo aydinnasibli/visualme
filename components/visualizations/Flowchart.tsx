@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
   ReactFlow,
   Node,
@@ -10,6 +10,8 @@ import {
   Handle,
   Position,
   useReactFlow,
+  useNodesState,
+  useEdgesState,
   NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -134,7 +136,7 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
   ({ data }, ref) => {
     const { fitView, zoomIn, zoomOut } = useReactFlow();
 
-    const { nodes, edges } = useMemo(() => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
       if (!data?.nodes) return { nodes: [], edges: [] };
 
       const rawNodes: Node[] = data.nodes.map((n) => ({
@@ -155,9 +157,16 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
         animated: true,
       }));
 
-      const layoutedNodes = applyDagreLayout(rawNodes, rawEdges);
-      return { nodes: layoutedNodes, edges: rawEdges };
+      return { nodes: applyDagreLayout(rawNodes, rawEdges), edges: rawEdges };
     }, [data]);
+
+    const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
+
+    useEffect(() => {
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
+    }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
 
     useImperativeHandle(ref, () => ({
       fit: () => fitView({ padding: 0.2, duration: 400 }),
@@ -169,14 +178,19 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.2}
         maxZoom={2}
         panOnScroll
+        zoomOnScroll
+        zoomOnPinch
         nodesDraggable
         nodesConnectable={false}
+        elementsSelectable
         style={{ width: "100%", height: "100%" }}
       >
         <Background gap={16} size={1} color="#27272a" />

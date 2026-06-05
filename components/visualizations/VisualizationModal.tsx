@@ -100,11 +100,11 @@ export default function VisualizationModal({
     const area = document.querySelector('[data-viz-area]') as HTMLElement;
     if (!area) { toast.error('Could not capture visualization'); return; }
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(area, { backgroundColor: '#0f1419', scale: 2, useCORS: true, logging: false });
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(area, { backgroundColor: '#0f1419', pixelRatio: 2 });
       const link = document.createElement('a');
       link.download = `${currentVisualization?.title?.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'visualization'}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href = dataUrl;
       link.click();
       toast.success('Exported as PNG');
     } catch { toast.error('PNG export failed'); }

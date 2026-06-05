@@ -183,16 +183,14 @@ export default function FocusPanel({
     setExporting(true);
     setExportOpen(false);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(vizAreaRef.current, {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(vizAreaRef.current, {
         backgroundColor: '#0a0d11',
-        scale: 2,
-        useCORS: true,
-        logging: false,
+        pixelRatio: 2,
       });
       const link = document.createElement('a');
       link.download = `${safeTitle(thread)}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href = dataUrl;
       link.click();
       toast.success('Exported as PNG');
     } catch {

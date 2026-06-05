@@ -50,7 +50,7 @@ interface NetworkGraphProps {
 }
 
 export interface NetworkGraphHandle {
-  exportPNG: (scale?: number) => Promise<void>;
+  exportPNG: () => Promise<void>;
   getContainer: () => HTMLDivElement | null;
   fit: () => void;
   zoomIn: () => void;
@@ -356,10 +356,19 @@ const NetworkGraphInner = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
     const handleSelectRef = useRef<(id: string) => void>(() => {});
 
     const handleHover = useCallback((id: string | null) => {
-      setNodes(buildNodes(id));
+      const neighbors = id ? neighborMap.get(id) || new Set<string>() : new Set<string>();
+      setNodes(prev => prev.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          dimmed: id !== null && node.id !== id && !neighbors.has(node.id),
+          highlighted: node.id === id,
+        },
+      })));
       setEdges(buildEdges(id));
+    // setNodes/setEdges are stable refs from useNodesState/useEdgesState — declared below but safe in closure body
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [buildNodes, buildEdges]);
+    }, [buildEdges, neighborMap]);
 
     const handleSelect = useCallback(
       (id: string) => {
@@ -415,14 +424,14 @@ const NetworkGraphInner = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
     };
 
     useImperativeHandle(ref, () => ({
-      exportPNG: async (scale = 2) => {
+      exportPNG: async () => {
         const el = containerRef.current;
         if (!el) return;
-        const { default: html2canvas } = await import("html2canvas");
-        const canvas = await html2canvas(el, { backgroundColor: "#09090b", scale });
+        const { toPng } = await import("html-to-image");
+        const dataUrl = await toPng(el, { backgroundColor: "#09090b", pixelRatio: 2 });
         const link = document.createElement("a");
         link.download = `graph-${Date.now()}.png`;
-        link.href = canvas.toDataURL();
+        link.href = dataUrl;
         link.click();
       },
       getContainer: () => containerRef.current,
@@ -441,7 +450,10 @@ const NetworkGraphInner = forwardRef<NetworkGraphHandle, NetworkGraphProps>(
           nodeTypes={nodeTypes}
           onPaneClick={() => {
             setSelectedNode(null);
-            setNodes(buildNodes(null));
+            setNodes(prev => prev.map(node => ({
+              ...node,
+              data: { ...node.data, dimmed: false, highlighted: false },
+            })));
             setEdges(buildEdges(null));
           }}
           fitView
