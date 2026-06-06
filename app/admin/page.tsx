@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 const PLAN_BADGE: Record<string, string> = {
   enterprise: 'bg-yellow-500/15 text-yellow-400',
-  pro: 'bg-primary/15 text-primary',
+  pro: 'bg-indigo-500/15 text-indigo-400',
   free: 'bg-white/5 text-white/40',
 }
 
@@ -24,7 +24,7 @@ function StatCard({
   accent: string
 }) {
   return (
-    <div className="bg-[#19212e] rounded-xl border border-white/[0.06] p-5">
+    <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
       <div className="flex items-start justify-between mb-4">
         <p className="text-xs text-white/40 uppercase tracking-wider">{title}</p>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent}`}>
@@ -105,7 +105,7 @@ export default async function AdminOverviewPage() {
       {/* Plan breakdown */}
       <div className="grid grid-cols-3 gap-4">
         {(['free', 'pro', 'enterprise'] as const).map(plan => (
-          <div key={plan} className="bg-[#19212e] rounded-xl border border-white/[0.06] p-4">
+          <div key={plan} className="bg-slate-800 rounded-xl border border-white/6 p-4">
             <p className="text-xs text-white/30 uppercase tracking-wider mb-2">{plan}</p>
             <p className="text-xl font-semibold text-white tabular-nums">
               {(planCounts[plan] ?? 0).toLocaleString()}
@@ -118,10 +118,10 @@ export default async function AdminOverviewPage() {
       {/* Recent activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent users */}
-        <div className="bg-[#19212e] rounded-xl border border-white/[0.06] overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <div className="bg-slate-800 rounded-xl border border-white/6 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between">
             <h2 className="text-sm font-medium text-white">Recent Users</h2>
-            <Link href="/admin/users" className="text-xs text-primary hover:underline">
+            <Link href="/admin/users" className="text-xs text-indigo-400 hover:underline">
               View all
             </Link>
           </div>
@@ -146,7 +146,7 @@ export default async function AdminOverviewPage() {
                     </span>
                     <Link
                       href={`/admin/users/${u.clerkId}`}
-                      className="text-xs text-white/30 hover:text-primary transition-colors"
+                      className="text-xs text-white/30 hover:text-indigo-400 transition-colors"
                     >
                       →
                     </Link>
@@ -158,10 +158,10 @@ export default async function AdminOverviewPage() {
         </div>
 
         {/* Recent visualizations */}
-        <div className="bg-[#19212e] rounded-xl border border-white/[0.06] overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <div className="bg-slate-800 rounded-xl border border-white/6 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between">
             <h2 className="text-sm font-medium text-white">Recent Visualizations</h2>
-            <Link href="/admin/visualizations" className="text-xs text-primary hover:underline">
+            <Link href="/admin/visualizations" className="text-xs text-indigo-400 hover:underline">
               View all
             </Link>
           </div>

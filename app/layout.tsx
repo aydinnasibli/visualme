@@ -27,7 +27,7 @@ export default function RootLayout({
             rel="stylesheet"
           />
         </head>
-        <body className="font-display bg-[#101622] text-white antialiased overflow-x-hidden selection:bg-primary/30 selection:text-white">
+        <body className="font-display bg-slate-900 text-white antialiased overflow-x-hidden selection:bg-indigo-500/30 selection:text-white">
           <ExtendedNodesProvider>
             {children}
             <Toaster position="bottom-right" richColors theme="dark" />

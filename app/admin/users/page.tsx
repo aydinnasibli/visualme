@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 const PLAN_BADGE: Record<string, string> = {
   enterprise: 'bg-yellow-500/15 text-yellow-400',
-  pro: 'bg-primary/15 text-primary',
+  pro: 'bg-indigo-500/15 text-indigo-400',
   free: 'bg-white/5 text-white/40',
 }
 
@@ -66,7 +66,7 @@ export default async function AdminUsersPage({
             name="search"
             defaultValue={search}
             placeholder="Search name or email…"
-            className="w-full bg-[#19212e] border border-white/[0.06] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/40 transition-colors"
+            className="w-full bg-slate-800 border border-white/6 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 transition-colors"
           />
           {plan && <input type="hidden" name="plan" value={plan} />}
         </form>
@@ -78,8 +78,8 @@ export default async function AdminUsersPage({
               href={buildHref({ plan: p, page: 1 })}
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors capitalize ${
                 (plan || '') === p
-                  ? 'bg-primary/15 text-primary'
-                  : 'bg-[#19212e] text-white/40 hover:text-white border border-white/[0.06]'
+                  ? 'bg-indigo-500/15 text-indigo-400'
+                  : 'bg-slate-800 text-white/40 hover:text-white border border-white/6'
               }`}
             >
               {p || 'All plans'}
@@ -89,11 +89,11 @@ export default async function AdminUsersPage({
       </div>
 
       {/* Table */}
-      <div className="bg-[#19212e] rounded-xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-slate-800 rounded-xl border border-white/6 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/[0.06]">
+              <tr className="border-b border-white/6">
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">User</th>
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Plan</th>
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Vizs</th>
@@ -138,7 +138,7 @@ export default async function AdminUsersPage({
                           </p>
                           <div className="w-20 h-1 bg-white/10 rounded-full mt-1.5 overflow-hidden">
                             <div
-                              className={`h-1 rounded-full ${tokenPct > 80 ? 'bg-red-400' : 'bg-primary'}`}
+                              className={`h-1 rounded-full ${tokenPct > 80 ? 'bg-red-400' : 'bg-indigo-500'}`}
                               style={{ width: `${tokenPct}%` }}
                             />
                           </div>
@@ -153,7 +153,7 @@ export default async function AdminUsersPage({
                     <td className="px-5 py-3">
                       <Link
                         href={`/admin/users/${user.clerkId}`}
-                        className="text-xs text-white/30 hover:text-primary transition-colors"
+                        className="text-xs text-white/30 hover:text-indigo-400 transition-colors"
                       >
                         Manage →
                       </Link>
@@ -180,7 +180,7 @@ export default async function AdminUsersPage({
             {page > 1 && (
               <Link
                 href={buildHref({ page: page - 1 })}
-                className="px-3 py-1.5 bg-[#19212e] border border-white/[0.06] rounded-lg text-xs text-white/50 hover:text-white transition-colors"
+                className="px-3 py-1.5 bg-slate-800 border border-white/6 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
               >
                 ← Previous
               </Link>
@@ -188,7 +188,7 @@ export default async function AdminUsersPage({
             {page < totalPages && (
               <Link
                 href={buildHref({ page: page + 1 })}
-                className="px-3 py-1.5 bg-[#19212e] border border-white/[0.06] rounded-lg text-xs text-white/50 hover:text-white transition-colors"
+                className="px-3 py-1.5 bg-slate-800 border border-white/6 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
               >
                 Next →
               </Link>

@@ -2,14 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard,
-  Users,
-  BarChart2,
-  TrendingUp,
-  ArrowLeft,
-  Shield,
-} from 'lucide-react'
+import { LayoutDashboard, Users, BarChart2, TrendingUp, ArrowLeft, Shield } from 'lucide-react'
 
 const navItems = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -22,11 +15,11 @@ export default function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-56 shrink-0 h-full flex flex-col bg-[#0d1117] border-r border-white/[0.06]">
-      <div className="px-4 py-5 border-b border-white/[0.06]">
+    <aside className="w-56 shrink-0 h-full flex flex-col bg-zinc-950 border-r border-white/6">
+      <div className="px-4 py-5 border-b border-white/6">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-primary/20 flex items-center justify-center">
-            <Shield className="w-4 h-4 text-primary" />
+          <div className="w-7 h-7 rounded-md bg-indigo-500/20 flex items-center justify-center">
+            <Shield className="w-4 h-4 text-indigo-400" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white leading-tight">Admin</p>
@@ -44,8 +37,8 @@ export default function AdminSidebar() {
               href={href}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 isActive
-                  ? 'bg-primary/15 text-primary font-medium'
-                  : 'text-white/40 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-indigo-500/15 text-indigo-400 font-medium'
+                  : 'text-white/40 hover:text-white hover:bg-white/4'
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -55,10 +48,10 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      <div className="px-2 py-3 border-t border-white/[0.06]">
+      <div className="px-2 py-3 border-t border-white/6">
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/30 hover:text-white hover:bg-white/[0.04] transition-colors"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/30 hover:text-white hover:bg-white/4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to App

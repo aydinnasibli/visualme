@@ -35,7 +35,7 @@ export default async function AdminAnalyticsPage() {
             { label: 'Viz Types Used', value: analyticsResult.data.vizByType.length },
             { label: 'Total Users', value: stats.totalUsers.toLocaleString() },
           ].map(item => (
-            <div key={item.label} className="bg-[#19212e] rounded-xl border border-white/[0.06] p-4">
+            <div key={item.label} className="bg-slate-800 rounded-xl border border-white/6 p-4">
               <p className="text-xs text-white/30 mb-1.5">{item.label}</p>
               <p className="text-xl font-semibold text-white tabular-nums">{item.value}</p>
             </div>

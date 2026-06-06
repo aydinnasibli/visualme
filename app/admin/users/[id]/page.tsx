@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 const PLAN_BADGE: Record<string, string> = {
   enterprise: 'bg-yellow-500/15 text-yellow-400',
-  pro: 'bg-primary/15 text-primary',
+  pro: 'bg-indigo-500/15 text-indigo-400',
   free: 'bg-white/5 text-white/40',
 }
 
@@ -53,7 +53,7 @@ export default async function AdminUserDetailPage({
         {/* Left column */}
         <div className="space-y-4">
           {/* Profile card */}
-          <div className="bg-[#19212e] rounded-xl border border-white/[0.06] p-5">
+          <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
             <div className="flex items-center gap-3 mb-5">
               {user.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -63,8 +63,8 @@ export default async function AdminUserDetailPage({
                   className="w-10 h-10 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
+                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                  <User className="w-5 h-5 text-indigo-400" />
                 </div>
               )}
               <div>
@@ -105,7 +105,7 @@ export default async function AdminUserDetailPage({
 
           {/* Token usage */}
           {usage && (
-            <div className="bg-[#19212e] rounded-xl border border-white/[0.06] p-5">
+            <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
               <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">
                 Token Usage
               </h3>
@@ -116,7 +116,7 @@ export default async function AdminUserDetailPage({
               <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div
                   className={`h-1.5 rounded-full transition-all ${
-                    tokenPct > 80 ? 'bg-red-400' : tokenPct > 50 ? 'bg-yellow-400' : 'bg-primary'
+                    tokenPct > 80 ? 'bg-red-400' : tokenPct > 50 ? 'bg-yellow-400' : 'bg-indigo-500'
                   }`}
                   style={{ width: `${tokenPct}%` }}
                 />
@@ -124,7 +124,7 @@ export default async function AdminUserDetailPage({
               <p className="text-xs text-white/25 mt-2">
                 Resets {new Date(usage.tokenResetDate).toLocaleDateString()}
               </p>
-              <div className="mt-3 pt-3 border-t border-white/[0.06] flex justify-between text-xs">
+              <div className="mt-3 pt-3 border-t border-white/6 flex justify-between text-xs">
                 <span className="text-white/30">Tier</span>
                 <span className="text-white/60 capitalize">{usage.tier}</span>
               </div>
@@ -132,7 +132,7 @@ export default async function AdminUserDetailPage({
           )}
 
           {/* Plan management */}
-          <div className="bg-[#19212e] rounded-xl border border-white/[0.06] p-5">
+          <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
             <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">
               Manage Plan
             </h3>
@@ -145,8 +145,8 @@ export default async function AdminUserDetailPage({
 
         {/* Right column — visualizations */}
         <div className="lg:col-span-2">
-          <div className="bg-[#19212e] rounded-xl border border-white/[0.06] overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/[0.06]">
+          <div className="bg-slate-800 rounded-xl border border-white/6 overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/6">
               <h2 className="text-sm font-medium text-white">
                 Recent Visualizations
                 <span className="text-white/25 text-xs font-normal ml-2">

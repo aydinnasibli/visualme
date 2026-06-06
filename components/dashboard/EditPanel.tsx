@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import ChatSidebar from '@/components/visualizations/ChatSidebar';
-import { Send } from 'lucide-react';
+import { Send, Sparkles, Code2 } from 'lucide-react';
 
 interface EditPanelProps {
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date | string }>;
@@ -21,64 +21,62 @@ const EditPanel = ({
   setManualEditJson,
   handleManualEdit,
 }: EditPanelProps) => {
-  const [activeTab, setActiveTab] = useState('ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('ai');
 
   return (
-    <div className="h-full w-full bg-surface-dark p-4 overflow-y-auto">
-      <div className="flex flex-col h-full">
-        <h2 className="text-xl font-bold text-white mb-4">Edit Visualization</h2>
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setActiveTab('ai')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              activeTab === 'ai'
-                ? 'bg-primary text-white'
-                : 'bg-surface-darker text-gray-400 hover:text-white'
-            }`}
-          >
-            AI Edit
-          </button>
-          <button
-            onClick={() => setActiveTab('manual')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              activeTab === 'manual'
-                ? 'bg-primary text-white'
-                : 'bg-surface-darker text-gray-400 hover:text-white'
-            }`}
-          >
-            Manual Edit
-          </button>
-        </div>
+    <div className="h-full w-full bg-slate-900 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-1 px-4 h-12 shrink-0 border-b border-white/5">
+        <button
+          onClick={() => setActiveTab('ai')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            activeTab === 'ai'
+              ? 'bg-indigo-500/15 text-indigo-400'
+              : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+          }`}
+        >
+          <Sparkles size={12} />
+          AI Edit
+        </button>
+        <button
+          onClick={() => setActiveTab('manual')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            activeTab === 'manual'
+              ? 'bg-indigo-500/15 text-indigo-400'
+              : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+          }`}
+        >
+          <Code2 size={12} />
+          Manual
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
         {activeTab === 'ai' && (
-          <div>
-            <ChatSidebar
-              initialHistory={chatHistory}
-              onSendMessage={async (message) => await handleChatMessage(message)}
-              isProcessing={isEditing}
-              embedded={true}
-            />
-          </div>
+          <ChatSidebar
+            initialHistory={chatHistory}
+            onSendMessage={async (message) => await handleChatMessage(message)}
+            isProcessing={isEditing}
+            embedded={true}
+          />
         )}
         {activeTab === 'manual' && (
-          <div>
-            <div className="mb-2">
-              <textarea
-                value={manualEditJson}
-                onChange={(e) => setManualEditJson(e.target.value)}
-                className="w-full h-64 px-4 py-3 bg-surface-darker border border-border-color rounded-lg text-white font-mono text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
-                placeholder="Edit the JSON data directly..."
-              />
-            </div>
+          <div className="p-4 flex flex-col gap-3">
+            <textarea
+              value={manualEditJson}
+              onChange={(e) => setManualEditJson(e.target.value)}
+              className="w-full h-64 px-4 py-3 bg-slate-800 border border-white/8 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 resize-none"
+              placeholder="Edit the JSON data directly..."
+            />
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500">
-                Edit the JSON structure directly.
-              </p>
+              <p className="text-xs text-zinc-600">Edit the JSON structure directly.</p>
               <button
                 onClick={handleManualEdit}
-                className="px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-lg transition flex items-center gap-2 font-medium"
+                className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
               >
-                <Send className="w-4 h-4" />
-                Apply Changes
+                <Send className="w-3.5 h-3.5" />
+                Apply
               </button>
             </div>
           </div>

@@ -17,19 +17,19 @@ import type {
   HeatmapData, RadarChartData, PieChartData,
   ComparisonTableData, ParallelCoordinatesData,
   WordCloudData, SyntaxDiagramData,
-  MindMapNode,
 } from '@/lib/types/visualization';
 import type { NetworkGraphHandle } from '@/components/visualizations/NetworkGraph';
 import type { MindMapHandle } from '@/components/visualizations/MindMap';
 import type { FlowchartHandle } from '@/components/visualizations/Flowchart';
 import type { ThreadEntry } from '@/components/dashboard/VizThread';
-import { TYPE_META } from '@/components/dashboard/VizThread';
+import { VIZ_TYPE_MAP } from '@/lib/constants/vizTypes';
+import { VisualizationErrorBoundary } from '@/components/VisualizationErrorBoundary';
 import EditPanel from '@/components/dashboard/EditPanel';
 
 /* ── Lazy viz loaders ── */
 const VizLoader = () => (
   <div className="w-full h-full flex items-center justify-center">
-    <div className="w-5 h-5 border-2 border-zinc-800 border-t-indigo-500 rounded-full animate-spin" />
+    <div className="w-5 h-5 border-2 border-slate-700 border-t-indigo-500 rounded-full animate-spin" />
   </div>
 );
 const dyn = (imp: () => Promise<{ default: React.ComponentType<any> }>) =>
@@ -68,9 +68,9 @@ function ActionBtn({
   active?: boolean;
 }) {
   const colors = {
-    default: { base: '#3f3f46', hover: '#d4d4d8', bg: 'transparent', bgHover: 'rgba(255,255,255,0.08)' },
-    success: { base: '#34d399', hover: '#6ee7b7', bg: 'rgba(52,211,153,0.08)', bgHover: 'rgba(52,211,153,0.15)' },
-    danger:  { base: '#f87171', hover: '#fca5a5', bg: 'transparent', bgHover: 'rgba(239,68,68,0.1)' },
+    default: { base: '#3f3f46', hover: '#d4d4d8', bg: 'transparent', bgActive: 'rgba(255,255,255,0.08)' },
+    success: { base: '#34d399', hover: '#6ee7b7', bg: 'rgba(52,211,153,0.08)', bgActive: 'rgba(52,211,153,0.15)' },
+    danger:  { base: '#f87171', hover: '#fca5a5', bg: 'transparent', bgActive: 'rgba(239,68,68,0.1)' },
   }[variant];
 
   return (
@@ -78,14 +78,14 @@ function ActionBtn({
       title={title}
       onClick={onClick}
       className="h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-all duration-150"
-      style={{ color: active ? colors.hover : colors.base, background: active ? colors.bg : colors.bg }}
+      style={{ color: active ? colors.hover : colors.base, background: active ? colors.bgActive : colors.bg }}
       onMouseEnter={e => {
         e.currentTarget.style.color = colors.hover;
-        e.currentTarget.style.background = colors.bgHover;
+        e.currentTarget.style.background = colors.bgActive;
       }}
       onMouseLeave={e => {
         e.currentTarget.style.color = active ? colors.hover : colors.base;
-        e.currentTarget.style.background = active ? colors.bg : colors.bg;
+        e.currentTarget.style.background = active ? colors.bgActive : colors.bg;
       }}
     >
       {children}
@@ -162,10 +162,14 @@ export default function FocusPanel({
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
 
+  /* Close export dropdown only when clicking outside it */
   useEffect(() => {
     if (!exportOpen) return;
-    const close = () => setExportOpen(false);
+    const close = (e: MouseEvent) => {
+      if (!exportRef.current?.contains(e.target as Node)) setExportOpen(false);
+    };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [exportOpen]);
@@ -184,10 +188,7 @@ export default function FocusPanel({
     setExportOpen(false);
     try {
       const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(vizAreaRef.current, {
-        backgroundColor: '#0a0d11',
-        pixelRatio: 2,
-      });
+      const dataUrl = await toPng(vizAreaRef.current, { backgroundColor: '#09090b', pixelRatio: 2 });
       const link = document.createElement('a');
       link.download = `${safeTitle(thread)}.png`;
       link.href = dataUrl;
@@ -292,30 +293,27 @@ export default function FocusPanel({
 
   if (!thread) {
     return (
-      <div className="w-full h-full" style={{ background: '#0a0d11' }}>
+      <div className="w-full h-full bg-zinc-950">
         <EmptyFocus />
       </div>
     );
   }
 
-  const meta = TYPE_META[thread.type] ?? { icon: '📊', color: '#6366f1', label: thread.type };
+  const meta = VIZ_TYPE_MAP[thread.type] ?? { emoji: '📊', color: '#6366f1', label: thread.type };
   const canZoom = ZOOMABLE.has(thread.type);
 
   return (
-    <div className="w-full h-full flex" style={{ background: '#0a0d11' }}>
+    <div className="w-full h-full flex bg-zinc-950">
       {/* ── Main viz area ── */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Top bar */}
-        <div
-          className="flex items-center gap-3 px-4 h-12 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.015)' }}
-        >
+        <div className="flex items-center gap-3 px-4 h-12 flex-shrink-0 border-b border-white/5 bg-white/[0.015]">
           {/* Type badge */}
           <div
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-md"
             style={{ background: `${meta.color}12`, border: `1px solid ${meta.color}25` }}
           >
-            <span className="text-sm leading-none">{meta.icon}</span>
+            <span className="text-sm leading-none">{meta.emoji}</span>
             <span className="text-[11px] font-semibold" style={{ color: meta.color }}>{meta.label}</span>
           </div>
 
@@ -328,11 +326,14 @@ export default function FocusPanel({
           {thread.metadata?.aiModel && (
             <div
               className="flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0"
-              style={{ background: thread.metadata.fromCache ? 'rgba(6,182,212,0.08)' : 'rgba(139,92,246,0.08)', border: `1px solid ${thread.metadata.fromCache ? 'rgba(6,182,212,0.2)' : 'rgba(139,92,246,0.2)'}` }}
+              style={{
+                background: thread.metadata.fromCache ? 'rgba(6,182,212,0.08)' : 'rgba(99,102,241,0.08)',
+                border: `1px solid ${thread.metadata.fromCache ? 'rgba(6,182,212,0.2)' : 'rgba(99,102,241,0.2)'}`,
+              }}
               title={thread.metadata.processingTime ? `Generated in ${(thread.metadata.processingTime / 1000).toFixed(1)}s` : undefined}
             >
-              <Zap className="w-2.5 h-2.5" style={{ color: thread.metadata.fromCache ? '#06b6d4' : '#a78bfa' }} />
-              <span className="text-[10px] font-medium" style={{ color: thread.metadata.fromCache ? '#67e8f9' : '#c4b5fd' }}>
+              <Zap className="w-2.5 h-2.5" style={{ color: thread.metadata.fromCache ? '#06b6d4' : '#818cf8' }} />
+              <span className="text-[10px] font-medium" style={{ color: thread.metadata.fromCache ? '#67e8f9' : '#a5b4fc' }}>
                 {thread.metadata.fromCache ? 'Cached' : thread.metadata.aiModel}
                 {thread.metadata.processingTime && !thread.metadata.fromCache ? ` · ${(thread.metadata.processingTime / 1000).toFixed(1)}s` : ''}
               </span>
@@ -374,13 +375,9 @@ export default function FocusPanel({
               <span>{thread.isPublic ? 'Public' : 'Share'}</span>
             </ActionBtn>
 
-            {/* Export dropdown */}
-            <div className="relative">
-              <ActionBtn
-                title="Export"
-                onClick={() => setExportOpen(p => !p)}
-                active={exportOpen}
-              >
+            {/* Export dropdown — ref scoped so outside clicks close it but inside clicks don't */}
+            <div className="relative" ref={exportRef}>
+              <ActionBtn title="Export" onClick={() => setExportOpen(p => !p)} active={exportOpen}>
                 {exporting
                   ? <div className="w-3 h-3 border-2 border-zinc-400/30 border-t-zinc-300 rounded-full animate-spin" />
                   : <Download size={13} />
@@ -394,45 +391,24 @@ export default function FocusPanel({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
                     transition={{ duration: 0.13 }}
-                    className="absolute right-0 top-full mt-1.5 w-40 rounded-xl overflow-hidden z-50"
-                    style={{ background: '#131b26', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }}
+                    className="absolute right-0 top-full mt-1.5 w-40 rounded-xl overflow-hidden z-50 bg-slate-900 border border-white/[0.09] shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
                   >
-                    <button
-                      onClick={handleExportPNG}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
-                    >
-                      <ImageIcon size={13} className="text-blue-400" />
-                      Export as PNG
+                    <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                      <ImageIcon size={13} className="text-blue-400" /> Export as PNG
                     </button>
-                    <button
-                      onClick={handleExportSVG}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
-                    >
-                      <Code2 size={13} className="text-violet-400" />
-                      Export as SVG
+                    <button onClick={handleExportSVG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                      <Code2 size={13} className="text-violet-400" /> Export as SVG
                     </button>
                     <div className="h-px bg-white/[0.06] mx-3 my-1" />
-                    <button
-                      onClick={() => { setExportOpen(false); onExportData('json'); }}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
-                      title={!thread.vizId ? 'Save first to export' : undefined}
-                    >
+                    <button onClick={() => { setExportOpen(false); onExportData('json'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors" title={!thread.vizId ? 'Save first to export' : undefined}>
                       <FileJson size={13} className={thread.vizId ? 'text-amber-400' : 'text-zinc-600'} />
                       <span className={!thread.vizId ? 'text-zinc-600' : ''}>Export as JSON</span>
                     </button>
-                    <button
-                      onClick={() => { setExportOpen(false); onExportData('csv'); }}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
-                      title={!thread.vizId ? 'Save first to export' : undefined}
-                    >
+                    <button onClick={() => { setExportOpen(false); onExportData('csv'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors" title={!thread.vizId ? 'Save first to export' : undefined}>
                       <FileSpreadsheet size={13} className={thread.vizId ? 'text-emerald-400' : 'text-zinc-600'} />
                       <span className={!thread.vizId ? 'text-zinc-600' : ''}>Export as CSV</span>
                     </button>
-                    <button
-                      onClick={() => { setExportOpen(false); onExportData('html'); }}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors"
-                      title={!thread.vizId ? 'Save first to export' : undefined}
-                    >
+                    <button onClick={() => { setExportOpen(false); onExportData('html'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors" title={!thread.vizId ? 'Save first to export' : undefined}>
                       <FileCode size={13} className={thread.vizId ? 'text-cyan-400' : 'text-zinc-600'} />
                       <span className={!thread.vizId ? 'text-zinc-600' : ''}>Export as HTML</span>
                     </button>
@@ -443,20 +419,18 @@ export default function FocusPanel({
 
             <div className="w-px h-4 bg-white/10 mx-0.5" />
 
-            <ActionBtn
-              title="Refine with AI"
-              onClick={() => setEditOpen(p => !p)}
-              active={editOpen}
-            >
+            <ActionBtn title="Refine with AI" onClick={() => setEditOpen(p => !p)} active={editOpen}>
               <Pencil size={12} />
               <span>Refine</span>
             </ActionBtn>
           </div>
         </div>
 
-        {/* Viz */}
+        {/* Viz — wrapped in ErrorBoundary so a broken viz can't crash the panel */}
         <div ref={vizAreaRef} className="flex-1 relative overflow-hidden min-h-0" key={thread.id}>
-          {renderViz(thread)}
+          <VisualizationErrorBoundary>
+            {renderViz(thread)}
+          </VisualizationErrorBoundary>
         </div>
       </div>
 
@@ -468,15 +442,11 @@ export default function FocusPanel({
             animate={{ width: 380, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="flex-shrink-0 overflow-hidden relative"
-            style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}
+            className="flex-shrink-0 overflow-hidden relative border-l border-white/[0.06]"
           >
-            <div className="w-[380px] h-full flex flex-col" style={{ background: '#0f1419' }}>
+            <div className="w-[380px] h-full flex flex-col bg-slate-900">
               {/* Edit panel header */}
-              <div
-                className="flex items-center justify-between px-4 h-12 flex-shrink-0"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-              >
+              <div className="flex items-center justify-between px-4 h-12 flex-shrink-0 border-b border-white/5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-400/70" />
                   <span className="text-xs font-semibold text-zinc-400">Refine</span>

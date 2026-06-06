@@ -34,7 +34,7 @@ export class VisualizationErrorBoundary extends React.Component<Props, State> {
             </p>
             <button
               onClick={() => this.setState({ hasError: false })}
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-indigo-400 hover:underline"
             >
               Try again
             </button>

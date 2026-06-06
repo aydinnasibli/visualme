@@ -65,7 +65,7 @@ export default async function AdminVisualizationsPage({
             name="search"
             defaultValue={search}
             placeholder="Search by title…"
-            className="w-full bg-[#19212e] border border-white/[0.06] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/40 transition-colors"
+            className="w-full bg-slate-800 border border-white/6 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 transition-colors"
           />
           {type && <input type="hidden" name="type" value={type} />}
         </form>
@@ -77,15 +77,15 @@ export default async function AdminVisualizationsPage({
               href={buildHref({ type: t, page: 1 })}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 type === t
-                  ? 'bg-primary/15 text-primary'
-                  : 'bg-[#19212e] text-white/35 hover:text-white border border-white/[0.06]'
+                  ? 'bg-indigo-500/15 text-indigo-400'
+                  : 'bg-slate-800 text-white/35 hover:text-white border border-white/6'
               }`}
             >
               {t ? t.replace(/_/g, ' ') : 'All types'}
             </Link>
           ))}
           {type && !TYPE_QUICK_FILTERS.includes(type) && (
-            <span className="px-3 py-1.5 rounded-lg text-xs bg-primary/15 text-primary border border-primary/20">
+            <span className="px-3 py-1.5 rounded-lg text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
               {type.replace(/_/g, ' ')}
             </span>
           )}
@@ -93,11 +93,11 @@ export default async function AdminVisualizationsPage({
       </div>
 
       {/* Table */}
-      <div className="bg-[#19212e] rounded-xl border border-white/[0.06] overflow-hidden">
+      <div className="bg-slate-800 rounded-xl border border-white/6 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/[0.06]">
+              <tr className="border-b border-white/6">
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Title</th>
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Type</th>
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Visibility</th>
@@ -129,7 +129,7 @@ export default async function AdminVisualizationsPage({
                   <td className="px-5 py-3">
                     <Link
                       href={`/admin/users/${viz.userId}`}
-                      className="text-xs text-white/30 hover:text-primary transition-colors font-mono"
+                      className="text-xs text-white/30 hover:text-indigo-400 transition-colors font-mono"
                     >
                       {viz.userId.slice(0, 16)}…
                     </Link>
@@ -161,7 +161,7 @@ export default async function AdminVisualizationsPage({
             {page > 1 && (
               <Link
                 href={buildHref({ page: page - 1 })}
-                className="px-3 py-1.5 bg-[#19212e] border border-white/[0.06] rounded-lg text-xs text-white/50 hover:text-white transition-colors"
+                className="px-3 py-1.5 bg-slate-800 border border-white/6 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
               >
                 ← Previous
               </Link>
@@ -169,7 +169,7 @@ export default async function AdminVisualizationsPage({
             {page < totalPages && (
               <Link
                 href={buildHref({ page: page + 1 })}
-                className="px-3 py-1.5 bg-[#19212e] border border-white/[0.06] rounded-lg text-xs text-white/50 hover:text-white transition-colors"
+                className="px-3 py-1.5 bg-slate-800 border border-white/6 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
               >
                 Next →
               </Link>

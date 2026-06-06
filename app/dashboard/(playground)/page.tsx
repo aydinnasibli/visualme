@@ -5,7 +5,7 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import {
   generateVisualization, saveVisualization, expandNodeAction,
-  expandMindMapNodeAction, getVisualizationById, editVisualizationAction,
+  expandMindMapNodeAction, getVisualizationById,
 } from '@/lib/actions/visualize';
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type {
@@ -315,14 +315,31 @@ function DashboardContent() {
     } catch { toast.error('Failed to expand node.'); }
   }, [activeThread]);
 
-  const handleManualEdit = useCallback(() => {
+  const handleManualEdit = useCallback(async () => {
     if (!manualEditJson.trim() || !activeThread) { toast.error('Enter valid JSON'); return; }
     try {
       const parsed = JSON.parse(manualEditJson);
       const id = activeThread.id;
+      // Optimistic local update
       setThreads(p => p.map(t => t.id === id ? { ...t, data: parsed } : t));
+      // Persist to DB if already saved
+      if (activeThread.vizId) {
+        const res = await saveVisualization(
+          activeThread.title,
+          activeThread.type,
+          parsed,
+          { generatedAt: new Date(), aiModel: activeThread.metadata?.aiModel || 'manual', originalInput: activeThread.prompt },
+          activeThread.isPublic ?? false,
+          activeThread.vizId,
+          activeThread.chatHistory as { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[],
+        );
+        if (!res.success) { toast.error(res.error || 'Failed to save'); return; }
+      }
       toast.success('Updated!');
-    } catch { toast.error('Invalid JSON.'); }
+    } catch (e) {
+      if (e instanceof SyntaxError) toast.error('Invalid JSON');
+      else toast.error('Update failed');
+    }
   }, [manualEditJson, activeThread]);
 
   const handleNew = useCallback(() => setActiveId(null), []);
@@ -334,18 +351,12 @@ function DashboardContent() {
     loadingStep === 'finalizing' ? 'Finalizing…' : 'Processing…';
 
   return (
-    <div
-      className="text-stone-200 flex flex-col h-screen w-full antialiased overflow-hidden"
-      style={{ background: '#0a0d11' }}
-    >
+    <div className="text-zinc-200 flex flex-col h-screen w-full antialiased overflow-hidden bg-zinc-950">
       <Header user={user || null} />
 
       <div className="flex-1 flex overflow-hidden min-h-0 pt-16">
         {/* ── Left: Thread panel ── */}
-        <div
-          className="w-[340px] shrink-0 flex flex-col"
-          style={{ background: '#0f1419', borderRight: '1px solid rgba(255,255,255,0.05)' }}
-        >
+        <div className="w-[340px] shrink-0 flex flex-col bg-slate-900 border-r border-white/5">
           <VizThread
             threads={threads}
             activeId={activeId}
@@ -370,13 +381,7 @@ function DashboardContent() {
             <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
               <div
                 className="flex items-center gap-3 px-5 py-3 rounded-2xl text-sm font-medium"
-                style={{
-                  background: 'rgba(10,13,17,0.92)',
-                  border: '1px solid rgba(139,92,246,0.28)',
-                  boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.08)',
-                  backdropFilter: 'blur(16px)',
-                  color: '#c4b5fd',
-                }}
+                className="bg-zinc-950/90 border border-violet-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-md text-violet-300"
               >
                 <div className="w-4 h-4 border-2 border-violet-500/30 border-t-violet-400 rounded-full animate-spin shrink-0" />
                 <span>{stepText}</span>

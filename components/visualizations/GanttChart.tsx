@@ -214,7 +214,7 @@ export default function GanttChart({ data }: GanttChartProps) {
         {/* Header with Controls */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-primary" />
+            <Calendar className="w-5 h-5 text-indigo-400" />
             <h3 className="text-lg font-semibold text-white">Gantt Chart</h3>
             <span className="text-sm text-zinc-500">
               {data.tasks.length} task{data.tasks.length !== 1 ? "s" : ""}
@@ -248,7 +248,7 @@ export default function GanttChart({ data }: GanttChartProps) {
                   onClick={() => setViewMode(mode)}
                   className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                     viewMode === mode
-                      ? "bg-primary text-white"
+                      ? "bg-indigo-500 text-white"
                       : "text-zinc-400 hover:text-white hover:bg-zinc-800"
                   }`}
                 >
@@ -714,7 +714,7 @@ export default function GanttChart({ data }: GanttChartProps) {
               <div className="flex justify-end p-6 border-t border-zinc-800">
                 <button
                   onClick={handleCloseModal}
-                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium"
+                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors font-medium"
                 >
                   Close
                 </button>

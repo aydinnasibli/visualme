@@ -14,54 +14,54 @@ interface SideActionsProps {
 const SideActions = ({ handleSave, isSaved, saving, toggleEditPanel, onShare, onExportCode }: SideActionsProps) => {
   return (
     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`w-10 h-10 rounded-xl glass-panel flex items-center justify-center transition-all ${
-            isSaved ? 'text-green-400 bg-green-500/10 border-green-500/30' : 'text-stone-400 hover:text-white hover:bg-white/5'
-          } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-          title={isSaved ? "Saved" : "Save Visualization"}
-        >
-          {saving ? (
-            <div className="w-4 h-4 border-2 border-stone-400 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            isSaved ? <CheckCircle className="w-5 h-5" /> : <Save className="w-5 h-5" />
-          )}
-        </button>
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className={`w-10 h-10 rounded-xl glass-panel flex items-center justify-center transition-all ${
+          isSaved ? 'text-green-400 bg-green-500/10 border-green-500/30' : 'text-zinc-400 hover:text-white hover:bg-white/5'
+        } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+        title={isSaved ? "Saved" : "Save Visualization"}
+      >
+        {saving ? (
+          <div className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          isSaved ? <CheckCircle className="w-5 h-5" /> : <Save className="w-5 h-5" />
+        )}
+      </button>
 
-        <button
-          onClick={onShare}
-          className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-stone-400 hover:text-white hover:bg-white/5 transition-colors tooltip"
-          title="Share (copy link)"
-        >
-          <Share2 className="w-5 h-5" />
-        </button>
+      <button
+        onClick={onShare}
+        className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+        title="Share (copy link)"
+      >
+        <Share2 className="w-5 h-5" />
+      </button>
 
-        <button
-          onClick={onExportCode}
-          className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-stone-400 hover:text-white hover:bg-white/5 transition-colors tooltip"
-          title="Export"
-        >
-          <Code className="w-5 h-5" />
-        </button>
+      <button
+        onClick={onExportCode}
+        className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+        title="Export"
+      >
+        <Code className="w-5 h-5" />
+      </button>
 
-        <div className="w-8 h-px bg-white/10 mx-auto my-1"></div>
+      <div className="w-8 h-px bg-white/10 mx-auto my-1" />
 
-        <button
-          onClick={toggleEditPanel}
-          className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-stone-400 hover:text-white hover:bg-white/5 transition-colors tooltip"
-          title="History & Chat"
-        >
-          <History className="w-5 h-5" />
-        </button>
+      <button
+        onClick={toggleEditPanel}
+        className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+        title="History & Chat"
+      >
+        <History className="w-5 h-5" />
+      </button>
 
-        <Link
-          href="/my-visualizations"
-          className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-stone-400 hover:text-white hover:bg-white/5 transition-colors tooltip"
-          title="My Visualizations"
-        >
-          <FolderOpen className="w-5 h-5" />
-        </Link>
+      <Link
+        href="/my-visualizations"
+        className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+        title="My Visualizations"
+      >
+        <FolderOpen className="w-5 h-5" />
+      </Link>
     </div>
   );
 };

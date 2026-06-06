@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { SavedVisualization } from '@/lib/types/visualization';
+import { VIZ_TYPE_MAP } from '@/lib/constants/vizTypes';
 
 const Loader = () => (
   <div className="w-full h-full flex items-center justify-center">
@@ -32,16 +33,6 @@ const DynParallelCoords    = dyn(() => import('./ParallelCoordinates'));
 const DynWordCloud         = dyn(() => import('./WordCloud'));
 const DynSyntaxDiagram     = dyn(() => import('./SyntaxDiagram'));
 
-const TYPE_LABELS: Record<string, string> = {
-  network_graph: 'Network Graph', mind_map: 'Mind Map', tree_diagram: 'Tree Diagram',
-  timeline: 'Timeline', gantt_chart: 'Gantt Chart', animated_timeline: 'Animated Timeline',
-  flowchart: 'Flowchart', sankey_diagram: 'Sankey Diagram', swimlane_diagram: 'Swimlane',
-  line_chart: 'Line Chart', bar_chart: 'Bar Chart', scatter_plot: 'Scatter Plot',
-  heatmap: 'Heatmap', radar_chart: 'Radar Chart', pie_chart: 'Pie Chart',
-  comparison_table: 'Comparison Table', parallel_coordinates: 'Parallel Coordinates',
-  word_cloud: 'Word Cloud', syntax_diagram: 'Syntax Diagram',
-};
-
 function renderViz(viz: SavedVisualization) {
   const d = viz.data as any;
   switch (viz.type) {
@@ -69,23 +60,24 @@ function renderViz(viz: SavedVisualization) {
 }
 
 export default function SharedVisualizationView({ visualization }: { visualization: SavedVisualization }) {
-  const typeLabel = TYPE_LABELS[visualization.type] ?? visualization.type.replace(/_/g, ' ');
+  const typeLabel = VIZ_TYPE_MAP[visualization.type as keyof typeof VIZ_TYPE_MAP]?.name
+    ?? visualization.type.replace(/_/g, ' ');
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#0a0d11' }}>
+    <div className="min-h-screen flex flex-col bg-zinc-950">
       {/* Header */}
-      <header className="h-14 flex items-center justify-between px-6 border-b border-white/5" style={{ background: '#0f1419' }}>
+      <header className="h-14 flex items-center justify-between px-6 border-b border-white/5 bg-slate-900">
         <div className="flex items-center gap-3">
-          <Link href="/" className="w-7 h-7 rounded-lg bg-surface-dark border border-white/10 flex items-center justify-center text-primary font-bold text-sm">V</Link>
-          <span className="text-stone-400 text-sm">VisualMe</span>
-          <span className="text-stone-700">/</span>
-          <span className="text-stone-300 text-sm font-medium truncate max-w-xs">{visualization.title}</span>
+          <Link href="/" className="w-7 h-7 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-indigo-400 font-bold text-sm">V</Link>
+          <span className="text-zinc-400 text-sm">VisualMe</span>
+          <span className="text-zinc-700">/</span>
+          <span className="text-zinc-300 text-sm font-medium truncate max-w-xs">{visualization.title}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-stone-400 border border-white/5">{typeLabel}</span>
+          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-zinc-400 border border-white/5">{typeLabel}</span>
           <Link
             href="/sign-up"
-            className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-medium hover:bg-indigo-600 transition-colors"
           >
             Try VisualMe free
           </Link>
@@ -98,9 +90,9 @@ export default function SharedVisualizationView({ visualization }: { visualizati
       </div>
 
       {/* Footer */}
-      <footer className="h-10 flex items-center justify-center border-t border-white/5 text-xs text-stone-600">
+      <footer className="h-10 flex items-center justify-center border-t border-white/5 text-xs text-zinc-600">
         Shared via{' '}
-        <Link href="/" className="text-stone-500 hover:text-stone-300 transition-colors ml-1">VisualMe</Link>
+        <Link href="/" className="text-zinc-500 hover:text-zinc-300 transition-colors ml-1">VisualMe</Link>
       </footer>
     </div>
   );

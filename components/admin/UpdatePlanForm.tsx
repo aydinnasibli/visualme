@@ -41,7 +41,7 @@ export default function UpdatePlanForm({
             onClick={() => setSelected(plan)}
             className={`py-1.5 rounded-md text-xs font-medium transition-all capitalize ${
               selected === plan
-                ? 'bg-primary text-white'
+                ? 'bg-indigo-500 text-white'
                 : 'text-white/40 hover:text-white'
             }`}
           >
@@ -53,7 +53,7 @@ export default function UpdatePlanForm({
         type="button"
         onClick={handleUpdate}
         disabled={isPending || selected === currentPlan}
-        className="w-full py-2 px-4 bg-primary hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm text-white font-medium transition-colors"
+        className="w-full py-2 px-4 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm text-white font-medium transition-colors"
       >
         {isPending ? 'Updating…' : 'Apply Plan'}
       </button>
@@ -61,7 +61,7 @@ export default function UpdatePlanForm({
         <p className="text-xs text-white/30 text-center">
           Current: <span className="text-white/50 capitalize">{currentPlan}</span>
           {' → '}
-          <span className="text-primary capitalize">{selected}</span>
+          <span className="text-indigo-400 capitalize">{selected}</span>
         </p>
       )}
     </div>

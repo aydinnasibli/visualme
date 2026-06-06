@@ -54,7 +54,7 @@ export default function AnalyticsCharts({ data }: { data: AnalyticsData }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Visualizations by Type */}
-      <div className="bg-[#19212e] rounded-xl border border-white/[0.06] p-5 lg:col-span-2">
+      <div className="bg-slate-800 rounded-xl border border-white/6 p-5 lg:col-span-2">
         <h3 className="text-sm font-medium text-white mb-5">Visualizations by Type</h3>
         {vizData.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
@@ -79,7 +79,7 @@ export default function AnalyticsCharts({ data }: { data: AnalyticsData }) {
       </div>
 
       {/* Users by Plan */}
-      <div className="bg-[#19212e] rounded-xl border border-white/[0.06] p-5">
+      <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
         <h3 className="text-sm font-medium text-white mb-5">Users by Plan</h3>
         {planData.length > 0 ? (
           <div className="flex items-center gap-6">
@@ -125,7 +125,7 @@ export default function AnalyticsCharts({ data }: { data: AnalyticsData }) {
       </div>
 
       {/* Token Usage by Tier */}
-      <div className="bg-[#19212e] rounded-xl border border-white/[0.06] p-5">
+      <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
         <h3 className="text-sm font-medium text-white mb-5">Avg Token Usage by Tier</h3>
         {tokenData.length > 0 ? (
           <ResponsiveContainer width="100%" height={180}>
