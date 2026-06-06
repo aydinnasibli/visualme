@@ -139,6 +139,8 @@ export interface AnimatedTimelineStep {
   title: string;
   description: string;
   timestamp?: string;
+  keyPoints?: string[];
+  impact?: string;
   data?: any;
 }
 
@@ -158,6 +160,9 @@ export interface FlowchartNode {
   data: {
     label: string;
     color?: string;
+    description?: string;
+    keyPoints?: string[];
+    relatedConcepts?: string[];
   };
   position: { x: number; y: number };
 }
@@ -200,6 +205,7 @@ export interface SwimlaneTask {
   id: string;
   lane: string;
   content: string;
+  description?: string;
   position: number;
 }
 

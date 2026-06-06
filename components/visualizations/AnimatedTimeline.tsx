@@ -102,6 +102,28 @@ export default function AnimatedTimeline({ data }: AnimatedTimelineProps) {
             <h2 className="text-2xl font-bold text-white mb-3">{current?.title}</h2>
             <p className="text-zinc-300 leading-relaxed text-sm">{current?.description}</p>
 
+            {current?.keyPoints && current.keyPoints.length > 0 && (
+              <div className="mt-5">
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>
+                  Key Points
+                </h3>
+                <ul className="space-y-1.5">
+                  {current.keyPoints.map((pt, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: color }} />
+                      {pt}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {current?.impact && (
+              <div className="mt-4 px-3 py-2 rounded-lg text-xs text-zinc-300 italic" style={{ background: `${color}12`, borderLeft: `2px solid ${color}60` }}>
+                {current.impact}
+              </div>
+            )}
+
             {current?.timestamp && (
               <div className="mt-4 text-xs text-zinc-500 font-mono">{current.timestamp}</div>
             )}

@@ -53,6 +53,9 @@ interface FlowNodeData extends Record<string, unknown> {
   nodeType: FlowchartNodeType;
   nodeId: string;
   color?: string;
+  description?: string;
+  keyPoints?: string[];
+  relatedConcepts?: string[];
   onSelect: (id: string) => void;
 }
 
@@ -155,6 +158,7 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
     const { fitView, zoomIn, zoomOut } = useReactFlow();
     const [selectedNode, setSelectedNode] = useState<{
       id: string; label: string; category: string; color: string;
+      description?: string; keyPoints?: string[]; relatedConcepts?: string[];
     } | null>(null);
 
     const handleSelect = useCallback((id: string) => {
@@ -166,6 +170,9 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
         label: src.data?.label || id,
         category: nodeType.charAt(0).toUpperCase() + nodeType.slice(1),
         color: src.data?.color || NODE_COLORS[nodeType] || "#6366f1",
+        description: src.data?.description,
+        keyPoints: src.data?.keyPoints,
+        relatedConcepts: src.data?.relatedConcepts,
       });
     }, [data]);
 
@@ -176,7 +183,15 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
         id: n.id,
         type: "flowNode",
         position: n.position || { x: 0, y: 0 },
-        data: { label: n.data?.label || n.id, nodeType: n.type || "process", nodeId: n.id, color: n.data?.color } as Omit<FlowNodeData, "onSelect">,
+        data: {
+          label: n.data?.label || n.id,
+          nodeType: n.type || "process",
+          nodeId: n.id,
+          color: n.data?.color,
+          description: n.data?.description,
+          keyPoints: n.data?.keyPoints,
+          relatedConcepts: n.data?.relatedConcepts,
+        } as Omit<FlowNodeData, "onSelect">,
       }));
 
       const rawEdges: Edge[] = (data.edges || []).map((e, i) => ({

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { SwimlaneDiagramData } from "@/lib/types/visualization";
 
 interface SwimlaneDiagramProps {
@@ -14,6 +14,7 @@ const LANE_COLORS = ["#8b5cf6","#06b6d4","#10b981","#f59e0b","#ec4899","#6366f1"
 export default function SwimlaneDiagram({ data }: SwimlaneDiagramProps) {
   const lanes = data?.lanes || [];
   const tasks = data?.tasks || [];
+  const [tooltip, setTooltip] = useState<{ id: string; content: string; description: string; x: number; y: number } | null>(null);
 
   // positions are 0-indexed; derive the total number of columns
   const maxPosition = useMemo(
@@ -94,13 +95,22 @@ export default function SwimlaneDiagram({ data }: SwimlaneDiagramProps) {
                           initial={{ opacity: 0, scale: 0.85 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: (laneIdx * maxPosition + pos) * 0.05 }}
-                          className="w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-200 text-center cursor-default"
+                          className="w-full px-3 py-2 rounded-lg text-xs font-medium text-zinc-200 text-center relative"
                           style={{
                             background: `${color}22`,
                             border: `1px solid ${color}50`,
+                            cursor: task.description ? "help" : "default",
                           }}
+                          onMouseEnter={task.description ? (e) => {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setTooltip({ id: task.id, content: task.content, description: task.description!, x: rect.left, y: rect.bottom });
+                          } : undefined}
+                          onMouseLeave={task.description ? () => setTooltip(null) : undefined}
                         >
                           {task.content}
+                          {task.description && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold" style={{ background: color, color: "#000" }}>i</span>
+                          )}
                         </motion.div>
                       )}
                     </div>
@@ -119,6 +129,26 @@ export default function SwimlaneDiagram({ data }: SwimlaneDiagramProps) {
           <span>Flow direction →</span>
         </div>
       </div>
+
+      {/* Task description tooltip */}
+      <AnimatePresence>
+        {tooltip && (
+          <motion.div
+            key={tooltip.id}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="fixed z-50 pointer-events-none"
+            style={{ left: tooltip.x, top: tooltip.y + 8, maxWidth: 280 }}
+          >
+            <div className="rounded-xl px-4 py-3 shadow-2xl" style={{ background: "#1c1c2a", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <p className="text-xs font-bold text-white mb-1">{tooltip.content}</p>
+              <p className="text-xs text-zinc-300 leading-relaxed">{tooltip.description}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
