@@ -4,8 +4,8 @@ import React, { useState, useCallback, Suspense } from 'react';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import {
-  generateVisualization, saveVisualization, expandNodeAction,
-  expandMindMapNodeAction, getVisualizationById,
+  generateVisualization, saveVisualization, editVisualizationAction,
+  expandNodeAction, expandMindMapNodeAction, getVisualizationById,
 } from '@/lib/actions/visualize';
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type {
