@@ -380,8 +380,7 @@ function DashboardContent() {
           {loading && (
             <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
               <div
-                className="flex items-center gap-3 px-5 py-3 rounded-2xl text-sm font-medium"
-                className="bg-zinc-950/90 border border-violet-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-md text-violet-300"
+                className="flex items-center gap-3 px-5 py-3 rounded-2xl text-sm font-medium bg-zinc-950/90 border border-violet-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-md text-violet-300"
               >
                 <div className="w-4 h-4 border-2 border-violet-500/30 border-t-violet-400 rounded-full animate-spin shrink-0" />
                 <span>{stepText}</span>

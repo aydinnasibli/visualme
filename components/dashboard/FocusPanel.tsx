@@ -307,7 +307,7 @@ export default function FocusPanel({
       {/* ── Main viz area ── */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Top bar */}
-        <div className="flex items-center gap-3 px-4 h-12 flex-shrink-0 border-b border-white/5 bg-white/[0.015]">
+        <div className="flex items-center gap-3 px-4 h-12 shrink-0 border-b border-white/5 bg-white/[0.015]">
           {/* Type badge */}
           <div
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-md"
@@ -391,7 +391,7 @@ export default function FocusPanel({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
                     transition={{ duration: 0.13 }}
-                    className="absolute right-0 top-full mt-1.5 w-40 rounded-xl overflow-hidden z-50 bg-slate-900 border border-white/[0.09] shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
+                    className="absolute right-0 top-full mt-1.5 w-40 rounded-xl overflow-hidden z-50 bg-slate-900 border border-white/9 shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
                   >
                     <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
                       <ImageIcon size={13} className="text-blue-400" /> Export as PNG
@@ -442,11 +442,11 @@ export default function FocusPanel({
             animate={{ width: 380, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="flex-shrink-0 overflow-hidden relative border-l border-white/[0.06]"
+            className="shrink-0 overflow-hidden relative border-l border-white/6"
           >
             <div className="w-[380px] h-full flex flex-col bg-slate-900">
               {/* Edit panel header */}
-              <div className="flex items-center justify-between px-4 h-12 flex-shrink-0 border-b border-white/5">
+              <div className="flex items-center justify-between px-4 h-12 shrink-0 border-b border-white/5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-400/70" />
                   <span className="text-xs font-semibold text-zinc-400">Refine</span>
