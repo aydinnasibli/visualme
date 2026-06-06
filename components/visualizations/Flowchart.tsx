@@ -48,6 +48,16 @@ const NODE_STYLES: Record<FlowchartNodeType, { bg: string; border: string }> = {
   output:   { bg: "#8b5cf628", border: "#8b5cf6" },
 };
 
+interface FlowNodeSelectPayload {
+  id: string;
+  label: string;
+  nodeType: FlowchartNodeType;
+  color?: string;
+  description?: string;
+  keyPoints?: string[];
+  relatedConcepts?: string[];
+}
+
 interface FlowNodeData extends Record<string, unknown> {
   label: string;
   nodeType: FlowchartNodeType;
@@ -56,7 +66,7 @@ interface FlowNodeData extends Record<string, unknown> {
   description?: string;
   keyPoints?: string[];
   relatedConcepts?: string[];
-  onSelect: (id: string) => void;
+  onSelect: (payload: FlowNodeSelectPayload) => void;
 }
 
 const FlowNode = ({ data }: NodeProps) => {
@@ -72,7 +82,15 @@ const FlowNode = ({ data }: NodeProps) => {
   return (
     <div
       style={{ position: "relative", cursor: "pointer" }}
-      onClick={() => d.onSelect(d.nodeId)}
+      onClick={() => d.onSelect({
+        id: d.nodeId,
+        label: d.label,
+        nodeType: d.nodeType,
+        color: d.color,
+        description: d.description,
+        keyPoints: d.keyPoints,
+        relatedConcepts: d.relatedConcepts,
+      })}
     >
       <Handle type="target" position={Position.Top} style={hs} />
       <Handle type="target" position={Position.Left} style={hs} />
@@ -161,20 +179,18 @@ const FlowchartInner = forwardRef<FlowchartHandle, FlowchartProps>(
       description?: string; keyPoints?: string[]; relatedConcepts?: string[];
     } | null>(null);
 
-    const handleSelect = useCallback((id: string) => {
-      const src = data?.nodes?.find(n => n.id === id);
-      if (!src) return;
-      const nodeType = (src.type || "process") as FlowchartNodeType;
+    const handleSelect = useCallback((payload: FlowNodeSelectPayload) => {
+      const { id, label, nodeType, color, description, keyPoints, relatedConcepts } = payload;
       setSelectedNode(prev => prev?.id === id ? null : {
         id,
-        label: src.data?.label || id,
+        label: label || id,
         category: nodeType.charAt(0).toUpperCase() + nodeType.slice(1),
-        color: src.data?.color || NODE_COLORS[nodeType] || "#6366f1",
-        description: src.data?.description,
-        keyPoints: src.data?.keyPoints,
-        relatedConcepts: src.data?.relatedConcepts,
+        color: color || NODE_COLORS[nodeType] || "#6366f1",
+        description,
+        keyPoints,
+        relatedConcepts,
       });
-    }, [data]);
+    }, []);
 
     const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
       if (!data?.nodes) return { nodes: [], edges: [] };

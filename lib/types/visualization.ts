@@ -94,8 +94,7 @@ export interface TreeNode {
 
 export interface TreeDiagramData {
   name: string;
-  /** Matches react-d3-tree's RawNodeDatum.attributes — values must be string | number | boolean */
-  attributes?: Record<string, string | number | boolean>;
+  attributes?: Record<string, any>;
   children?: TreeDiagramData[];
   value?: number;
 }

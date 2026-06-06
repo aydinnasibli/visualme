@@ -271,6 +271,7 @@ CRITICAL RULES:
     - type: short category/type label (e.g., "Core Concept", "Component", "Phase", "Module")
     - extendable: boolean (true if concept warrants deeper exploration)
     - keyPoints: array of 2-4 key facts (for top-level and important nodes)
+    - relatedConcepts: array of 2-3 related topics or concepts (for top-level and important nodes)
   * children: array of child nodes (optional for leaf nodes)
 - Maximum 5 levels deep — keep hierarchy meaningful
 - Leaf nodes need at minimum name, description, type, and extendable
@@ -282,7 +283,8 @@ JSON format:
     "description": "Comprehensive overview of what this diagram covers and why it matters...",
     "type": "Root",
     "extendable": true,
-    "keyPoints": ["Key fact 1", "Key fact 2", "Key fact 3"]
+    "keyPoints": ["Key fact 1", "Key fact 2", "Key fact 3"],
+    "relatedConcepts": ["Related Topic 1", "Related Topic 2", "Related Topic 3"]
   },
   "children": [
     {
@@ -291,7 +293,8 @@ JSON format:
         "description": "What this branch covers and its significance...",
         "type": "Category",
         "extendable": true,
-        "keyPoints": ["Fact 1", "Fact 2"]
+        "keyPoints": ["Fact 1", "Fact 2"],
+        "relatedConcepts": ["Related 1", "Related 2"]
       },
       "children": [
         {
@@ -402,37 +405,81 @@ async function generateFlowchart(userInput: string): Promise<AIResult<FlowchartD
   const systemPrompt = `Create a detailed, informative flowchart for process visualization with rich node metadata.
 
 CRITICAL RULES:
-- Generate 8-16 nodes to fully cover the process
-- nodes: array of {id, type ('start'|'end'|'process'|'decision'|'input'|'output'), data: {label, description, keyPoints, relatedConcepts}, position: {x, y}}
-- For EVERY node, data MUST include:
+- Generate 8-14 nodes to fully cover the process
+- node types: 'start' | 'end' | 'process' | 'decision' | 'input' | 'output'
+- EVERY SINGLE NODE must have ALL FOUR of these fields inside data — no exceptions:
   * label: concise name (2-6 words)
-  * description: COMPREHENSIVE 2-3 sentence explanation of what happens at this step, why it matters, and what the output or outcome is
-  * keyPoints: array of 3-5 specific, actionable bullet points about this step (conditions checked, actions performed, validations, outputs)
-  * relatedConcepts: array of 2-3 related steps, tools, or concepts relevant to this node
-- edges: array of {id, source, target, label (optional — use for Yes/No branches, condition labels, action names)}
-- Position: x,y coordinates (start at 0,0, increment y by 150-200 for vertical flow, use x offsets ±250 for branches)
-- Must have at least one 'start' and one 'end' node
-- Decision nodes must always have at least 2 outgoing edges labeled with conditions
+  * description: 2-3 sentences — what happens here, why it matters, what the outcome is. Never leave blank or use placeholder text.
+  * keyPoints: array of EXACTLY 3-5 specific bullet points — what is checked, performed, or produced at this step
+  * relatedConcepts: array of EXACTLY 2-3 related concepts, tools, or steps
+- edges: {id, source, target, label} — decision nodes MUST have ≥2 outgoing edges labeled "Yes"/"No" or condition text
+- Positions: start x=0,y=0 then increment y by 160-200; branches use x=±260
 
-JSON format:
+Complete JSON example (ALL 5 nodes have full data — follow this pattern for every node you generate):
 {
   "nodes": [
     {
-      "id": "1",
+      "id": "n1",
       "type": "start",
       "data": {
-        "label": "Process Initiated",
-        "description": "The process begins when a trigger event occurs. This entry point validates that all prerequisites are met before proceeding to the next stage.",
-        "keyPoints": ["Triggered by user action or system event", "Validates required inputs are present", "Initializes the process state", "Logs the start timestamp"],
-        "relatedConcepts": ["Trigger Condition", "Prerequisites Check", "Process State"]
+        "label": "User Submits Request",
+        "description": "The process begins when a user submits a request through the interface. The system captures the payload and verifies the session is active before routing the request downstream.",
+        "keyPoints": ["Session authentication verified", "Required fields presence checked", "Request timestamp recorded", "Status initialized to pending"],
+        "relatedConcepts": ["Authentication", "Input Capture", "Session Management"]
       },
       "position": {"x": 0, "y": 0}
+    },
+    {
+      "id": "n2",
+      "type": "decision",
+      "data": {
+        "label": "Valid Input?",
+        "description": "The system validates the submitted data against format rules, business constraints, and authorization levels. Invalid input is rejected here before any processing occurs.",
+        "keyPoints": ["Field format and type validation", "Business rule compliance check", "Duplicate request detection", "Authorization scope verified"],
+        "relatedConcepts": ["Validation Rules", "Error Handling", "Data Integrity"]
+      },
+      "position": {"x": 0, "y": 180}
+    },
+    {
+      "id": "n3",
+      "type": "process",
+      "data": {
+        "label": "Process Request",
+        "description": "Core business logic executes against the validated request. Database operations are performed, side effects like notifications are triggered, and the result is prepared for response.",
+        "keyPoints": ["Business logic execution", "Database read/write committed", "Event notifications dispatched", "Audit log entry created"],
+        "relatedConcepts": ["Business Logic", "Database Transaction", "Event Bus"]
+      },
+      "position": {"x": 0, "y": 360}
+    },
+    {
+      "id": "n4",
+      "type": "output",
+      "data": {
+        "label": "Return Error Response",
+        "description": "Validation failures are returned to the caller with descriptive error codes and field-level details. The error is logged for monitoring and the request is not retried automatically.",
+        "keyPoints": ["4xx error code assigned", "Field-level error messages included", "Retry guidance provided", "Error logged for alerting"],
+        "relatedConcepts": ["Error Codes", "User Feedback", "Error Logging"]
+      },
+      "position": {"x": 260, "y": 360}
+    },
+    {
+      "id": "n5",
+      "type": "end",
+      "data": {
+        "label": "Request Complete",
+        "description": "The process concludes with a success response returned to the caller. Status is updated to completed, post-processing workflows are triggered, and metrics are recorded.",
+        "keyPoints": ["2xx success response returned", "Status updated to completed", "Post-processing workflows triggered", "Response time metric recorded"],
+        "relatedConcepts": ["Response Payload", "Status Codes", "Post-processing"]
+      },
+      "position": {"x": 0, "y": 540}
     }
   ],
   "edges": [
-    {"id": "e1", "source": "1", "target": "2"},
-    {"id": "e2", "source": "3", "target": "4", "label": "Yes"},
-    {"id": "e3", "source": "3", "target": "5", "label": "No"}
+    {"id": "e1", "source": "n1", "target": "n2"},
+    {"id": "e2", "source": "n2", "target": "n3", "label": "Yes"},
+    {"id": "e3", "source": "n2", "target": "n4", "label": "No"},
+    {"id": "e4", "source": "n3", "target": "n5"},
+    {"id": "e5", "source": "n4", "target": "n5"}
   ]
 }`;
 
