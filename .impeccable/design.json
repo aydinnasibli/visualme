@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-07T12:31:16Z",
+  "title": "Design System: VisualMe",
+  "extensions": {
+    "colorMeta": {
+      "surface-base": { "role": "neutral", "displayName": "Slate Base", "canonical": "oklch(21% 0.04 265)", "tonalRamp": ["oklch(15% 0.02 265)", "oklch(21% 0.04 265)", "oklch(28% 0.04 265)", "oklch(38% 0.035 265)", "oklch(50% 0.03 265)", "oklch(64% 0.025 265)", "oklch(80% 0.015 265)", "oklch(95% 0.005 265)"] },
+      "surface-card": { "role": "neutral", "displayName": "Slate Card", "canonical": "oklch(28% 0.04 265)" },
+      "surface-card-alt": { "role": "neutral", "displayName": "Zinc Overlay", "canonical": "oklch(20% 0.005 285)" },
+      "surface-deep": { "role": "neutral", "displayName": "Zinc Deep", "canonical": "oklch(13% 0.004 285)" },
+      "primary-indigo": { "role": "primary", "displayName": "Indigo Borrow", "canonical": "oklch(58% 0.21 277)", "tonalRamp": ["oklch(20% 0.05 277)", "oklch(30% 0.10 277)", "oklch(40% 0.15 277)", "oklch(50% 0.19 277)", "oklch(58% 0.21 277)", "oklch(68% 0.17 277)", "oklch(80% 0.10 277)", "oklch(92% 0.03 277)"] },
+      "accent-violet": { "role": "secondary", "displayName": "Violet Drift", "canonical": "oklch(62% 0.22 296)" },
+      "accent-purple": { "role": "tertiary", "displayName": "Purple Overflow", "canonical": "oklch(63% 0.23 312)" },
+      "text-primary": { "role": "neutral", "displayName": "Slate 50 Text", "canonical": "oklch(98% 0.005 265)" },
+      "text-secondary": { "role": "neutral", "displayName": "Slate 400 Text", "canonical": "oklch(71% 0.03 265)" },
+      "text-muted-zinc": { "role": "neutral", "displayName": "Zinc 500 Muted", "canonical": "oklch(55% 0.005 285)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Space Grotesk Display", "purpose": "Declared for headings; functionally absent from shipped UI (one usage site-wide)." },
+      "body": { "displayName": "Default Sans Body", "purpose": "Inherited Tailwind sans stack; carries nearly all UI text and prose." },
+      "label": { "displayName": "Mono Label", "purpose": "Token counts, IDs, code-like values; the one place a distinct voice appears." }
+    },
+    "shadows": [
+      { "name": "glass-panel", "value": "0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.04)", "purpose": "Default elevated-surface treatment, paired with backdrop-filter: blur(12px) and rgba(25,33,46,0.7) fill. Reflexive, not purposeful." },
+      { "name": "shadow-2xl-overlay", "value": "0 25px 50px -12px rgba(0,0,0,0.25)", "purpose": "Tailwind default shadow, sometimes stacked on top of glass surfaces producing double elevation." }
+    ],
+    "motion": [
+      { "name": "ease-default", "value": "ease", "purpose": "Generic CSS ease used across glass-button and resize-handle transitions; no custom easing curve defined anywhere." },
+      { "name": "duration-fast", "value": "0.2s", "purpose": "Hover and focus state transitions on glass surfaces and grid items." }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Glass Panel (default card)",
+      "kind": "card",
+      "refersTo": "glass-panel",
+      "description": "The default elevated-surface treatment applied to nearly any raised element regardless of context.",
+      "html": "<div class=\"ds-glass-panel\"><h3 class=\"ds-glass-panel__title\">Visualization</h3><p class=\"ds-glass-panel__body\">Generated 3 minutes ago</p></div>",
+      "css": ".ds-glass-panel { background: rgba(25, 33, 46, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 16px; color: #f8fafc; } .ds-glass-panel__title { font-weight: 600; font-size: 0.95rem; margin: 0 0 4px; color: #f8fafc; } .ds-glass-panel__body { font-size: 0.8rem; color: #94a3b8; margin: 0; }"
+    },
+    {
+      "name": "Primary Button (indigo)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The most common interactive accent button; competes with violet and purple variants elsewhere for the same role.",
+      "html": "<button class=\"ds-btn-primary\">Generate</button>",
+      "css": ".ds-btn-primary { background: #6366f1; color: #f8fafc; padding: 10px 20px; border-radius: 8px; border: none; font-size: 0.875rem; font-weight: 500; transition: background 0.2s ease; } .ds-btn-primary:hover { background: #4f46e5; } .ds-btn-primary:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }"
+    },
+    {
+      "name": "Glass Button (ghost)",
+      "kind": "button",
+      "refersTo": "glass-button",
+      "description": "The default secondary/ghost interactive surface; a lighter-weight repeat of the glass-panel treatment.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px solid rgba(255, 255, 255, 0.05); color: #f8fafc; padding: 10px 20px; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s ease; } .ds-btn-ghost:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.1); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Dark fill input with thin border; focus ring present in roughly a quarter of usages, absent elsewhere.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Describe what you want to visualize...\" />",
+      "css": ".ds-input { background: #1e293b; border: 1px solid #3f3f46; border-radius: 8px; color: #f8fafc; padding: 10px 14px; font-size: 0.875rem; width: 100%; transition: border-color 0.2s ease, box-shadow 0.2s ease; } .ds-input::placeholder { color: #71717a; } .ds-input:focus-visible { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25); }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Navigation chrome rendered with the same glass treatment as content cards, so it doesn't read as structurally distinct.",
+      "html": "<a class=\"ds-nav-item ds-nav-item--active\" href=\"#\"><svg class=\"ds-nav-item__icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg>Dashboard</a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; color: #94a3b8; font-size: 0.875rem; text-decoration: none; transition: background 0.2s ease, color 0.2s ease; } .ds-nav-item__icon { width: 18px; height: 18px; flex-shrink: 0; } .ds-nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #f8fafc; } .ds-nav-item--active { background: rgba(99, 102, 241, 0.12); color: #f8fafc; }"
+    },
+    {
+      "name": "Mono Label Chip",
+      "kind": "chip",
+      "refersTo": "label-chip",
+      "description": "The one place a distinct typographic voice (monospace) shows up, used for token counts and IDs.",
+      "html": "<span class=\"ds-chip\">2,140 tokens</span>",
+      "css": ".ds-chip { font-family: ui-monospace, monospace; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.02em; color: #94a3b8; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9999px; padding: 4px 10px; display: inline-block; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Default Dark",
+    "overview": "This document captures the system as it exists today, a snapshot of \"before,\" not a spec to extend. It is the out-of-the-box dark SaaS template look applied without a unifying point of view: a slate-900 base, an indigo accent borrowed from the Tailwind palette, glass-panel blur on every elevated surface, and Space Grotesk dropped onto headings because it reads as \"modern.\" None of these were wrong choices in isolation. The problem is that no one decision was made in relation to the others, so the system never cohered into something that looks like VisualMe rather than any other AI-tool starter. The clearest symptom is the gray scale: slate and zinc are both in active use across the same screens, sometimes on adjacent elements, alongside three different purples (indigo-500, violet-500, purple-500) that aren't differentiated by role. Buttons, cards, and panels are templated and interchangeable: the same glass-card-with-blur treatment appears regardless of what it contains or what the user is trying to do there, so nothing on screen is purpose-built.",
+    "keyCharacteristics": [
+      "Two competing neutral scales (slate and zinc) used interchangeably with no rule for which applies where",
+      "Three accent purples (indigo-500, violet-500, purple-500) doing the same job in different places",
+      "Glassmorphism (backdrop-filter: blur) as the default elevation strategy for nearly every surface",
+      "Space Grotesk applied inconsistently: present in the theme, used in exactly one class across the codebase",
+      "No shared button/card/input components; each screen reimplements its own version of the same primitives"
+    ],
+    "rules": [
+      { "name": "The Two-Scale Problem", "body": "slate and zinc are both load-bearing neutral families in this codebase. Wherever you touch a surface, check which scale its siblings use before adding a third option; do not introduce a fourth neutral family.", "section": "colors" },
+      { "name": "The Declared-But-Unused Rule", "body": "A typeface can be declared in the theme and still be functionally absent from the product. Space Grotesk exists in --font-display but appears in one class across the entire codebase; a token that isn't applied isn't a system, it's a placeholder.", "section": "typography" },
+      { "name": "The Reflex Blur Rule", "body": "Glassmorphism is currently the answer to \"how should this surface stand out,\" applied without asking whether the surface needs to feel layered over moving content (its only legitimate use) or simply distinct from its neighbor (which a flat fill and a 1px border accomplish without the performance cost of backdrop-filter).", "section": "elevation" }
+    ],
+    "dos": [
+      "Do pick one neutral family (slate or zinc, not both) before touching any surface, and migrate its neighbors to match rather than adding a third option.",
+      "Do collapse the three competing purples (indigo-500, violet-500, purple-500) into a single deliberate accent with named roles, per PRODUCT.md's call for visual confidence and a real point of view.",
+      "Do treat .glass-panel / .glass-button as defaults to question, not defaults to extend; reach for a flat fill plus a hairline border first and reserve blur for surfaces that genuinely float over moving content.",
+      "Do either commit to Space Grotesk as a real display voice (used where display type actually appears) or remove it; a declared-but-unused token is worse than no token."
+    ],
+    "donts": [
+      "Don't add a sixth color to a palette that already has five competing near-duplicates (two neutral families, three accent purples); subtract before adding.",
+      "Don't reach for backdrop-filter: blur as the default answer to \"how do I make this stand out.\" That is the single most repeated \"AI slop\" tell across these screens.",
+      "Don't build another one-off button, card, or input. The fact that DeleteVizButton is the only named component in the codebase is the root cause of \"templated and interchangeable\"; new screens should draw from a shared set, not add another local variant.",
+      "Don't let .prose keep its own isolated palette (stone grays, blue-400 links). Fold it into whatever single neutral and accent system replaces the current mix."
+    ]
+  }
+}
