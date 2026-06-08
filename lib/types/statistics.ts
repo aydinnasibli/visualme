@@ -65,3 +65,18 @@ export interface StatTestResult {
 export interface StatisticsAnalysisError {
   error: string;
 }
+
+/**
+ * A finalized "run this test on these columns" choice — the statistics analog
+ * of `ChartSelection`. Stores column names (not `DatasetColumn` objects) so it
+ * stays serializable and is re-resolved against whichever dataset is active
+ * when the test actually runs.
+ */
+export interface StatTestSelection {
+  test: StatTestOption;
+  /** Selected column names, in the order the test needs them (value+group for grouped tests, A/B for paired, etc). */
+  columns: string[];
+  /** Only meaningful for `one-sample-ttest`. */
+  hypothesizedMean?: number;
+  alpha: number;
+}

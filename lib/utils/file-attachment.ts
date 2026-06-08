@@ -1,6 +1,8 @@
 'use client';
 
 import { parseFile } from '@/lib/services/file-parser';
+import { detectColumns } from '@/lib/services/statistics-service';
+import type { DatasetColumn } from '@/lib/types/statistics';
 
 export type AttachmentExtension = 'csv' | 'json' | 'txt';
 
@@ -12,6 +14,14 @@ export interface FileAttachment {
   rowCount?: number;
   /** Pre-formatted block embedded into the AI prompt — never shown in the UI. */
   promptSegment: string;
+  /**
+   * Typed columns detected from the same parsed rows used for `promptSegment` —
+   * present whenever the file is tabular (CSV, or JSON shaped as an array of
+   * row objects). This is what lets the user run a statistical test on the
+   * exact dataset they just attached without re-uploading it into a separate
+   * flow — one parse, shared by both visualization and statistics.
+   */
+  datasetColumns?: DatasetColumn[];
 }
 
 const ACCEPTED_EXTENSIONS: AttachmentExtension[] = ['csv', 'json', 'txt'];
@@ -51,9 +61,18 @@ export async function readFileAttachment(file: File): Promise<{ attachment?: Fil
 
   let body: string;
   let rowCount: number | undefined;
+  let datasetColumns: DatasetColumn[] | undefined;
   if (Array.isArray(result.data)) {
     rowCount = result.data.length;
     body = JSON.stringify(result.data, null, 2);
+
+    // Tabular shape (CSV always lands here; JSON when it's an array of row
+    // objects) — detect typed columns from the very same rows so the user can
+    // run statistics on this dataset without re-parsing it elsewhere.
+    if (result.data.length > 0 && typeof result.data[0] === 'object' && result.data[0] !== null && !Array.isArray(result.data[0])) {
+      const detected = detectColumns(result.data as Record<string, unknown>[]);
+      if (detected.length > 0) datasetColumns = detected;
+    }
   } else if (result.data !== undefined) {
     body = JSON.stringify(result.data, null, 2);
   } else {
@@ -71,6 +90,7 @@ export async function readFileAttachment(file: File): Promise<{ attachment?: Fil
       extension: extension as AttachmentExtension,
       rowCount,
       promptSegment,
+      datasetColumns,
     },
   };
 }

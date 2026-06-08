@@ -2,14 +2,22 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Sparkles, ArrowUp, CheckCircle2, BarChart3, Paperclip, Loader2, LayoutGrid } from 'lucide-react';
+import { Plus, Sparkles, ArrowUp, CheckCircle2, BarChart3, Paperclip, Loader2, LayoutGrid, Sigma } from 'lucide-react';
 import type { VisualizationSpec } from '@/lib/types/echarts-spec';
 import type { FileAttachment } from '@/lib/utils/file-attachment';
 import { ATTACHMENT_ACCEPT } from '@/lib/utils/file-attachment';
 import type { ChartSelection } from '@/lib/utils/chart-types';
+import type { StatTestResult, StatTestSelection } from '@/lib/types/statistics';
 import AttachmentChip from '@/components/dashboard/AttachmentChip';
 import ChartTypeChip from '@/components/dashboard/ChartTypeChip';
 import ChartTypeGalleryModal from '@/components/dashboard/ChartTypeGalleryModal';
+import StatTestChip from '@/components/dashboard/StatTestChip';
+import StatTestPickerModal from '@/components/dashboard/StatTestPickerModal';
+
+export interface StatRun {
+  selection: StatTestSelection;
+  result: StatTestResult;
+}
 
 export interface ThreadEntry {
   id: string;
@@ -119,17 +127,25 @@ interface ThreadInputProps {
   chartType: ChartSelection | null;
   onChooseChartType: (selection: ChartSelection) => void;
   onClearChartType: () => void;
+  statRun: StatRun | null;
+  onRunStat: (run: StatRun) => void;
+  onClearStat: () => void;
 }
 
 function ThreadInput({
   input, setInput, onSubmit, loading,
   attachment, attaching, onAttach, onRemoveAttachment,
   chartType, onChooseChartType, onClearChartType,
+  statRun, onRunStat, onClearStat,
 }: ThreadInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [statPickerOpen, setStatPickerOpen] = useState(false);
+
+  const datasetColumns = attachment?.datasetColumns;
+  const canRunStats = !loading && Boolean(datasetColumns?.length);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -166,10 +182,18 @@ function ThreadInput({
       onDrop={handleDrop}
       className={`rounded-xl overflow-hidden transition-all surface-control ${dragActive ? 'border-accent/50 bg-accent/5' : ''}`}
     >
-      {(attachment || chartType) && (
+      {(attachment || chartType || statRun) && (
         <div className="px-3 pt-3 flex flex-wrap gap-1.5">
           {attachment && <AttachmentChip attachment={attachment} onRemove={onRemoveAttachment} />}
           {chartType && <ChartTypeChip selection={chartType} onRemove={onClearChartType} />}
+          {statRun && (
+            <StatTestChip
+              selection={statRun.selection}
+              result={statRun.result}
+              onOpen={() => setStatPickerOpen(true)}
+              onRemove={onClearStat}
+            />
+          )}
         </div>
       )}
       <textarea
@@ -207,6 +231,17 @@ function ThreadInput({
         >
           <LayoutGrid size={13} />
         </button>
+        <button
+          type="button"
+          title={canRunStats ? 'Run a statistical test on the attached dataset' : 'Attach a tabular data file to enable statistical tests'}
+          onClick={() => setStatPickerOpen(true)}
+          disabled={!canRunStats}
+          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors disabled:opacity-35 ${
+            statRun ? 'text-accent bg-accent/10 hover:bg-accent/15' : 'text-ink-faint hover:text-ink hover:bg-surface-3'
+          }`}
+        >
+          <Sigma size={13} />
+        </button>
         <span className="hidden md:flex items-center gap-1.5 px-1.5 py-1 rounded-lg text-[11px] font-medium text-ink-faint">
           <Sparkles size={11} className="text-accent/60" />
           AI composes the chart
@@ -232,6 +267,16 @@ function ThreadInput({
         onClose={() => setGalleryOpen(false)}
         onSelect={onChooseChartType}
       />
+      {datasetColumns && (
+        <StatTestPickerModal
+          open={statPickerOpen}
+          onClose={() => setStatPickerOpen(false)}
+          columns={datasetColumns}
+          rowCount={attachment?.rowCount ?? datasetColumns[0]?.values.length ?? 0}
+          initialRun={statRun}
+          onRun={onRunStat}
+        />
+      )}
     </form>
   );
 }
@@ -254,6 +299,9 @@ export interface VizThreadProps {
   chartType: ChartSelection | null;
   onChooseChartType: (selection: ChartSelection) => void;
   onClearChartType: () => void;
+  statRun: StatRun | null;
+  onRunStat: (run: StatRun) => void;
+  onClearStat: () => void;
 }
 
 export default function VizThread({
@@ -261,6 +309,7 @@ export default function VizThread({
   input, setInput, onSubmit,
   attachment, attaching, onAttach, onRemoveAttachment,
   chartType, onChooseChartType, onClearChartType,
+  statRun, onRunStat, onClearStat,
 }: VizThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -349,6 +398,9 @@ export default function VizThread({
           chartType={chartType}
           onChooseChartType={onChooseChartType}
           onClearChartType={onClearChartType}
+          statRun={statRun}
+          onRunStat={onRunStat}
+          onClearStat={onClearStat}
         />
       </div>
     </div>

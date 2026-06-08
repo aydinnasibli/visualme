@@ -3,52 +3,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Sigma, Upload, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertTriangle, RotateCcw,
+  X, Sigma, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertTriangle, RotateCcw,
 } from 'lucide-react';
-import Papa from 'papaparse';
-import {
-  STAT_TESTS, detectColumns, runStatTest,
-} from '@/lib/services/statistics-service';
+import { STAT_TESTS, runStatTest } from '@/lib/services/statistics-service';
 import {
   DEFAULT_ALPHA,
-  type ColumnType, type DatasetColumn, type StatTestOption, type StatTestResult,
+  type ColumnType, type DatasetColumn, type StatTestOption, type StatTestResult, type StatTestSelection,
 } from '@/lib/types/statistics';
 
-interface StatisticsModalProps {
-  open: boolean;
-  onClose: () => void;
+interface StatRun {
+  selection: StatTestSelection;
+  result: StatTestResult;
 }
 
-type Step = 'input' | 'configure' | 'result';
-
-const MAX_ROWS = 5000;
-
-function parseDataset(text: string, filename?: string): { rows: Record<string, unknown>[] } | { error: string } {
-  const trimmed = text.trim();
-  if (!trimmed) return { error: 'Paste some data or upload a file first.' };
-
-  const looksJson = filename?.toLowerCase().endsWith('.json') || trimmed.startsWith('[') || trimmed.startsWith('{');
-  if (looksJson) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.data) ? parsed.data : null;
-      if (!rows || rows.length === 0 || typeof rows[0] !== 'object') {
-        return { error: 'JSON must be an array of objects (e.g. [{"group": "A", "value": 12}, ...]).' };
-      }
-      return { rows: rows.slice(0, MAX_ROWS) };
-    } catch {
-      return { error: 'Could not parse JSON — check the syntax.' };
-    }
-  }
-
-  const result = Papa.parse<Record<string, unknown>>(trimmed, { header: true, dynamicTyping: true, skipEmptyLines: true });
-  if (result.errors.length > 0) {
-    return { error: `CSV parsing error: ${result.errors[0].message}` };
-  }
-  if (result.data.length === 0) {
-    return { error: 'No rows found — make sure the first line has column headers.' };
-  }
-  return { rows: result.data.slice(0, MAX_ROWS) };
+interface StatTestPickerModalProps {
+  open: boolean;
+  onClose: () => void;
+  /** Columns detected from the currently attached dataset — same parse the AI prompt embeds, so no re-upload needed. */
+  columns: DatasetColumn[];
+  rowCount: number;
+  /** The last completed run for this dataset, if any — reopening the picker shows it directly instead of starting over. */
+  initialRun?: StatRun | null;
+  onRun: (run: StatRun) => void;
 }
 
 function fmtStat(value: number): string {
@@ -59,13 +35,7 @@ function fmtDf(df: number | [number, number]): string {
   return Array.isArray(df) ? `${df[0]}, ${df[1].toFixed(0)}` : Number.isInteger(df) ? `${df}` : df.toFixed(2);
 }
 
-/**
- * Self-contained "run a statistical test on your data" flow: paste/upload →
- * pick a test (only those your columns satisfy are selectable) → pick columns
- * → see the statistic, p-value, and a plain-language interpretation. All math
- * runs client-side via jStat — instant, free, no AI involved in the numbers.
- */
-/** Chip-style column picker — single-select (`numbered=false`, used for grouped tests' value/group pickers) or ordered multi-select (`numbered`, used for wide-format tests). */
+/** Chip-style column picker — single-select (used for grouped tests' value/group pickers) or ordered multi-select (numbered, wide-format tests). Mirrors the chart-type gallery's card pattern. */
 function ColumnPicker({ label, options, selected, onPick, numbered = false }: {
   label: string;
   options: DatasetColumn[];
@@ -105,28 +75,40 @@ function ColumnPicker({ label, options, selected, onPick, numbered = false }: {
   );
 }
 
-export default function StatisticsModal({ open, onClose }: StatisticsModalProps) {
-  const [step, setStep] = useState<Step>('input');
-  const [rawText, setRawText] = useState('');
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [columns, setColumns] = useState<DatasetColumn[]>([]);
-  const [rowCount, setRowCount] = useState(0);
+const isGrouped = (test: StatTestOption) => 'kind' in test.requiredColumns && test.requiredColumns.kind === 'grouped';
 
+/**
+ * Lets the user pick a hypothesis test and the columns to run it on, seeded
+ * with the dataset already attached to the composer — no separate paste/upload
+ * step. Selecting + running is entirely independent of generating a chart: the
+ * user can run a test without ever submitting the prompt, and vice versa.
+ */
+export default function StatTestPickerModal({ open, onClose, columns, rowCount, initialRun, onRun }: StatTestPickerModalProps) {
+  const [step, setStep] = useState<'pick-test' | 'configure' | 'result'>('pick-test');
   const [selectedTest, setSelectedTest] = useState<StatTestOption | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [hypothesizedMean, setHypothesizedMean] = useState('0');
   const [alpha, setAlpha] = useState(String(DEFAULT_ALPHA));
-
   const [result, setResult] = useState<StatTestResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) {
-      setStep('input'); setRawText(''); setParseError(null); setColumns([]); setRowCount(0);
-      setSelectedTest(null); setSelectedColumns([]); setHypothesizedMean('0'); setAlpha(String(DEFAULT_ALPHA));
-      setResult(null); setRunError(null);
+    if (!open) return;
+    if (initialRun) {
+      setSelectedTest(initialRun.selection.test);
+      setSelectedColumns(initialRun.selection.columns);
+      setHypothesizedMean(String(initialRun.selection.hypothesizedMean ?? 0));
+      setAlpha(String(initialRun.selection.alpha));
+      setResult(initialRun.result);
+      setStep('result');
+    } else {
+      setStep('pick-test');
+      setSelectedTest(null);
+      setSelectedColumns([]);
+      setResult(null);
     }
-  }, [open]);
+    setRunError(null);
+  }, [open, initialRun]);
 
   useEffect(() => {
     if (!open) return;
@@ -144,35 +126,27 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
     return spec.type === 'numeric' ? numericColumns.length >= spec.count : categoricalColumns.length >= spec.count;
   }), [numericColumns, categoricalColumns]);
 
-  const handleFile = async (file: File) => {
-    const text = await file.text();
-    setRawText(text);
-    parseAndDetect(text, file.name);
-  };
-
-  function parseAndDetect(text: string, filename?: string) {
-    const outcome = parseDataset(text, filename);
-    if ('error' in outcome) { setParseError(outcome.error); setColumns([]); return; }
-    const detected = detectColumns(outcome.rows);
-    if (detected.length === 0) { setParseError('No usable columns detected.'); return; }
-    setParseError(null);
-    setColumns(detected);
-    setRowCount(outcome.rows.length);
-    setStep('configure');
-  }
-
-  const isGrouped = (test: StatTestOption) => 'kind' in test.requiredColumns && test.requiredColumns.kind === 'grouped';
-
   const eligibleColumnsForTest = (test: StatTestOption): DatasetColumn[] => {
-    if ('kind' in test.requiredColumns) return columns; // grouped — handled by two dedicated pickers
+    if ('kind' in test.requiredColumns) return columns;
     if (test.requiredColumns.type === 'numeric') return numericColumns;
     return categoricalColumns;
   };
 
   const handlePickTest = (test: StatTestOption) => {
     setSelectedTest(test);
-    setSelectedColumns([]);
     setRunError(null);
+    // Auto-select columns when there's only one valid option per slot — saves the user a click
+    // on the common case where they have one numeric + one categorical column.
+    if (isGrouped(test)) {
+      const autoValue = numericColumns.length === 1 ? numericColumns[0].name : '';
+      const autoGroup = categoricalColumns.length === 1 ? categoricalColumns[0].name : '';
+      setSelectedColumns([autoValue, autoGroup]);
+    } else {
+      const eligible = eligibleColumnsForTest(test);
+      const need = (test.requiredColumns as { count: number }).count;
+      setSelectedColumns(eligible.length <= need ? eligible.map(c => c.name) : []);
+    }
+    setStep('configure');
   };
 
   // Wide-format multi-select (one-sample, paired, chi-square, correlation)
@@ -202,27 +176,32 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
     try {
       const cols = selectedColumns.map(name => columns.find(c => c.name === name)!).filter(Boolean);
       const a = parseFloat(alpha);
-      const result = runStatTest({
+      const resolvedAlpha = Number.isFinite(a) && a > 0 && a < 1 ? a : DEFAULT_ALPHA;
+      const resolvedMean = selectedTest.id === 'one-sample-ttest' ? (parseFloat(hypothesizedMean) || 0) : undefined;
+      const computed = runStatTest({
         testId: selectedTest.id,
         columns: cols,
-        hypothesizedMean: selectedTest.id === 'one-sample-ttest' ? parseFloat(hypothesizedMean) || 0 : undefined,
-        alpha: Number.isFinite(a) && a > 0 && a < 1 ? a : DEFAULT_ALPHA,
+        hypothesizedMean: resolvedMean,
+        alpha: resolvedAlpha,
       });
-      setResult(result);
+      setResult(computed);
       setStep('result');
+      onRun({
+        selection: { test: selectedTest, columns: selectedColumns, hypothesizedMean: resolvedMean, alpha: resolvedAlpha },
+        result: computed,
+      });
     } catch (err) {
       setRunError(err instanceof Error ? err.message : 'Could not run this test on the selected columns.');
     }
   };
 
   const handleBack = () => {
-    if (step === 'result') { setStep('configure'); setResult(null); return; }
-    if (step === 'configure') { setStep('input'); setColumns([]); setSelectedTest(null); setSelectedColumns([]); return; }
+    if (step === 'result') { setStep('configure'); return; }
+    if (step === 'configure') { setStep('pick-test'); setSelectedTest(null); setSelectedColumns([]); return; }
   };
 
   const handleReset = () => {
-    setStep('input'); setRawText(''); setParseError(null); setColumns([]); setRowCount(0);
-    setSelectedTest(null); setSelectedColumns([]); setResult(null); setRunError(null);
+    setStep('pick-test'); setSelectedTest(null); setSelectedColumns([]); setResult(null); setRunError(null);
   };
 
   return (
@@ -247,7 +226,7 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                {step !== 'input' && (
+                {step !== 'pick-test' && (
                   <button
                     onClick={handleBack}
                     title="Back"
@@ -259,20 +238,19 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
                 <div className="min-w-0">
                   <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
                     <Sigma size={14} className="text-accent" />
-                    {step === 'input' && 'Statistical analysis'}
-                    {step === 'configure' && (selectedTest ? selectedTest.label : 'Choose a test')}
+                    {step === 'pick-test' && 'Choose a statistical test'}
+                    {step === 'configure' && (selectedTest?.label ?? 'Configure')}
                     {step === 'result' && (result?.testName ?? 'Result')}
                   </h2>
                   <p className="text-[11px] text-ink-faint mt-0.5 truncate">
-                    {step === 'input' && 'Paste data or upload a CSV/JSON file to run a hypothesis test on it'}
-                    {step === 'configure' && !selectedTest && `${rowCount} rows · ${columns.length} columns detected`}
-                    {step === 'configure' && selectedTest && selectedTest.description}
-                    {step === 'result' && 'Computed locally with jStat — the numbers are deterministic and reproducible'}
+                    {step === 'pick-test' && `${rowCount.toLocaleString()} rows · ${columns.length} columns from your attached data`}
+                    {step === 'configure' && selectedTest?.description}
+                    {step === 'result' && 'Computed locally with jStat — deterministic, reproducible, never sent to the AI'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                {step !== 'input' && (
+                {step !== 'pick-test' && (
                   <button
                     onClick={handleReset}
                     title="Start over"
@@ -294,49 +272,8 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
             {/* Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
               <AnimatePresence mode="wait">
-                {/* ── Step 1: input ───────────────────────────────────────── */}
-                {step === 'input' && (
-                  <motion.div key="input" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.14 }} className="space-y-3.5">
-                    <textarea
-                      value={rawText}
-                      onChange={e => setRawText(e.target.value)}
-                      placeholder={'Paste CSV or JSON, e.g.\ngroup,score\nA,82\nA,79\nB,91\nB,88'}
-                      rows={9}
-                      className="w-full px-3.5 py-3 rounded-lg text-[12.5px] font-mono bg-surface-2 border border-edge text-ink placeholder:text-ink-faint outline-none focus:border-accent/40 transition-colors resize-none custom-scrollbar"
-                    />
-                    <div className="flex items-center gap-2.5">
-                      <label className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-[12px] font-medium bg-surface-1 border border-edge text-ink hover:border-accent/30 hover:bg-accent/5 transition-colors cursor-pointer">
-                        <Upload size={13} />
-                        Upload CSV / JSON
-                        <input
-                          type="file"
-                          accept=".csv,.json,text/csv,application/json"
-                          className="hidden"
-                          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
-                        />
-                      </label>
-                      <button
-                        onClick={() => parseAndDetect(rawText)}
-                        disabled={!rawText.trim()}
-                        className="px-4 py-2 rounded-lg text-[12px] font-semibold bg-accent text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Detect columns
-                      </button>
-                    </div>
-                    {parseError && (
-                      <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-lg bg-danger/10 border border-danger/20">
-                        <AlertTriangle size={13} className="text-danger shrink-0 mt-0.5" />
-                        <p className="text-[11.5px] text-danger leading-snug">{parseError}</p>
-                      </div>
-                    )}
-                    <p className="text-[10.5px] text-ink-faint leading-relaxed">
-                      Nothing here is saved or sent anywhere — parsing and every calculation happen in your browser, on data you provide for this session only.
-                    </p>
-                  </motion.div>
-                )}
-
-                {/* ── Step 2: configure ───────────────────────────────────── */}
-                {step === 'configure' && !selectedTest && (
+                {/* ── Step: pick a test ──────────────────────────────────── */}
+                {step === 'pick-test' && (
                   <motion.div key="pick-test" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.14 }} className="space-y-2.5">
                     <p className="text-[11px] text-ink-faint">
                       Detected: {numericColumns.length} numeric ({numericColumns.map(c => c.name).join(', ') || '—'}), {categoricalColumns.length} categorical ({categoricalColumns.map(c => c.name).join(', ') || '—'})
@@ -376,8 +313,9 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
                   </motion.div>
                 )}
 
+                {/* ── Step: configure columns + params ───────────────────── */}
                 {step === 'configure' && selectedTest && (
-                  <motion.div key="configure-test" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.14 }} className="space-y-4">
+                  <motion.div key="configure" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.14 }} className="space-y-4">
                     {isGrouped(selectedTest) ? (
                       <>
                         <ColumnPicker
@@ -387,7 +325,7 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
                           onPick={setValueColumn}
                         />
                         <ColumnPicker
-                          label={`Group column (categorical — ${selectedTest.id === 'one-way-anova' ? '3 or more' : 'exactly 2'} categories)`}
+                          label={`Group column (categorical — ${(selectedTest.requiredColumns as { minGroups: number }).minGroups === 2 ? 'exactly 2' : `${(selectedTest.requiredColumns as { minGroups: number }).minGroups} or more`} categories)`}
                           options={categoricalColumns}
                           selected={selectedColumns[1] ? [selectedColumns[1]] : []}
                           onPick={setGroupColumn}
@@ -447,7 +385,7 @@ export default function StatisticsModal({ open, onClose }: StatisticsModalProps)
                   </motion.div>
                 )}
 
-                {/* ── Step 3: result ──────────────────────────────────────── */}
+                {/* ── Step: result ────────────────────────────────────────── */}
                 {step === 'result' && result && (
                   <motion.div key="result" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }} className="space-y-4">
                     <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border ${

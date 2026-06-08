@@ -16,10 +16,8 @@ import { composePromptWithChartType, getStyleEffect, type ChartSelection } from 
 import { toast } from 'sonner';
 
 import Header from '@/components/dashboard/Header';
-import VizThread, { type ThreadEntry } from '@/components/dashboard/VizThread';
+import VizThread, { type ThreadEntry, type StatRun } from '@/components/dashboard/VizThread';
 import FocusPanel from '@/components/dashboard/FocusPanel';
-import StatisticsModal from '@/components/dashboard/StatisticsModal';
-import { Sigma } from 'lucide-react';
 
 /* ── Helpers ── */
 const Loading = () => (
@@ -58,13 +56,21 @@ function DashboardContent() {
     try {
       const { attachment: parsed, error } = await readFileAttachment(file);
       if (error) toast.error(error);
-      else setAttachment(parsed!);
+      else { setAttachment(parsed!); setStatRun(null); }
     } finally {
       setAttaching(false);
     }
   }, []);
 
-  const handleRemoveAttachment = useCallback(() => setAttachment(null), []);
+  /* ── Statistical test run (independent of chart generation — scoped to whichever dataset is attached) ── */
+  const [statRun, setStatRun] = useState<StatRun | null>(null);
+  const handleRunStat = useCallback((run: StatRun) => setStatRun(run), []);
+  const handleClearStat = useCallback(() => setStatRun(null), []);
+
+  const handleRemoveAttachment = useCallback(() => {
+    setAttachment(null);
+    setStatRun(null);
+  }, []);
 
   /* ── Forced chart type (gallery picker) — overrides the AI's own type judgment for the next request ── */
   const [chartType, setChartType] = useState<ChartSelection | null>(null);
@@ -79,9 +85,6 @@ function DashboardContent() {
   /* ── Edit panel ── */
   const [isEditing, setIsEditing]   = useState(false);
   const [manualEditJson, setManualEditJson] = useState('');
-
-  /* ── Statistical analysis (independent of the active thread — runs on user-supplied data) ── */
-  const [statsOpen, setStatsOpen]   = useState(false);
 
   /* ── URL / session load ── */
   const [seenId, setSeenId]         = useState<string | null>(null);
@@ -380,20 +383,7 @@ function DashboardContent() {
 
   return (
     <div className="text-ink-muted flex flex-col h-screen w-full antialiased overflow-hidden bg-surface-0">
-      <Header
-        user={user || null}
-        actions={
-          <button
-            onClick={() => setStatsOpen(true)}
-            title="Run a statistical test (t-test, ANOVA, chi-square…) on your own data"
-            className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-[12px] font-medium text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors"
-          >
-            <Sigma className="w-[15px] h-[15px]" />
-            <span className="hidden sm:inline">Statistics</span>
-          </button>
-        }
-      />
-      <StatisticsModal open={statsOpen} onClose={() => setStatsOpen(false)} />
+      <Header user={user || null} />
 
       <div className="flex-1 flex overflow-hidden min-h-0 pt-16 relative">
         {/* ── Left: Thread panel ── */}
@@ -425,6 +415,9 @@ function DashboardContent() {
                   chartType={chartType}
                   onChooseChartType={setChartType}
                   onClearChartType={handleClearChartType}
+                  statRun={statRun}
+                  onRunStat={handleRunStat}
+                  onClearStat={handleClearStat}
                 />
               </div>
             </motion.div>
