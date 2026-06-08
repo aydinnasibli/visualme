@@ -3,42 +3,37 @@
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
-import { selectVisualizationFormat } from '@/lib/services/format-selector';
-import { expandNetworkNode, expandMindMapNode, generateVisualizationData, VisualizationGeneratorService } from '@/lib/services/visualization-generator';
+import { generateChartSpec } from '@/lib/services/spec-generator';
+import { editChartSpec } from '@/lib/services/spec-editor';
 import { calculateCost, sanitizeVisualization } from '@/lib/utils/helpers';
-import { FORMAT_INFO } from '@/lib/types/visualization';
+import { DEFAULT_SUNSET_THEME, type VisualizationSpec } from '@/lib/types/echarts-spec';
+import type { EChartsOption } from 'echarts';
 import {
   validateInputLength,
   validateObjectId,
   validateDataSize,
-  validateArraySize,
   validateTitle,
   sanitizeError,
   VALIDATION_LIMITS,
   TOKEN_COSTS,
   calcInternalTokens,
 } from '@/lib/utils/validation';
-import { checkTokenBalance, deductTokens, getTokenBalance } from '@/lib/utils/tokens';
+import { checkTokenBalance, deductTokens } from '@/lib/utils/tokens';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { getCachedVisualization, setCachedVisualization } from '@/lib/utils/cache';
 import type {
-  VisualizationType,
   VisualizationResponse,
-  VisualizationData,
   VisualizationMetadata,
 } from '@/lib/types/visualization';
 
 /**
  * Generate a new visualization from user input
  */
-export async function generateVisualization(
-  input: string,
-  preferredFormat?: VisualizationType
-): Promise<VisualizationResponse> {
+export async function generateVisualization(input: string): Promise<VisualizationResponse> {
   const startTime = Date.now();
 
   const fail = (error: string, reason = ''): VisualizationResponse => ({
-    success: false, type: 'network_graph', data: {} as VisualizationData, reason, error,
+    success: false, reason, error,
   });
 
   try {
@@ -56,22 +51,6 @@ export async function generateVisualization(
       );
     }
 
-    // ── Determine format ─────────────────────────────────────────────────────
-    let format: VisualizationType;
-    let reason: string;
-
-    if (preferredFormat) {
-      format = preferredFormat;
-      reason = 'User selected this format manually';
-    } else {
-      const formatSelection = await selectVisualizationFormat(input);
-      if (!formatSelection.visualizable || formatSelection.format === 'none') {
-        return fail('This content is not suitable for visualization', formatSelection.reason);
-      }
-      format = formatSelection.format;
-      reason = formatSelection.reason;
-    }
-
     // ── Token balance check (always — cache benefit is speed, not free usage) ─
     await connectToDatabase();
 
@@ -79,7 +58,7 @@ export async function generateVisualization(
     if (!tokenCheck.allowed) return fail(tokenCheck.error || 'Insufficient tokens');
 
     // ── Cache lookup (instant result, tokens still charged) ───────────────────
-    const cached = await getCachedVisualization(input, format);
+    const cached = await getCachedVisualization(input);
     if (cached) {
       await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
       await Promise.all([
@@ -87,11 +66,17 @@ export async function generateVisualization(
         UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
       ]);
 
+      const spec: VisualizationSpec = {
+        option: cached.option,
+        theme: DEFAULT_SUNSET_THEME,
+        title: cached.title,
+      };
+
       return {
         success: true,
-        type: format,
-        data: cached,
-        reason,
+        spec,
+        title: cached.title,
+        reason: cached.reason,
         fromCache: true,
         metadata: {
           generatedAt: new Date(),
@@ -104,10 +89,13 @@ export async function generateVisualization(
     }
 
     // ── Generate with AI ─────────────────────────────────────────────────────
-    const { data, promptTokens, completionTokens } = await generateVisualizationData(format, input);
+    const { data, visualizable, promptTokens, completionTokens } = await generateChartSpec(input);
+    if (!visualizable) {
+      return fail('This content is not suitable for visualization', data.reason);
+    }
 
     // ── Store in cache (fire-and-forget, not on the critical path) ────────────
-    setCachedVisualization(input, format, data).catch(() => {});
+    setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason }).catch(() => {});
 
     // ── Deduct actual token cost based on real OpenAI usage ───────────────────
     const actualCost = calcInternalTokens(promptTokens, completionTokens);
@@ -121,19 +109,24 @@ export async function generateVisualization(
     ]);
 
     const processingTime = Date.now() - startTime;
-    const formatInfo = FORMAT_INFO[format];
+
+    const spec: VisualizationSpec = {
+      option: data.option,
+      theme: DEFAULT_SUNSET_THEME,
+      title: data.title,
+    };
 
     return {
       success: true,
-      type: format,
-      data,
-      reason,
+      spec,
+      title: data.title,
+      reason: data.reason,
       fromCache: false,
       metadata: {
         generatedAt: new Date(),
         processingTime,
         aiModel: 'gpt-5.4-mini',
-        cost: calculateCost(input.length, formatInfo.estimatedCost),
+        cost: calculateCost(input.length),
         originalInput: input,
       },
     };
@@ -142,144 +135,13 @@ export async function generateVisualization(
     return fail(sanitizeError(error, 'Failed to generate visualization'));
   }
 }
-export async function expandNodeAction(
-  nodeId: string,
-  nodeLabel: string,
-  originalInput: string,
-  existingNodeLabels: string[]
-) {
-  try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, error: 'Authentication required' };
-
-    const rateCheck = await checkRateLimit(userId, 'expand');
-    if (!rateCheck.allowed) {
-      return { success: false, error: `Too many requests. Please wait ${rateCheck.retryAfter ?? 60} seconds.` };
-    }
-
-    // SECURITY: Validate inputs
-    const labelValidation = validateInputLength(nodeLabel, VALIDATION_LIMITS.MAX_NODE_LABEL_LENGTH);
-    if (!labelValidation.valid) {
-      return { success: false, error: labelValidation.error };
-    }
-
-    const inputValidation = validateInputLength(originalInput);
-    if (!inputValidation.valid) {
-      return { success: false, error: inputValidation.error };
-    }
-
-    const arrayValidation = validateArraySize(existingNodeLabels, VALIDATION_LIMITS.MAX_EXISTING_NODES_ARRAY);
-    if (!arrayValidation.valid) {
-      return { success: false, error: arrayValidation.error };
-    }
-
-    await connectToDatabase();
-
-    // TOKEN SYSTEM: Check if user has enough tokens
-    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.EXPAND_NODE);
-    if (!tokenCheck.allowed) {
-      return {
-        success: false,
-        error: tokenCheck.error || 'Insufficient tokens'
-      };
-    }
-
-    // Call the AI service to get new nodes
-    const { data: newData, promptTokens, completionTokens } = await expandNetworkNode(nodeLabel, nodeId, originalInput, existingNodeLabels);
-
-    // Deduct actual token cost based on real OpenAI usage
-    const actualCost = calcInternalTokens(promptTokens, completionTokens);
-    const deduction = await deductTokens(userId, actualCost);
-    if (!deduction.success) {
-      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
-    }
-
-    await Promise.all([
-      UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
-      UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
-    ]);
-
-    return { success: true, data: newData };
-  } catch (error) {
-    console.error('Error expanding node:', error);
-    return { success: false, error: sanitizeError(error, 'Failed to expand node') };
-  }
-}
 
 /**
- * Expand a mind map node with AI-generated children
- */
-export async function expandMindMapNodeAction(
-  nodeId: string,
-  nodeContent: string,
-  originalInput: string,
-  existingNodeIds: string[]
-) {
-  try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, error: 'Authentication required' };
-
-    const rateCheck = await checkRateLimit(userId, 'expand');
-    if (!rateCheck.allowed) {
-      return { success: false, error: `Too many requests. Please wait ${rateCheck.retryAfter ?? 60} seconds.` };
-    }
-
-    // SECURITY: Validate inputs
-    const contentValidation = validateInputLength(nodeContent, VALIDATION_LIMITS.MAX_NODE_LABEL_LENGTH);
-    if (!contentValidation.valid) {
-      return { success: false, error: contentValidation.error };
-    }
-
-    const inputValidation = validateInputLength(originalInput);
-    if (!inputValidation.valid) {
-      return { success: false, error: inputValidation.error };
-    }
-
-    const arrayValidation = validateArraySize(existingNodeIds, VALIDATION_LIMITS.MAX_EXISTING_NODES_ARRAY);
-    if (!arrayValidation.valid) {
-      return { success: false, error: arrayValidation.error };
-    }
-
-    await connectToDatabase();
-
-    // TOKEN SYSTEM: Check if user has enough tokens
-    const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.EXPAND_NODE);
-    if (!tokenCheck.allowed) {
-      return {
-        success: false,
-        error: tokenCheck.error || 'Insufficient tokens'
-      };
-    }
-
-    // Call the AI service to get new child nodes
-    const { data: newNodes, promptTokens, completionTokens } = await expandMindMapNode(nodeId, nodeContent, originalInput, existingNodeIds);
-
-    // Deduct actual token cost based on real OpenAI usage
-    const actualCost = calcInternalTokens(promptTokens, completionTokens);
-    const deduction = await deductTokens(userId, actualCost);
-    if (!deduction.success) {
-      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
-    }
-
-    await Promise.all([
-      UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
-      UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
-    ]);
-
-    return { success: true, data: newNodes };
-  } catch (error) {
-    console.error('Error expanding mind map node:', error);
-    return { success: false, error: sanitizeError(error, 'Failed to expand mind map node') };
-  }
-}
-
-/**
- * Edit an existing visualization
+ * Edit an existing visualization's chart spec via AI (or answer a question about it)
  */
 export async function editVisualizationAction(
   editPrompt: string,
-  existingData: VisualizationData,
-  visualizationType: VisualizationType,
+  existingOption: EChartsOption,
   visualizationId?: string,
   messages?: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date | string }>
 ) {
@@ -298,7 +160,7 @@ export async function editVisualizationAction(
       return { success: false, error: promptValidation.error };
     }
 
-    const dataValidation = validateDataSize(existingData, VALIDATION_LIMITS.MAX_EDIT_DATA_SIZE);
+    const dataValidation = validateDataSize(existingOption, VALIDATION_LIMITS.MAX_EDIT_DATA_SIZE);
     if (!dataValidation.valid) {
       return { success: false, error: dataValidation.error };
     }
@@ -321,17 +183,9 @@ export async function editVisualizationAction(
       };
     }
 
-    // Instantiate service and edit
-    const service = new VisualizationGeneratorService();
-    // Use messages for context if provided
     const contextHistory = messages ? messages.map(m => ({ role: m.role, content: m.content })) : [];
 
-    const result = await service.editVisualization(
-      visualizationType,
-      existingData,
-      editPrompt,
-      contextHistory
-    );
+    const result = await editChartSpec(existingOption, editPrompt, contextHistory);
 
     // Deduct actual token cost based on real OpenAI usage
     const actualCost = calcInternalTokens(result.promptTokens, result.completionTokens);
@@ -347,12 +201,12 @@ export async function editVisualizationAction(
 
     let updatedVisualization: any = null;
 
-    // If data was modified and we have an ID, update the database
-    if (result.data && visualizationId) {
+    // If the option was modified and we have an ID, update the database
+    if (result.option && visualizationId) {
        const visualization = await VisualizationModel.findOne({ _id: visualizationId, userId });
 
        if (visualization) {
-         visualization.data = result.data;
+         visualization.spec = { ...visualization.spec, option: result.option };
          visualization.updatedAt = new Date();
 
          // Update history — messages already includes the new user message, so only append assistant reply
@@ -378,7 +232,7 @@ export async function editVisualizationAction(
     return {
       success: true,
       message: result.message,
-      data: result.data, // This is the updated data payload (or null if just a question)
+      option: result.option, // Updated option payload (or undefined if just a question)
       visualization: updatedVisualization
     };
 
@@ -393,8 +247,7 @@ export async function editVisualizationAction(
  */
 export async function saveVisualization(
   title: string,
-  type: VisualizationType,
-  data: VisualizationData,
+  spec: VisualizationSpec,
   metadata: VisualizationMetadata,
   isPublic: boolean = false,
   id?: string,
@@ -414,7 +267,7 @@ export async function saveVisualization(
     }
 
     // SECURITY: Validate data size
-    const dataValidation = validateDataSize(data);
+    const dataValidation = validateDataSize(spec);
     if (!dataValidation.valid) {
       return { success: false, error: dataValidation.error };
     }
@@ -439,7 +292,7 @@ export async function saveVisualization(
 
        if (visualization) {
          visualization.title = title; // Update title if changed
-         visualization.data = data;
+         visualization.spec = spec;
          visualization.metadata = metadata;
          visualization.isPublic = isPublic;
          if (history) {
@@ -456,17 +309,16 @@ export async function saveVisualization(
          return { success: false, error: 'Visualization not found or unauthorized' };
        }
     } else {
-      // Check for existing visualization with same title and type (Legacy behavior)
+      // Check for existing visualization with same title (Legacy behavior)
       // Only do this if we didn't search by ID.
       const existingVisualization = await VisualizationModel.findOne({
         userId,
         title,
-        type,
       });
 
       if (existingVisualization) {
-        // Update existing visualization with new data (e.g., after extending nodes)
-        existingVisualization.data = data;
+        // Update existing visualization with new spec
+        existingVisualization.spec = spec;
         existingVisualization.metadata = metadata;
         existingVisualization.isPublic = isPublic;
         if (history) {
@@ -498,8 +350,7 @@ export async function saveVisualization(
         visualization = await VisualizationModel.create({
           userId,
           title,
-          type,
-          data,
+          spec,
           metadata,
           isPublic,
           history: history ? history.map(h => ({
@@ -545,7 +396,7 @@ export async function getUserVisualizations(limit?: number) {
     await connectToDatabase();
 
     const query = VisualizationModel.find({ userId })
-      .select('_id userId title type data metadata isPublic createdAt updatedAt history')
+      .select('_id userId title spec metadata isPublic createdAt updatedAt history')
       .sort({ updatedAt: -1 });
 
     const visualizations = await (limit ? query.limit(limit) : query).lean();

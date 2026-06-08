@@ -163,7 +163,6 @@ export default async function AdminUserDetailPage({
                   <div key={viz._id} className="px-5 py-3 flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-sm text-white truncate">{viz.title}</p>
-                      <p className="text-xs text-white/30 mt-0.5">{viz.type.replace(/_/g, ' ')}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span

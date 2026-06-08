@@ -32,7 +32,6 @@ export type AdminVisualization = {
   _id: string
   userId: string
   title: string
-  type: string
   isPublic: boolean
   createdAt: string
 }
@@ -111,7 +110,6 @@ export async function getAdminStats(): Promise<{ success: boolean; data?: AdminS
           _id: v._id.toString(),
           userId: v.userId,
           title: v.title,
-          type: v.type,
           isPublic: v.isPublic,
           createdAt: new Date(v.createdAt).toISOString(),
         })),
@@ -282,7 +280,6 @@ export async function getAdminUserById(clerkId: string): Promise<{
           _id: v._id.toString(),
           userId: clerkId,
           title: v.title,
-          type: v.type,
           isPublic: v.isPublic,
           createdAt: new Date(v.createdAt).toISOString(),
         })),
@@ -342,11 +339,9 @@ export async function adminDeleteVisualization(
 export async function getAdminVisualizations({
   page = 1,
   search = '',
-  type = '',
 }: {
   page?: number
   search?: string
-  type?: string
 } = {}): Promise<{
   success: boolean
   data?: { visualizations: AdminVisualization[]; total: number; page: number; totalPages: number }
@@ -357,12 +352,11 @@ export async function getAdminVisualizations({
     await connectToDatabase()
 
     const matchQuery: Record<string, unknown> = {}
-    if (type) matchQuery.type = type
     if (search) matchQuery.title = { $regex: search, $options: 'i' }
 
     const [visualizations, total] = await Promise.all([
       VisualizationModel.find(matchQuery)
-        .select('_id userId title type isPublic createdAt')
+        .select('_id userId title isPublic createdAt')
         .sort({ createdAt: -1 })
         .skip((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE)
@@ -377,7 +371,6 @@ export async function getAdminVisualizations({
           _id: v._id.toString(),
           userId: v.userId,
           title: v.title,
-          type: v.type,
           isPublic: v.isPublic,
           createdAt: new Date(v.createdAt).toISOString(),
         })),
@@ -392,7 +385,7 @@ export async function getAdminVisualizations({
 }
 
 export type AnalyticsData = {
-  vizByType: { _id: string; count: number }[]
+  vizByDay: { _id: string; count: number }[]
   userByPlan: { _id: string; count: number }[]
   tokenByTier: {
     _id: string
@@ -412,11 +405,13 @@ export async function getAdminAnalytics(): Promise<{
     await requireAdmin()
     await connectToDatabase()
 
-    const [vizByType, userByPlan, tokenByTier] = await Promise.all([
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+
+    const [vizByDay, userByPlan, tokenByTier] = await Promise.all([
       VisualizationModel.aggregate([
-        { $group: { _id: '$type', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 12 },
+        { $match: { createdAt: { $gte: fourteenDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
       ]),
       UserModel.aggregate([{ $group: { _id: '$plan', count: { $sum: 1 } } }]),
       UserUsageModel.aggregate([
@@ -435,7 +430,7 @@ export async function getAdminAnalytics(): Promise<{
     return {
       success: true,
       data: {
-        vizByType: vizByType as { _id: string; count: number }[],
+        vizByDay: vizByDay as { _id: string; count: number }[],
         userByPlan: userByPlan as { _id: string; count: number }[],
         tokenByTier: tokenByTier as AnalyticsData['tokenByTier'],
       },

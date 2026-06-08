@@ -34,8 +34,8 @@ const tooltipStyle = {
 }
 
 export default function AnalyticsCharts({ data }: { data: AnalyticsData }) {
-  const vizData = data.vizByType.map(d => ({
-    name: d._id.replace(/_/g, ' '),
+  const vizData = data.vizByDay.map(d => ({
+    name: d._id,
     count: d.count,
   }))
 
@@ -53,9 +53,9 @@ export default function AnalyticsCharts({ data }: { data: AnalyticsData }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Visualizations by Type */}
+      {/* Visualizations created over time */}
       <div className="bg-slate-800 rounded-xl border border-white/6 p-5 lg:col-span-2">
-        <h3 className="text-sm font-medium text-white mb-5">Visualizations by Type</h3>
+        <h3 className="text-sm font-medium text-white mb-5">Visualizations Created (last 14 days)</h3>
         {vizData.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={vizData} margin={{ top: 0, right: 0, left: -20, bottom: 40 }}>

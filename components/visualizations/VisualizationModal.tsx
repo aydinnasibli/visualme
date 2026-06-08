@@ -1,45 +1,15 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Edit3, Send, ArrowRight, Download, FileJson, FileSpreadsheet, FileCode, Globe, Share2, ImageIcon } from "lucide-react";
-import dynamic from "next/dynamic";
+import { X, Edit3, Send, ArrowRight, Download, FileJson, FileSpreadsheet, FileCode, Globe, Share2, ImageIcon, BarChart3 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { NetworkGraphHandle } from "./NetworkGraph";
-import { MindMapHandle } from "./MindMap";
 import { saveVisualization } from "@/lib/actions/visualize";
 import { exportVisualization, createShareLink } from "@/lib/actions/export";
 import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 import { VisualizationErrorBoundary } from "@/components/VisualizationErrorBoundary";
-
-const DynLoader = () => (
-  <div className="w-full h-full flex items-center justify-center">
-    <div className="w-5 h-5 border-2 border-slate-700 border-t-indigo-500 rounded-full animate-spin" />
-  </div>
-);
-const dyn = (fn: () => Promise<{ default: React.ComponentType<any> }>) =>
-  dynamic(fn, { ssr: false, loading: DynLoader });
-
-const DynamicNetworkGraph      = dyn(() => import("./NetworkGraph"));
-const DynamicMindMap           = dyn(() => import("./MindMap"));
-const DynamicTreeDiagram       = dyn(() => import("./TreeDiagram"));
-const DynamicTimeline          = dyn(() => import("./Timeline"));
-const DynamicGanttChart        = dyn(() => import("./GanttChart"));
-const DynamicAnimatedTimeline  = dyn(() => import("./AnimatedTimeline"));
-const DynamicFlowchart         = dyn(() => import("./Flowchart"));
-const DynamicSankeyDiagram     = dyn(() => import("./SankeyDiagram"));
-const DynamicSwimlaneDiagram   = dyn(() => import("./SwimlaneDiagram"));
-const DynamicLineChart         = dyn(() => import("./LineChart"));
-const DynamicBarChart          = dyn(() => import("./BarChart"));
-const DynamicScatterPlot       = dyn(() => import("./ScatterPlot"));
-const DynamicHeatmap           = dyn(() => import("./Heatmap"));
-const DynamicRadarChart        = dyn(() => import("./RadarChart"));
-const DynamicPieChart          = dyn(() => import("./PieChart"));
-const DynamicComparisonTable   = dyn(() => import("./ComparisonTable"));
-const DynamicParallelCoords    = dyn(() => import("./ParallelCoordinates"));
-const DynamicWordCloud         = dyn(() => import("./WordCloud"));
-const DynamicSyntaxDiagram     = dyn(() => import("./SyntaxDiagram"));
+import EChartsRenderer from "@/components/visualizations/EChartsRenderer";
 
 interface VisualizationModalProps {
   visualization: SavedVisualization | null;
@@ -53,8 +23,6 @@ export default function VisualizationModal({
   onVisualizationUpdated,
 }: VisualizationModalProps) {
   const router = useRouter();
-  const networkGraphRef = useRef<NetworkGraphHandle>(null);
-  const mindMapRef = useRef<MindMapHandle>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   const [isEditMode, setIsEditMode] = useState(false);
@@ -149,14 +117,15 @@ export default function VisualizationModal({
   const handleManualEdit = async () => {
     if (!manualEditJson.trim()) { toast.error('Please enter valid JSON data'); return; }
     try {
-      const parsedData = JSON.parse(manualEditJson);
+      const parsedOption = JSON.parse(manualEditJson);
       if (!currentVisualization) return;
 
-      /* Direct save — bypass AI, just persist the new data */
+      const newSpec = { ...currentVisualization.spec, option: parsedOption };
+
+      /* Direct save — bypass AI, just persist the new spec */
       const response = await saveVisualization(
         currentVisualization.title,
-        currentVisualization.type,
-        parsedData,
+        newSpec,
         { generatedAt: new Date(), aiModel: 'manual', originalInput: currentVisualization.metadata?.originalInput || '' },
         currentVisualization.isPublic ?? false,
         currentVisualization._id,
@@ -165,7 +134,7 @@ export default function VisualizationModal({
 
       if (!response.success) throw new Error(response.error || 'Failed to update visualization');
 
-      const updated: SavedVisualization = { ...currentVisualization, data: parsedData };
+      const updated: SavedVisualization = { ...currentVisualization, spec: newSpec };
       setCurrentVisualization(updated);
       setManualEditJson('');
       setIsEditMode(false);
@@ -178,7 +147,7 @@ export default function VisualizationModal({
   };
 
   const handleEditModeToggle = () => {
-    if (!isEditMode && currentVisualization) setManualEditJson(JSON.stringify(currentVisualization.data, null, 2));
+    if (!isEditMode && currentVisualization) setManualEditJson(JSON.stringify(currentVisualization.spec.option, null, 2));
     setIsEditMode(!isEditMode);
   };
 
@@ -202,7 +171,9 @@ export default function VisualizationModal({
           <div className="flex items-center justify-between p-6 border-b border-zinc-800">
             <div>
               <h2 className="text-2xl font-bold text-white mb-1">{currentVisualization.title}</h2>
-              <p className="text-sm text-zinc-400 capitalize">{currentVisualization.type.replace(/_/g, " ")}</p>
+              <p className="text-sm text-zinc-400 flex items-center gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5" /> Chart
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -283,10 +254,10 @@ export default function VisualizationModal({
                     value={manualEditJson}
                     onChange={(e) => setManualEditJson(e.target.value)}
                     className="w-full h-48 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none mb-2"
-                    placeholder="Edit the JSON data directly..."
+                    placeholder="Edit the chart's ECharts option JSON directly..."
                   />
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-zinc-500">Edit the JSON structure directly. Maintain valid JSON format.</p>
+                    <p className="text-xs text-zinc-500">Edit the ECharts option JSON directly. Maintain valid JSON format.</p>
                     <button
                       onClick={handleManualEdit}
                       className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition flex items-center gap-2 font-medium"
@@ -300,25 +271,7 @@ export default function VisualizationModal({
               {/* Visualization Content */}
               <div className="flex-1 overflow-hidden min-h-0 relative bg-zinc-950/50" data-viz-area>
                 <VisualizationErrorBoundary>
-                  {currentVisualization.type === "network_graph"        && <DynamicNetworkGraph ref={networkGraphRef} data={currentVisualization.data as any} readOnly />}
-                  {currentVisualization.type === "mind_map"             && <DynamicMindMap ref={mindMapRef} data={currentVisualization.data as any} readOnly />}
-                  {currentVisualization.type === "tree_diagram"         && <DynamicTreeDiagram data={currentVisualization.data as any} readOnly />}
-                  {currentVisualization.type === "timeline"             && <DynamicTimeline data={currentVisualization.data as any} readOnly />}
-                  {currentVisualization.type === "gantt_chart"          && <DynamicGanttChart data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "animated_timeline"    && <DynamicAnimatedTimeline data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "flowchart"            && <DynamicFlowchart data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "sankey_diagram"       && <DynamicSankeyDiagram data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "swimlane_diagram"     && <DynamicSwimlaneDiagram data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "line_chart"           && <DynamicLineChart data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "bar_chart"            && <DynamicBarChart data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "scatter_plot"         && <DynamicScatterPlot data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "heatmap"              && <DynamicHeatmap data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "radar_chart"          && <DynamicRadarChart data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "pie_chart"            && <DynamicPieChart data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "comparison_table"     && <DynamicComparisonTable data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "parallel_coordinates" && <DynamicParallelCoords data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "word_cloud"           && <DynamicWordCloud data={currentVisualization.data as any} />}
-                  {currentVisualization.type === "syntax_diagram"       && <DynamicSyntaxDiagram data={currentVisualization.data as any} />}
+                  <EChartsRenderer spec={currentVisualization.spec} className="w-full h-full p-6" />
                 </VisualizationErrorBoundary>
               </div>
             </div>

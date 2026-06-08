@@ -173,7 +173,6 @@ export default async function AdminOverviewPage() {
               <div key={v._id} className="px-5 py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm text-white truncate">{v.title}</p>
-                  <p className="text-xs text-white/30">{v.type.replace(/_/g, ' ')}</p>
                 </div>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${

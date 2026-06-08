@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from '@clerk/nextjs';
+import { ThemeProvider } from 'next-themes';
 import { ExtendedNodesProvider } from '@/lib/context/ExtendedNodesContext';
-import { Toaster } from 'sonner';
+import ThemedToaster from '@/components/dashboard/ThemedToaster';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,18 +21,20 @@ export default function RootLayout({
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
     >
-      <html lang="en" className="dark">
+      <html lang="en" suppressHydrationWarning>
         <head>
           <link
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
             rel="stylesheet"
           />
         </head>
-        <body className="font-display bg-slate-900 text-white antialiased overflow-x-hidden selection:bg-indigo-500/30 selection:text-white">
-          <ExtendedNodesProvider>
-            {children}
-            <Toaster position="bottom-right" richColors theme="dark" />
-          </ExtendedNodesProvider>
+        <body className="bg-surface-0 text-ink antialiased overflow-x-hidden selection:bg-accent/25 selection:text-ink">
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+            <ExtendedNodesProvider>
+              {children}
+              <ThemedToaster />
+            </ExtendedNodesProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

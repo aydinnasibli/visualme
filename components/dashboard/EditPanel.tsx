@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import ChatSidebar from '@/components/visualizations/ChatSidebar';
-import { Send, Sparkles, Code2 } from 'lucide-react';
+import ThemePanel from '@/components/dashboard/ThemePanel';
+import { Send, Sparkles, Code2, Palette } from 'lucide-react';
+import type { BrandTheme } from '@/lib/types/echarts-spec';
 
 interface EditPanelProps {
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date | string }>;
@@ -11,6 +13,8 @@ interface EditPanelProps {
   manualEditJson: string;
   setManualEditJson: (json: string) => void;
   handleManualEdit: () => void;
+  theme: BrandTheme;
+  onThemeChange: (theme: BrandTheme) => void;
 }
 
 const EditPanel = ({
@@ -20,19 +24,21 @@ const EditPanel = ({
   manualEditJson,
   setManualEditJson,
   handleManualEdit,
+  theme,
+  onThemeChange,
 }: EditPanelProps) => {
-  const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'manual' | 'brand'>('ai');
 
   return (
-    <div className="h-full w-full bg-slate-900 flex flex-col overflow-hidden">
+    <div className="h-full w-full bg-surface-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-1 px-4 h-12 shrink-0 border-b border-white/5">
+      <div className="flex items-center gap-1 px-4 h-12 shrink-0 border-b border-edge">
         <button
           onClick={() => setActiveTab('ai')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
             activeTab === 'ai'
-              ? 'bg-indigo-500/15 text-indigo-400'
-              : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+              ? 'bg-accent/15 text-accent'
+              : 'text-ink-faint hover:text-ink-muted hover:bg-surface-3'
           }`}
         >
           <Sparkles size={12} />
@@ -42,12 +48,23 @@ const EditPanel = ({
           onClick={() => setActiveTab('manual')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
             activeTab === 'manual'
-              ? 'bg-indigo-500/15 text-indigo-400'
-              : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+              ? 'bg-accent/15 text-accent'
+              : 'text-ink-faint hover:text-ink-muted hover:bg-surface-3'
           }`}
         >
           <Code2 size={12} />
           Manual
+        </button>
+        <button
+          onClick={() => setActiveTab('brand')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            activeTab === 'brand'
+              ? 'bg-accent/15 text-accent'
+              : 'text-ink-faint hover:text-ink-muted hover:bg-surface-3'
+          }`}
+        >
+          <Palette size={12} />
+          Brand
         </button>
       </div>
 
@@ -58,7 +75,6 @@ const EditPanel = ({
             initialHistory={chatHistory}
             onSendMessage={async (message) => await handleChatMessage(message)}
             isProcessing={isEditing}
-            embedded={true}
           />
         )}
         {activeTab === 'manual' && (
@@ -66,20 +82,23 @@ const EditPanel = ({
             <textarea
               value={manualEditJson}
               onChange={(e) => setManualEditJson(e.target.value)}
-              className="w-full h-64 px-4 py-3 bg-slate-800 border border-white/8 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 resize-none"
+              className="w-full h-64 px-4 py-3 bg-surface-2 border border-edge rounded-xl text-ink font-mono text-xs focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 resize-none"
               placeholder="Edit the JSON data directly..."
             />
             <div className="flex items-center justify-between">
-              <p className="text-xs text-zinc-600">Edit the JSON structure directly.</p>
+              <p className="text-xs text-ink-faint">Edit the JSON structure directly.</p>
               <button
                 onClick={handleManualEdit}
-                className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover text-surface-0 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
               >
                 <Send className="w-3.5 h-3.5" />
                 Apply
               </button>
             </div>
           </div>
+        )}
+        {activeTab === 'brand' && (
+          <ThemePanel theme={theme} onChange={onThemeChange} />
         )}
       </div>
     </div>

@@ -54,11 +54,12 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
 }
 
 /**
- * Calculate processing cost estimate
+ * Calculate processing cost estimate.
+ * Every generation now runs the same single AI composition call, so the
+ * base cost is flat — only the variable cost scales with input length.
  */
-export function calculateCost(inputLength: number, formatCost: number): number {
-  // Base cost + variable cost based on input length
-  const baseCost = formatCost;
+export function calculateCost(inputLength: number): number {
+  const baseCost = 0.12;
   const variableCost = Math.min(inputLength / 1000, 0.05); // Max 5 cents for very long inputs
   return Number((baseCost + variableCost).toFixed(3));
 }

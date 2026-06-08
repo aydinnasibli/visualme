@@ -4,17 +4,12 @@ import { getUserVisualizations, deleteVisualization } from '@/lib/actions/visual
 import Header from '@/components/dashboard/Header';
 import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import VisualizationModal from '@/components/visualizations/VisualizationModal';
-import { VIZ_TYPE_MAP, VIZ_TYPE_CONFIG } from '@/lib/constants/vizTypes';
 import {
-  Search, Filter, Grid, List, SearchX, Plus, Trash2,
+  Search, Grid, List, SearchX, Plus, Trash2, BarChart3,
 } from 'lucide-react';
-
-function getLabelForType(type: string): string {
-  return VIZ_TYPE_MAP[type as keyof typeof VIZ_TYPE_MAP]?.name ?? type.replace(/_/g, ' ');
-}
 
 function VisualizationsContent() {
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
@@ -22,9 +17,6 @@ function VisualizationsContent() {
   const [selectedViz, setSelectedViz] = useState<SavedVisualization | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -45,15 +37,6 @@ function VisualizationsContent() {
   }, []);
 
   /* Click-outside to close filter dropdown */
-  useEffect(() => {
-    if (!filterOpen) return;
-    const close = (e: MouseEvent) => {
-      if (!filterRef.current?.contains(e.target as Node)) setFilterOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [filterOpen]);
-
   const doDelete = async (id: string) => {
     try {
       const result = await deleteVisualization(id);
@@ -83,11 +66,9 @@ function VisualizationsContent() {
     setSelectedViz(updatedViz);
   };
 
-  const filtered = visualizations.filter(viz => {
-    const matchesSearch = viz.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || viz.type === filterType;
-    return matchesSearch && matchesType;
-  });
+  const filtered = visualizations.filter(viz =>
+    viz.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto p-6 pt-24">
@@ -108,36 +89,6 @@ function VisualizationsContent() {
               className="pl-9 pr-4 py-2 bg-slate-800 border border-white/10 rounded-lg text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/50 w-full md:w-64"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
-          </div>
-
-          {/* Filter — click-based dropdown */}
-          <div className="relative" ref={filterRef}>
-            <button
-              onClick={() => setFilterOpen(p => !p)}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-white/10 rounded-lg text-sm text-white hover:bg-slate-700 transition-colors"
-            >
-              <Filter className="w-4 h-4" />
-              <span>{filterType === 'all' ? 'All Types' : getLabelForType(filterType)}</span>
-            </button>
-            {filterOpen && (
-              <div className="absolute right-0 top-full mt-1 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-xl overflow-hidden z-20 max-h-72 overflow-y-auto">
-                <button
-                  onClick={() => { setFilterType('all'); setFilterOpen(false); }}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${filterType === 'all' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-white/5 hover:text-white'}`}
-                >
-                  All Types
-                </button>
-                {VIZ_TYPE_CONFIG.map(type => (
-                  <button
-                    key={type.id}
-                    onClick={() => { setFilterType(type.id); setFilterOpen(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${filterType === type.id ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-white/5 hover:text-white'}`}
-                  >
-                    {type.name}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* View toggle */}
@@ -171,11 +122,11 @@ function VisualizationsContent() {
           </div>
           <h3 className="text-xl font-bold text-white mb-2">No visualizations found</h3>
           <p className="text-zinc-400 max-w-md mx-auto mb-6">
-            {searchQuery || filterType !== 'all'
-              ? "Try adjusting your search or filters."
+            {searchQuery
+              ? "Try adjusting your search."
               : "You haven't created any visualizations yet."}
           </p>
-          {!searchQuery && filterType === 'all' && (
+          {!searchQuery && (
             <a href="/dashboard" className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors flex items-center gap-2">
               <Plus className="w-4 h-4" /> Create New
             </a>
@@ -184,8 +135,6 @@ function VisualizationsContent() {
       ) : (
         <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-4"}>
           {filtered.map((viz) => {
-            const meta = VIZ_TYPE_MAP[viz.type as keyof typeof VIZ_TYPE_MAP];
-            const Icon = meta?.icon;
             return (
               <div
                 key={viz._id}
@@ -197,10 +146,7 @@ function VisualizationsContent() {
                 {/* Preview area */}
                 <div className={`relative bg-slate-900/50 ${viewMode === 'list' ? 'w-32 h-20 rounded-lg shrink-0' : 'h-40 w-full'}`}>
                   <div className="absolute inset-0 flex items-center justify-center text-zinc-700 group-hover:text-indigo-500/50 transition-colors">
-                    {Icon && <Icon className="w-12 h-12 opacity-20" />}
-                  </div>
-                  <div className="absolute top-2 right-2 px-2 py-1 rounded bg-black/50 backdrop-blur-sm text-[10px] text-zinc-400 border border-white/10">
-                    {getLabelForType(viz.type)}
+                    <BarChart3 className="w-12 h-12 opacity-20" />
                   </div>
                 </div>
 

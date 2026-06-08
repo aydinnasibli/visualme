@@ -1,5 +1,5 @@
 import mongoose, { Schema, Model } from 'mongoose';
-import type { SavedVisualization, VisualizationType } from '@/lib/types/visualization';
+import type { SavedVisualization } from '@/lib/types/visualization';
 
 const VisualizationSchema = new Schema<SavedVisualization>(
   {
@@ -13,32 +13,7 @@ const VisualizationSchema = new Schema<SavedVisualization>(
       required: true,
       trim: true,
     },
-    type: {
-      type: String,
-      required: true,
-      enum: [
-        'network_graph',
-        'mind_map',
-        'tree_diagram',
-        'timeline',
-        'gantt_chart',
-        'animated_timeline',
-        'flowchart',
-        'sankey_diagram',
-        'swimlane_diagram',
-        'line_chart',
-        'bar_chart',
-        'scatter_plot',
-        'heatmap',
-        'radar_chart',
-        'pie_chart',
-        'comparison_table',
-        'parallel_coordinates',
-        'word_cloud',
-        'syntax_diagram',
-      ] as VisualizationType[],
-    },
-    data: {
+    spec: {
       type: Schema.Types.Mixed,
       required: true,
     },

@@ -64,7 +64,7 @@ components:
 
 **Creative North Star: "The Default Dark"**
 
-This document captures the system as it exists today, a snapshot of "before," not a spec to extend. It is the out-of-the-box dark SaaS template look applied without a unifying point of view: a slate-900 base, an indigo accent borrowed from the Tailwind palette, glass-panel blur on every elevated surface, and Space Grotesk dropped onto headings because it reads as "modern." None of these were wrong choices in isolation. The problem is that no one decision was made in relation to the others, so the system never cohered into something that looks like VisualMe rather than any other AI-tool starter.
+This document captures the system as it exists today, a snapshot of "before," not a spec to extend. It is the out-of-the-box dark SaaS template look applied without a unifying point of view: a slate-900 base, an indigo accent borrowed from the Tailwind palette, glass-panel blur on every elevated surface, and a display typeface (Space Grotesk) applied to the entire body because it reads as "modern." None of these were wrong choices in isolation. The problem is that no one decision was made in relation to the others, so the system never cohered into something that looks like VisualMe rather than any other AI-tool starter.
 
 The clearest symptom is the gray scale: `slate` and `zinc` are both in active use across the same screens, sometimes on adjacent elements, alongside three different purples (`indigo-500`, `violet-500`, `purple-500`) that aren't differentiated by role. Buttons, cards, and panels are templated and interchangeable: the same glass-card-with-blur treatment appears regardless of what it contains or what the user is trying to do there, so nothing on screen is purpose-built. This is exactly what PRODUCT.md names as the problem to solve: not a single bad color choice, but inconsistent execution that reads as assembled rather than designed.
 
@@ -72,7 +72,7 @@ The clearest symptom is the gray scale: `slate` and `zinc` are both in active us
 - Two competing neutral scales (`slate` and `zinc`) used interchangeably with no rule for which applies where
 - Three accent purples (`indigo-500`, `violet-500`, `purple-500`) doing the same job in different places
 - Glassmorphism (`backdrop-filter: blur`) as the default elevation strategy for nearly every surface
-- Space Grotesk applied inconsistently: present in the theme, used in exactly one class across the codebase
+- A display typeface (Space Grotesk) applied to the entire `<body>`, so it carries dense UI, labels, and data, not just the headline moments it was chosen for
 - No shared button/card/input components; each screen reimplements its own version of the same primitives
 
 ## 2. Colors
@@ -98,19 +98,19 @@ The palette reads as "Tailwind defaults, mostly untouched": built-in slate, zinc
 
 ## 3. Typography
 
-**Display Font:** Space Grotesk (with sans-serif fallback), declared in `@theme` as `--font-display` but applied via `font-display` in exactly one place in the codebase.
-**Body Font:** the Tailwind default sans stack (`ui-sans-serif, system-ui`), inherited rather than chosen.
-**Label/Mono Font:** `font-mono` (default monospace stack), used 10 times for token counts, IDs, and code-like values.
+**Display Font:** Space Grotesk (with sans-serif fallback), declared in `@theme` as `--font-display` and applied via `font-display` on `<body>` in `app/layout.tsx`, so it cascades to literally everything: headings, buttons, table cells, settings labels, token counts.
+**Body Font:** also Space Grotesk; there is no separate body face. What was chosen as a "display" identity is, by inheritance, the only typeface in the product.
+**Label/Mono Font:** `font-mono` (default monospace stack), used 10 times for token counts, IDs, and code-like values; the one deliberate departure from the cascade.
 
-**Character:** There is no real pairing here. Space Grotesk was selected as a "display" identity but never committed to: the rest of the interface runs on whatever Tailwind ships by default, so headings and body text don't feel like they belong to the same typographic family.
+**Character:** There is no pairing, because there is no second voice. A geometric display face with personality, the kind of typeface that earns its keep in a hero headline, is doing duty as the font for dense settings forms, table data, and button labels. The personality that makes it good at one job (announcing) makes it noisy at the other (informing).
 
 ### Hierarchy
-- **Display** (700, ~1.5rem, 1.2 line-height): Reserved in theme for hero/heading moments but barely present in shipped UI; Space Grotesk's geometric character isn't actually visible anywhere a user would notice it.
-- **Body** (400, 0.875rem, 1.5 line-height): The default sans stack at a fairly small size; carries nearly all UI text including labels, descriptions, and prose content.
-- **Label** (500, 0.75rem, 0.02em letter-spacing, monospace): Used for tokens, counts, IDs; the one place a distinct typographic voice actually shows up.
+- **Display** (700, ~1.5rem, 1.2 line-height): Space Grotesk at weight; the only context where its geometric character is actually appropriate, and the only place the current setup *coincidentally* gets it right.
+- **Body** (400, 0.875rem, 1.5 line-height): Space Grotesk again, inherited from `<body>`, now carrying descriptions, table cells, form labels, and prose. This is the actual typographic problem: not a missing voice, but one voice forced into two incompatible jobs.
+- **Label** (500, 0.75rem, 0.02em letter-spacing, monospace): The sole exception to the cascade; used for tokens, counts, IDs.
 
 ### Named Rules
-**The Declared-But-Unused Rule.** A typeface can be declared in the theme and still be functionally absent from the product. Space Grotesk exists in `--font-display` but appears in one class across the entire codebase; a token that isn't applied isn't a system, it's a placeholder.
+**The One-Voice-Two-Jobs Rule.** A typeface chosen for its personality in headlines will fight the product register's core requirement, "the tool should disappear into the task", when it's also asked to carry labels, data, and forms. Display character and informational neutrality are different jobs; they need different faces, or at minimum different weights and tracking, applied deliberately rather than by inheritance.
 
 ## 4. Elevation
 
@@ -153,13 +153,13 @@ No shared button, card, or input components exist; `grep` for component files tu
 
 ## 6. Do's and Don'ts
 
-This baseline is being actively replaced. The list below documents what to stop doing, drawn directly from PRODUCT.md's anti-references: the slate-900-and-indigo "AI startup" template look, glass-panel blur cards, gradient buttons, Space Grotesk applied without commitment, and inconsistent execution across pages.
+This baseline is being actively replaced. The list below documents what to stop doing, drawn directly from PRODUCT.md's anti-references: the slate-900-and-indigo "AI startup" template look, glass-panel blur cards, gradient buttons, a display face inherited into every dense UI surface, and inconsistent execution across pages.
 
 ### Do:
 - **Do** pick one neutral family (`slate` or `zinc`, not both) before touching any surface, and migrate its neighbors to match rather than adding a third option.
 - **Do** collapse the three competing purples (`indigo-500`, `violet-500`, `purple-500`) into a single deliberate accent with named roles, per PRODUCT.md's call for visual confidence and a real point of view.
 - **Do** treat `.glass-panel` / `.glass-button` as defaults to question, not defaults to extend; reach for a flat fill plus a hairline border first and reserve blur for surfaces that genuinely float over moving content.
-- **Do** either commit to Space Grotesk as a real display voice (used where display type actually appears) or remove it; a declared-but-unused token is worse than no token.
+- **Do** give display and body type separate jobs: a confident display voice for headline moments, a quieter, denser-friendly face (or simply a tighter weight/tracking of one family) for labels, forms, and data, so the tool can "disappear into the task" per the product register.
 
 ### Don't:
 - **Don't** add a sixth color to a palette that already has five competing near-duplicates (two neutral families, three accent purples); subtract before adding.

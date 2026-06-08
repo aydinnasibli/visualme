@@ -32,7 +32,7 @@ export default async function AdminAnalyticsPage() {
           {[
             { label: 'Total Tokens Used', value: analyticsResult.data.tokenByTier.reduce((s, t) => s + t.totalUsed, 0).toLocaleString() },
             { label: 'Avg Tokens / User', value: Math.round(analyticsResult.data.tokenByTier.reduce((s, t) => s + t.avgUsed * t.userCount, 0) / Math.max(1, analyticsResult.data.tokenByTier.reduce((s, t) => s + t.userCount, 0))).toLocaleString() },
-            { label: 'Viz Types Used', value: analyticsResult.data.vizByType.length },
+            { label: 'Viz Created (14d)', value: analyticsResult.data.vizByDay.reduce((s, d) => s + d.count, 0).toLocaleString() },
             { label: 'Total Users', value: stats.totalUsers.toLocaleString() },
           ].map(item => (
             <div key={item.label} className="bg-slate-800 rounded-xl border border-white/6 p-4">

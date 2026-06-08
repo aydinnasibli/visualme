@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useState, useCallback, Suspense } from 'react';
+import React, { useState, useCallback, useRef, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import {
-  generateVisualization, saveVisualization, editVisualizationAction,
-  expandNodeAction, expandMindMapNodeAction, getVisualizationById,
+  generateVisualization, saveVisualization, editVisualizationAction, getVisualizationById,
 } from '@/lib/actions/visualize';
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
-import type {
-  NetworkGraphData, MindMapData,
-  VisualizationType, MindMapNode, SavedVisualization,
-} from '@/lib/types/visualization';
+import type { SavedVisualization } from '@/lib/types/visualization';
+import type { BrandTheme } from '@/lib/types/echarts-spec';
+import { readFileAttachment, composePromptWithAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
+import { composePromptWithChartType, type ChartSelection } from '@/lib/utils/chart-types';
 import { toast } from 'sonner';
 
 import Header from '@/components/dashboard/Header';
@@ -21,15 +22,9 @@ import FocusPanel from '@/components/dashboard/FocusPanel';
 /* ── Helpers ── */
 const Loading = () => (
   <div className="w-full h-full flex items-center justify-center">
-    <div className="w-5 h-5 border-2 border-zinc-700 border-t-violet-500 rounded-full animate-spin" />
+    <div className="w-5 h-5 border-2 border-surface-3 border-t-accent rounded-full animate-spin" />
   </div>
 );
-
-const updateMindMapNode = (root: MindMapNode, nodeId: string, newChildren: MindMapNode[]): MindMapNode => {
-  if (root.id === nodeId) return { ...root, children: [...(root.children || []), ...newChildren] };
-  if (root.children) return { ...root, children: root.children.map(c => updateMindMapNode(c, nodeId, newChildren)) };
-  return root;
-};
 
 function genId() {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
@@ -51,11 +46,33 @@ function DashboardContent() {
   const [loading, setLoading]       = useState(false);
   const [loadingStep, setLoadingStep] = useState<'analyzing' | 'generating' | 'finalizing' | null>(null);
   const [loadingPrompt, setLoadingPrompt] = useState('');
-  const [autoSelect, setAutoSelect] = useState(true);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  /* ── Composer file attachment (parsed client-side, embedded into the AI prompt) ── */
+  const [attachment, setAttachment] = useState<FileAttachment | null>(null);
+  const [attaching, setAttaching]   = useState(false);
+
+  const handleAttach = useCallback(async (file: File) => {
+    setAttaching(true);
+    try {
+      const { attachment: parsed, error } = await readFileAttachment(file);
+      if (error) toast.error(error);
+      else setAttachment(parsed!);
+    } finally {
+      setAttaching(false);
+    }
+  }, []);
+
+  const handleRemoveAttachment = useCallback(() => setAttachment(null), []);
+
+  /* ── Forced chart type (gallery picker) — overrides the AI's own type judgment for the next request ── */
+  const [chartType, setChartType] = useState<ChartSelection | null>(null);
+  const handleClearChartType = useCallback(() => setChartType(null), []);
 
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
+
+  /* ── Sidebar collapse ── */
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   /* ── Edit panel ── */
   const [isEditing, setIsEditing]   = useState(false);
@@ -78,8 +95,7 @@ function DashboardContent() {
           const entry: ThreadEntry = {
             id: genId(),
             prompt: viz.metadata?.originalInput || viz.title || '',
-            type: viz.type,
-            data: viz.data,
+            spec: viz.spec,
             title: viz.title || 'Visualization',
             chatHistory: (viz.history || []) as ThreadEntry['chatHistory'],
             vizId: viz._id || null,
@@ -93,7 +109,7 @@ function DashboardContent() {
           };
           setThreads([entry]);
           setActiveId(entry.id);
-          setManualEditJson(JSON.stringify(viz.data, null, 2));
+          setManualEditJson(JSON.stringify(viz.spec.option, null, 2));
           toast.success(`Loaded "${viz.title}"`);
         } else toast.error(res.error || 'Failed to load');
       } catch { toast.error('Failed to load visualization'); }
@@ -109,8 +125,7 @@ function DashboardContent() {
         const entry: ThreadEntry = {
           id: genId(),
           prompt: parsed.metadata?.originalInput || parsed.title || '',
-          type: parsed.type,
-          data: parsed.data,
+          spec: parsed.spec,
           title: parsed.title || 'Visualization',
           chatHistory: (parsed.history || []) as ThreadEntry['chatHistory'],
           vizId: parsed._id || null,
@@ -124,7 +139,7 @@ function DashboardContent() {
         };
         setThreads([entry]);
         setActiveId(entry.id);
-        setManualEditJson(JSON.stringify(parsed.data, null, 2));
+        setManualEditJson(JSON.stringify(parsed.spec.option, null, 2));
         sessionStorage.removeItem('revisualize_data');
         toast.success(`Loaded "${parsed.title}"`);
       } catch { toast.error('Failed to load visualization data'); }
@@ -135,25 +150,32 @@ function DashboardContent() {
   /* ── Handlers ── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    const trimmed = input.trim();
+    if ((!trimmed && !attachment && !chartType) || loading) return;
 
-    const prompt = input.trim();
+    const pendingAttachment = attachment;
+    const pendingChartType = chartType;
+    const displayPrompt = trimmed
+      || (pendingChartType ? `${pendingChartType.type.label}${pendingChartType.variant ? ` — ${pendingChartType.variant.label}` : ''}` : `Visualize ${pendingAttachment!.name}`);
+    const aiInput = composePromptWithChartType(composePromptWithAttachment(trimmed, pendingAttachment), pendingChartType);
+
     setInput('');
+    setAttachment(null);
+    setChartType(null);
     setLoading(true);
-    setLoadingPrompt(prompt);
+    setLoadingPrompt(displayPrompt);
     setLoadingStep('analyzing');
 
     try {
       const genTimer = setTimeout(() => setLoadingStep('generating'), 250);
-      const data = await generateVisualization(
-        prompt,
-        (!autoSelect && selectedType) ? (selectedType as VisualizationType) : undefined
-      );
+      const data = await generateVisualization(aiInput);
       clearTimeout(genTimer);
 
-      if (!data.success) {
+      if (!data.success || !data.spec) {
         toast.error(data.error || 'Generation failed');
-        setInput(prompt);
+        setInput(trimmed);
+        if (pendingAttachment) setAttachment(pendingAttachment);
+        if (pendingChartType) setChartType(pendingChartType);
         return;
       }
 
@@ -162,10 +184,9 @@ function DashboardContent() {
 
       const entry: ThreadEntry = {
         id: genId(),
-        prompt,
-        type: data.type,
-        data: data.data,
-        title: data.title || prompt.slice(0, 60),
+        prompt: displayPrompt,
+        spec: data.spec,
+        title: data.title || displayPrompt.slice(0, 60),
         chatHistory: [],
         vizId: null,
         isSaved: false,
@@ -180,10 +201,12 @@ function DashboardContent() {
       };
       setThreads(p => [...p, entry]);
       setActiveId(entry.id);
-      setManualEditJson(JSON.stringify(data.data, null, 2));
+      setManualEditJson(JSON.stringify(data.spec.option, null, 2));
     } catch {
       toast.error('An unexpected error occurred.');
-      setInput(prompt);
+      setInput(trimmed);
+      if (pendingAttachment) setAttachment(pendingAttachment);
+      if (pendingChartType) setChartType(pendingChartType);
     } finally {
       setLoading(false);
       setLoadingStep(null);
@@ -203,7 +226,7 @@ function DashboardContent() {
 
     try {
       const res = await editVisualizationAction(
-        message.trim(), activeThread.data, activeThread.type,
+        message.trim(), activeThread.spec.option,
         activeThread.vizId || undefined,
         newHist,
       );
@@ -214,11 +237,11 @@ function DashboardContent() {
       ];
       setThreads(p => p.map(t => t.id === id ? {
         ...t,
-        data: res.data ?? t.data,
+        spec: res.option ? { ...t.spec, option: res.option } : t.spec,
         chatHistory: finalHist,
       } : t));
-      if (res.data) setManualEditJson(JSON.stringify(res.data, null, 2));
-      toast.success(res.data ? 'Updated!' : 'Response received');
+      if (res.option) setManualEditJson(JSON.stringify(res.option, null, 2));
+      toast.success(res.option ? 'Updated!' : 'Response received');
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Edit failed';
       setThreads(p => p.map(t => t.id === id ? {
@@ -239,12 +262,12 @@ function DashboardContent() {
       const title = activeThread.title || 'Untitled';
       const metadata = {
         generatedAt: new Date(),
-        aiModel: activeThread.metadata?.aiModel || 'gpt-4.1-mini',
+        aiModel: activeThread.metadata?.aiModel || 'gpt-5.4-mini',
         originalInput: activeThread.prompt,
         processingTime: activeThread.metadata?.processingTime,
       };
       const res = await saveVisualization(
-        title, activeThread.type, activeThread.data, metadata,
+        title, activeThread.spec, metadata,
         activeThread.isPublic ?? false, activeThread.vizId || undefined,
         activeThread.chatHistory as { role:'user'|'assistant'; content:string; timestamp:Date|string }[],
       );
@@ -291,43 +314,19 @@ function DashboardContent() {
     } catch { toast.error('Export failed'); }
   }, [activeThread]);
 
-  const handleExpand = useCallback(async (nodeId: string, nodeLabel: string) => {
-    if (!activeThread) return;
-    const id = activeThread.id;
-    try {
-      if (activeThread.type === 'network_graph') {
-        const d = activeThread.data as NetworkGraphData;
-        const res = await expandNodeAction(nodeId, nodeLabel, activeThread.prompt, d.nodes.map(n => n.label));
-        if (res.success && res.data) {
-          const nd = res.data as NetworkGraphData;
-          const newData = { ...d, nodes: [...d.nodes, ...nd.nodes], edges: [...d.edges, ...nd.edges] };
-          setThreads(p => p.map(t => t.id === id ? { ...t, data: newData } : t));
-        }
-      } else if (activeThread.type === 'mind_map') {
-        const d = activeThread.data as MindMapData;
-        const getAllIds = (n: MindMapNode): string[] => [n.id, ...(n.children?.flatMap(getAllIds) || [])];
-        const res = await expandMindMapNodeAction(nodeId, nodeLabel, activeThread.prompt, getAllIds(d.root));
-        if (res.success && res.data) {
-          const newData = { root: updateMindMapNode(d.root, nodeId, res.data as MindMapNode[]) };
-          setThreads(p => p.map(t => t.id === id ? { ...t, data: newData } : t));
-        }
-      }
-    } catch { toast.error('Failed to expand node.'); }
-  }, [activeThread]);
-
   const handleManualEdit = useCallback(async () => {
     if (!manualEditJson.trim() || !activeThread) { toast.error('Enter valid JSON'); return; }
     try {
-      const parsed = JSON.parse(manualEditJson);
+      const parsedOption = JSON.parse(manualEditJson);
       const id = activeThread.id;
+      const newSpec = { ...activeThread.spec, option: parsedOption };
       // Optimistic local update
-      setThreads(p => p.map(t => t.id === id ? { ...t, data: parsed } : t));
+      setThreads(p => p.map(t => t.id === id ? { ...t, spec: newSpec } : t));
       // Persist to DB if already saved
       if (activeThread.vizId) {
         const res = await saveVisualization(
           activeThread.title,
-          activeThread.type,
-          parsed,
+          newSpec,
           { generatedAt: new Date(), aiModel: activeThread.metadata?.aiModel || 'manual', originalInput: activeThread.prompt },
           activeThread.isPublic ?? false,
           activeThread.vizId,
@@ -342,6 +341,29 @@ function DashboardContent() {
     }
   }, [manualEditJson, activeThread]);
 
+  /* ── Brand theme customization — live restyle + debounced persistence ── */
+  const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleThemeChange = useCallback((theme: BrandTheme) => {
+    if (!activeThread) return;
+    const id = activeThread.id;
+    const newSpec = { ...activeThread.spec, theme };
+    setThreads(p => p.map(t => t.id === id ? { ...t, spec: newSpec } : t));
+
+    if (!activeThread.vizId) return;
+    if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current);
+    themeSaveTimer.current = setTimeout(async () => {
+      const res = await saveVisualization(
+        activeThread.title,
+        newSpec,
+        { generatedAt: new Date(), aiModel: activeThread.metadata?.aiModel || 'manual', originalInput: activeThread.prompt },
+        activeThread.isPublic ?? false,
+        activeThread.vizId || undefined,
+        activeThread.chatHistory as { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[],
+      );
+      if (!res.success) toast.error(res.error || 'Failed to save brand styling');
+    }, 800);
+  }, [activeThread]);
+
   const handleNew = useCallback(() => setActiveId(null), []);
 
   /* ── Loading overlay step text ── */
@@ -351,28 +373,54 @@ function DashboardContent() {
     loadingStep === 'finalizing' ? 'Finalizing…' : 'Processing…';
 
   return (
-    <div className="text-zinc-200 flex flex-col h-screen w-full antialiased overflow-hidden bg-zinc-950">
+    <div className="text-ink-muted flex flex-col h-screen w-full antialiased overflow-hidden bg-surface-0">
       <Header user={user || null} />
 
-      <div className="flex-1 flex overflow-hidden min-h-0 pt-16">
+      <div className="flex-1 flex overflow-hidden min-h-0 pt-16 relative">
         {/* ── Left: Thread panel ── */}
-        <div className="w-[340px] shrink-0 flex flex-col bg-slate-900 border-r border-white/5">
-          <VizThread
-            threads={threads}
-            activeId={activeId}
-            onSelect={setActiveId}
-            onNew={handleNew}
-            loading={loading}
-            loadingPrompt={loadingPrompt}
-            input={input}
-            setInput={setInput}
-            onSubmit={handleSubmit}
-            autoSelect={autoSelect}
-            setAutoSelect={setAutoSelect}
-            selectedType={selectedType}
-            setSelectedType={setSelectedType}
-          />
-        </div>
+        <AnimatePresence initial={false}>
+          {sidebarOpen && (
+            <motion.div
+              key="sidebar"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 340, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="shrink-0 overflow-hidden flex flex-col bg-surface-1 border-r border-edge"
+            >
+              <div className="w-[340px] h-full flex flex-col">
+                <VizThread
+                  threads={threads}
+                  activeId={activeId}
+                  onSelect={setActiveId}
+                  onNew={handleNew}
+                  loading={loading}
+                  loadingPrompt={loadingPrompt}
+                  input={input}
+                  setInput={setInput}
+                  onSubmit={handleSubmit}
+                  attachment={attachment}
+                  attaching={attaching}
+                  onAttach={handleAttach}
+                  onRemoveAttachment={handleRemoveAttachment}
+                  chartType={chartType}
+                  onChooseChartType={setChartType}
+                  onClearChartType={handleClearChartType}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Sidebar toggle ── */}
+        <button
+          onClick={() => setSidebarOpen((p) => !p)}
+          title={sidebarOpen ? 'Collapse panel' : 'Expand panel'}
+          className="absolute top-1/2 -translate-y-1/2 z-20 w-5 h-11 rounded-r-lg flex items-center justify-center bg-surface-2 border border-l-0 border-edge text-ink-faint hover:text-ink hover:bg-surface-3 transition-[left,colors] duration-200"
+          style={{ left: sidebarOpen ? 340 : 0 }}
+        >
+          {sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+        </button>
 
         {/* ── Right: Focus panel ── */}
         <div className="flex-1 relative overflow-hidden min-w-0">
@@ -380,9 +428,9 @@ function DashboardContent() {
           {loading && (
             <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
               <div
-                className="flex items-center gap-3 px-5 py-3 rounded-2xl text-sm font-medium bg-zinc-950/90 border border-violet-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-md text-violet-300"
+                className="flex items-center gap-3 px-5 py-3 rounded-2xl text-sm font-medium bg-surface-1 border border-accent/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)] text-accent"
               >
-                <div className="w-4 h-4 border-2 border-violet-500/30 border-t-violet-400 rounded-full animate-spin shrink-0" />
+                <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0" />
                 <span>{stepText}</span>
               </div>
             </div>
@@ -394,13 +442,13 @@ function DashboardContent() {
             onSave={handleSave}
             onShare={handleShare}
             onExportData={handleExportData}
-            onExpand={handleExpand}
             chatHistory={activeThread?.chatHistory || []}
             handleChatMessage={handleChatMessage}
             isEditing={isEditing}
             manualEditJson={manualEditJson}
             setManualEditJson={setManualEditJson}
             handleManualEdit={handleManualEdit}
+            onThemeChange={handleThemeChange}
           />
         </div>
       </div>

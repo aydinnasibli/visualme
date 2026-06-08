@@ -5,27 +5,16 @@ import DeleteVizButton from '@/components/admin/DeleteVizButton'
 
 export const dynamic = 'force-dynamic'
 
-const VIZ_TYPES = [
-  'network_graph', 'mind_map', 'tree_diagram', 'timeline', 'gantt_chart',
-  'animated_timeline', 'flowchart', 'sankey_diagram', 'swimlane_diagram',
-  'line_chart', 'bar_chart', 'scatter_plot', 'heatmap', 'radar_chart',
-  'pie_chart', 'comparison_table', 'parallel_coordinates', 'word_cloud',
-  'syntax_diagram',
-] as const
-
-const TYPE_QUICK_FILTERS = ['', 'network_graph', 'mind_map', 'flowchart', 'bar_chart', 'pie_chart']
-
 export default async function AdminVisualizationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; search?: string; type?: string }>
+  searchParams: Promise<{ page?: string; search?: string }>
 }) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? '1', 10))
   const search = params.search ?? ''
-  const type = params.type ?? ''
 
-  const result = await getAdminVisualizations({ page, search, type })
+  const result = await getAdminVisualizations({ page, search })
 
   if (!result.success || !result.data) {
     return (
@@ -40,7 +29,6 @@ export default async function AdminVisualizationsPage({
   function buildHref(overrides: Record<string, string | number>) {
     const p = new URLSearchParams()
     if (search) p.set('search', search)
-    if (type) p.set('type', type)
     p.set('page', String(page))
     Object.entries(overrides).forEach(([k, v]) => {
       if (v === '') p.delete(k)
@@ -67,29 +55,7 @@ export default async function AdminVisualizationsPage({
             placeholder="Search by title…"
             className="w-full bg-slate-800 border border-white/6 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 transition-colors"
           />
-          {type && <input type="hidden" name="type" value={type} />}
         </form>
-
-        <div className="flex flex-wrap gap-1.5">
-          {TYPE_QUICK_FILTERS.map(t => (
-            <Link
-              key={t || 'all'}
-              href={buildHref({ type: t, page: 1 })}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                type === t
-                  ? 'bg-indigo-500/15 text-indigo-400'
-                  : 'bg-slate-800 text-white/35 hover:text-white border border-white/6'
-              }`}
-            >
-              {t ? t.replace(/_/g, ' ') : 'All types'}
-            </Link>
-          ))}
-          {type && !TYPE_QUICK_FILTERS.includes(type) && (
-            <span className="px-3 py-1.5 rounded-lg text-xs bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
-              {type.replace(/_/g, ' ')}
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Table */}
@@ -99,7 +65,6 @@ export default async function AdminVisualizationsPage({
             <thead>
               <tr className="border-b border-white/6">
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Title</th>
-                <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Type</th>
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Visibility</th>
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">User</th>
                 <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Created</th>
@@ -111,9 +76,6 @@ export default async function AdminVisualizationsPage({
                 <tr key={viz._id} className="hover:bg-white/[0.02] transition-colors group">
                   <td className="px-5 py-3">
                     <p className="text-white font-medium truncate max-w-[220px]">{viz.title}</p>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="text-xs text-white/40">{viz.type.replace(/_/g, ' ')}</span>
                   </td>
                   <td className="px-5 py-3">
                     <span

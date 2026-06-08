@@ -9,30 +9,73 @@
   }
 }
 
-/* ── Tailwind v4: CSS-first theme — font only, colors use Tailwind built-ins ── */
+/*
+ * ── Design tokens ──
+ * One neutral family (a cool, low-chroma slate-blue, hue 252) replaces the
+ * slate/zinc mix. One accent (a warm copper, hue 55) replaces the three
+ * competing purples — chosen deliberately *away* from "generic AI indigo"
+ * so the product reads as considered rather than templated. See DESIGN.md.
+ *
+ * Display and body type are split: Space Grotesk is reserved for headline
+ * moments (the wordmark, page titles); UI chrome, labels, and data run on
+ * the system sans stack, so the tool can disappear into the task.
+ *
+ * ── Light / dark ──
+ * `@theme` declares the token names (so Tailwind generates surface- and ink-
+ * utilities bound to CSS custom properties) using the light values as the
+ * default. `.dark` — toggled on `<html>` by next-themes via
+ * `attribute="class"` (see app/layout.tsx) — overrides the same custom
+ * properties with dark values at equal selector specificity, so the cascade
+ * picks whichever is active. Same hues (252 neutral, 55 accent) at inverted
+ * lightness keep both modes feeling like the same product.
+ */
 @theme {
-  --font-display: "Space Grotesk", sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+
+  --color-surface-0: oklch(98% 0.004 252);
+  --color-surface-1: oklch(96% 0.006 252);
+  --color-surface-2: oklch(93% 0.009 252);
+  --color-surface-3: oklch(89% 0.012 252);
+  --color-edge:      oklch(83% 0.014 252);
+
+  --color-ink:       oklch(22% 0.018 252);
+  --color-ink-muted: oklch(42% 0.022 252);
+  --color-ink-faint: oklch(58% 0.020 252);
+
+  --color-accent:       oklch(58% 0.15 55);
+  --color-accent-hover: oklch(52% 0.16 55);
+
+  --color-success: oklch(58% 0.15 152);
+  --color-danger:  oklch(56% 0.20 23);
+  --color-warning: oklch(64% 0.15 92);
+
+  --radius-control: 8px;
+  --radius-panel:   12px;
+  --radius-sheet:   16px;
 }
 
-/* ── CSS custom properties for non-Tailwind CSS rules (glass-panel etc.) ── */
-@layer base {
-  :root {
-    /* Mapped to closest Tailwind built-in equivalents */
-    --background:    #0f172a; /* slate-900  ≈ #101622 */
-    --surface-dark:  #1e293b; /* slate-800  ≈ #19212e */
-    --surface-darker:#0f172a; /* slate-900  ≈ #131b26 */
-    --border-color:  rgba(255, 255, 255, 0.08);
-    --primary:       #6366f1; /* indigo-500 ≈ #526efa */
-    --primary-hover: #4f46e5; /* indigo-600 ≈ #4561e8 */
-    --secondary:     #94a3b8; /* slate-400  */
-    --text-primary:  #f8fafc; /* slate-50   ≈ #f5f5f4 */
-    --text-secondary:#94a3b8; /* slate-400  */
-  }
+.dark {
+  --color-surface-0: oklch(17% 0.014 252);
+  --color-surface-1: oklch(21% 0.015 252);
+  --color-surface-2: oklch(26% 0.016 252);
+  --color-surface-3: oklch(31% 0.018 252);
+  --color-edge:      oklch(36% 0.018 252);
+
+  --color-ink:       oklch(93% 0.012 252);
+  --color-ink-muted: oklch(70% 0.022 252);
+  --color-ink-faint: oklch(52% 0.020 252);
+
+  --color-accent:       oklch(72% 0.13 55);
+  --color-accent-hover: oklch(66% 0.14 55);
+
+  --color-success: oklch(73% 0.14 152);
+  --color-danger:  oklch(64% 0.19 23);
+  --color-warning: oklch(80% 0.13 92);
 }
 
 body {
-  color: var(--text-primary);
-  background: var(--background);
+  color: var(--color-ink);
+  background: var(--color-surface-0);
 }
 
 /* Custom Scrollbar */
@@ -62,24 +105,28 @@ body {
     linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
 
-/* Glassmorphism Utilities */
-.glass-panel {
-  background: rgba(25, 33, 46, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-color);
+/*
+ * ── Surface utilities ──
+ * Flat fills + hairline borders, not blur. Reserve backdrop-filter for the
+ * rare case a surface genuinely floats over moving content underneath it
+ * (the dashboard has none); everything else just needs to read as a
+ * distinct region, which a flat tint and a 1px edge does without the
+ * runtime cost — and without looking like every other AI tool.
+ */
+.surface-panel {
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-edge);
 }
 
-.glass-button {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
+.surface-control {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-edge);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.glass-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.1);
+.surface-control:hover {
+  background: var(--color-surface-3);
+  border-color: oklch(42% 0.02 252);
 }
 
 /* Tooltip */
@@ -94,8 +141,8 @@ body {
   left: 50%;
   transform: translateX(-50%) scale(0.9);
   padding: 4px 8px;
-  background: #1e293b;
-  color: white;
+  background: var(--color-surface-2);
+  color: var(--color-ink);
   font-size: 10px;
   border-radius: 4px;
   opacity: 0;
@@ -103,7 +150,7 @@ body {
   transition: all 0.2s ease;
   white-space: nowrap;
   pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-edge);
   z-index: 50;
 }
 
@@ -138,8 +185,8 @@ body {
 
 /* ─── React-Grid-Layout dark overrides ─── */
 .react-grid-item.react-grid-placeholder {
-  background: rgba(139, 92, 246, 0.08) !important;
-  border: 1px dashed rgba(139, 92, 246, 0.35) !important;
+  background: oklch(72% 0.13 55 / 0.08) !important;
+  border: 1px dashed oklch(72% 0.13 55 / 0.35) !important;
   border-radius: 16px !important;
   opacity: 1 !important;
 }
@@ -159,7 +206,7 @@ body {
 
 .react-resizable-handle::after {
   content: "" !important;
-  border-color: rgba(139, 92, 246, 0.6) !important;
+  border-color: oklch(72% 0.13 55 / 0.6) !important;
   border-width: 0 2px 2px 0 !important;
   width: 8px !important;
   height: 8px !important;
@@ -186,14 +233,14 @@ body {
 
 /* ─── Markdown Content Styling ─── */
 .prose {
-  color: #d6d3d1;
+  color: var(--color-ink-muted);
 }
 .prose h1, .prose h2, .prose h3, .prose h4 {
-  color: #f5f5f4;
+  color: var(--color-ink);
   font-weight: 600;
 }
 .prose strong {
-  color: #fafaf9;
+  color: var(--color-ink);
 }
 .prose ul {
   list-style-type: disc;
@@ -204,7 +251,7 @@ body {
   padding-left: 1.5em;
 }
 .prose a {
-  color: #60a5fa;
+  color: var(--color-accent);
   text-decoration: none;
 }
 .prose a:hover {

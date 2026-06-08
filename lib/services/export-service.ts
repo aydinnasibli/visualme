@@ -3,18 +3,7 @@
  * Handles exporting visualizations in various formats (PNG, SVG, PDF, JSON, CSV, HTML)
  */
 
-import type {
-  SavedVisualization,
-  ExportFormat,
-  ExportOptions,
-  LineChartData,
-  BarChartData,
-  RadarChartData,
-  ScatterPlotData,
-  PieChartData,
-  ComparisonTableData,
-  HeatmapData,
-} from '../types/visualization';
+import type { SavedVisualization, ExportFormat, ExportOptions } from '../types/visualization';
 import { generateShareId } from '../utils/helpers';
 
 /**
@@ -43,12 +32,11 @@ export async function generateShareLink(
 }
 
 /**
- * Export visualization data as JSON
+ * Export visualization as JSON — the full spec (structure + theme).
  */
 export function exportAsJSON(visualization: SavedVisualization, options?: ExportOptions): string {
   const exportData = {
-    type: visualization.type,
-    data: visualization.data,
+    spec: visualization.spec,
     metadata: options?.includeMetadata
       ? {
           title: visualization.title,
@@ -62,100 +50,57 @@ export function exportAsJSON(visualization: SavedVisualization, options?: Export
 }
 
 /**
- * Export visualization data as CSV
- * Only works for numerical/tabular data formats
+ * Export visualization series data as CSV.
+ * Flattens each ECharts series' data array into rows — works for any
+ * category/value-shaped series (bar, line, pie, scatter, radar, etc).
+ * Falls back to a JSON dump for series shapes that don't flatten cleanly
+ * (graphs, trees, sankeys — structurally relational, not tabular).
  */
 export function exportAsCSV(visualization: SavedVisualization): string {
-  const { type, data } = visualization;
+  const { option } = visualization.spec;
+  const series = Array.isArray(option.series) ? option.series : option.series ? [option.series] : [];
 
-  // Only certain types can be exported as CSV
-  const supportedTypes = [
-    'line_chart',
-    'bar_chart',
-    'scatter_plot',
-    'heatmap',
-    'radar_chart',
-    'pie_chart',
-    'comparison_table',
-  ];
-
-  if (!supportedTypes.includes(type)) {
-    return exportAsJSON(visualization);
-  }
+  if (!series.length) return exportAsJSON(visualization);
 
   try {
-    let rows: string[] = [];
+    const rows: string[] = ['series,name,value'];
+    let wroteAny = false;
 
-    if (
-      type === 'line_chart' ||
-      type === 'bar_chart' ||
-      type === 'radar_chart'
-    ) {
-      const chartData = data as LineChartData | BarChartData | RadarChartData;
-      if (chartData.data && Array.isArray(chartData.data)) {
-        // Get headers from first data point
-        const headers = Object.keys(chartData.data[0] || {});
-        rows.push(headers.join(','));
+    for (const s of series) {
+      const entry = s as Record<string, unknown>;
+      const seriesName = String(entry.name ?? entry.type ?? 'series');
+      const data = entry.data;
+      if (!Array.isArray(data)) continue;
 
-        // Add data rows
-        chartData.data.forEach((row: Record<string, any>) => {
-          const values = headers.map((h) => String(row[h] || ''));
-          rows.push(values.join(','));
-        });
-      }
-    } else if (type === 'scatter_plot') {
-      const scatterData = data as ScatterPlotData;
-      if (scatterData.data && Array.isArray(scatterData.data)) {
-        rows.push('x,y,z,name,category');
-        scatterData.data.forEach((point) => {
-          rows.push(
-            `${point.x || ''},${point.y || ''},${point.z || ''},${point.name || ''},${point.category || ''}`
-          );
-        });
-      }
-    } else if (type === 'pie_chart') {
-      const pieData = data as PieChartData;
-      if (pieData.data && Array.isArray(pieData.data)) {
-        rows.push('name,value');
-        pieData.data.forEach((slice) => {
-          rows.push(`${slice.name},${slice.value}`);
-        });
-      }
-    } else if (type === 'comparison_table') {
-      const tableData = data as ComparisonTableData;
-      if (tableData.columns && tableData.data) {
-        const headers = tableData.columns.map((col) => col.header);
-        rows.push(headers.join(','));
-
-        tableData.data.forEach((row) => {
-          const values = tableData.columns.map((col) =>
-            String(row[col.accessorKey] || '')
-          );
-          rows.push(values.join(','));
-        });
-      }
-    } else if (type === 'heatmap') {
-      const heatmapData = data as HeatmapData;
-      if (heatmapData.data && Array.isArray(heatmapData.data)) {
-        rows.push('x,y,value');
-        heatmapData.data.forEach((cell) => {
-          rows.push(`${cell.x},${cell.y},${cell.value}`);
-        });
+      for (const point of data) {
+        if (point && typeof point === 'object' && !Array.isArray(point)) {
+          const p = point as Record<string, unknown>;
+          if ('name' in p && 'value' in p) {
+            rows.push(`${seriesName},${String(p.name)},${String(p.value)}`);
+            wroteAny = true;
+          }
+        } else if (Array.isArray(point)) {
+          rows.push(`${seriesName},,${point.join(' / ')}`);
+          wroteAny = true;
+        } else if (typeof point === 'number' || typeof point === 'string') {
+          rows.push(`${seriesName},,${String(point)}`);
+          wroteAny = true;
+        }
       }
     }
 
-    return rows.join('\n');
+    return wroteAny ? rows.join('\n') : exportAsJSON(visualization);
   } catch {
     return exportAsJSON(visualization);
   }
 }
 
 /**
- * Generate HTML for standalone interactive visualization
- * This creates a complete HTML file that can be opened in any browser
+ * Generate HTML for a standalone visualization snapshot.
+ * Embeds the raw spec — for full interactivity, use the web application.
  */
 export function exportAsHTML(visualization: SavedVisualization): string {
-  const { type, data, title } = visualization;
+  const { spec, title } = visualization;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -200,11 +145,10 @@ export function exportAsHTML(visualization: SavedVisualization): string {
       backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.18);
     }
-    .visualization {
+    #chart {
       background: white;
       border-radius: 8px;
-      padding: 20px;
-      min-height: 400px;
+      min-height: 480px;
     }
     .metadata {
       color: #ccc;
@@ -213,80 +157,49 @@ export function exportAsHTML(visualization: SavedVisualization): string {
       padding-top: 20px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
-    pre {
-      background: #2d2d2d;
-      color: #f8f8f2;
-      padding: 15px;
-      border-radius: 6px;
-      overflow-x: auto;
-      font-size: 0.875rem;
-    }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
   <div class="header">
     <h1>${title || 'Visualization'}</h1>
-    <p>Type: ${type.replace(/_/g, ' ').toUpperCase()}</p>
   </div>
 
   <div class="container">
-    <div class="visualization">
-      <pre>${JSON.stringify(data, null, 2)}</pre>
-    </div>
+    <div id="chart"></div>
 
     <div class="metadata">
-      <p><strong>Format:</strong> ${type}</p>
       <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-      <p><strong>Note:</strong> This is a standalone HTML export. For full interactivity, use the web application.</p>
+      <p><strong>Note:</strong> This is a standalone HTML snapshot. For full interactivity and editing, use the web application.</p>
     </div>
   </div>
 
   <script>
-    const visualizationData = ${JSON.stringify({ type, data }, null, 2)};
+    const option = ${JSON.stringify(spec.option)};
+    const theme = ${JSON.stringify(spec.theme)};
+    option.color = theme.palette;
+    option.backgroundColor = theme.background;
+    const chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas', height: 480 });
+    chart.setOption(option);
+    window.addEventListener('resize', () => chart.resize());
   </script>
 </body>
 </html>`;
 }
 
 /**
- * Validate export format for given visualization type
+ * Validate export format for a visualization. Every spec is a single
+ * ECharts option now, so format support is uniform across all charts.
  */
-export function canExportAs(visualizationType: string, exportFormat: ExportFormat): boolean {
-  const csvCompatibleTypes = [
-    'line_chart',
-    'bar_chart',
-    'scatter_plot',
-    'heatmap',
-    'radar_chart',
-    'pie_chart',
-    'comparison_table',
-  ];
-
-  const svgCompatibleTypes = [
-    'network_graph',
-    'tree_diagram',
-    'force_directed_graph',
-    'timeline',
-    'flowchart',
-    'sankey_diagram',
-    'line_chart',
-    'bar_chart',
-    'scatter_plot',
-    'heatmap',
-    'radar_chart',
-    'pie_chart',
-  ];
-
+export function canExportAs(_visualizationType: string, exportFormat: ExportFormat): boolean {
   switch (exportFormat) {
     case 'csv':
-      return csvCompatibleTypes.includes(visualizationType);
     case 'svg':
-      return svgCompatibleTypes.includes(visualizationType);
     case 'png':
     case 'pdf':
     case 'html':
     case 'json':
-      return true; // All types support these formats
+      return true;
     default:
       return false;
   }

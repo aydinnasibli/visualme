@@ -16,7 +16,7 @@
       "text-muted-zinc": { "role": "neutral", "displayName": "Zinc 500 Muted", "canonical": "oklch(55% 0.005 285)" }
     },
     "typographyMeta": {
-      "display": { "displayName": "Space Grotesk Display", "purpose": "Declared for headings; functionally absent from shipped UI (one usage site-wide)." },
+      "display": { "displayName": "Space Grotesk Display", "purpose": "Applied to the entire <body> in app/layout.tsx, so it carries headlines AND dense UI, labels, and data alike: one voice doing two incompatible jobs." },
       "body": { "displayName": "Default Sans Body", "purpose": "Inherited Tailwind sans stack; carries nearly all UI text and prose." },
       "label": { "displayName": "Mono Label", "purpose": "Token counts, IDs, code-like values; the one place a distinct voice appears." }
     },
@@ -87,19 +87,19 @@
       "Two competing neutral scales (slate and zinc) used interchangeably with no rule for which applies where",
       "Three accent purples (indigo-500, violet-500, purple-500) doing the same job in different places",
       "Glassmorphism (backdrop-filter: blur) as the default elevation strategy for nearly every surface",
-      "Space Grotesk applied inconsistently: present in the theme, used in exactly one class across the codebase",
+      "A display typeface (Space Grotesk) applied to the entire <body>, carrying dense UI and data, not just the headline moments it suits",
       "No shared button/card/input components; each screen reimplements its own version of the same primitives"
     ],
     "rules": [
       { "name": "The Two-Scale Problem", "body": "slate and zinc are both load-bearing neutral families in this codebase. Wherever you touch a surface, check which scale its siblings use before adding a third option; do not introduce a fourth neutral family.", "section": "colors" },
-      { "name": "The Declared-But-Unused Rule", "body": "A typeface can be declared in the theme and still be functionally absent from the product. Space Grotesk exists in --font-display but appears in one class across the entire codebase; a token that isn't applied isn't a system, it's a placeholder.", "section": "typography" },
+      { "name": "The One-Voice-Two-Jobs Rule", "body": "A typeface chosen for its personality in headlines will fight the product register's core requirement, the tool should disappear into the task, when it is also asked to carry labels, data, and forms. Display character and informational neutrality are different jobs; they need different faces, or at minimum different weights and tracking, applied deliberately rather than by inheritance.", "section": "typography" },
       { "name": "The Reflex Blur Rule", "body": "Glassmorphism is currently the answer to \"how should this surface stand out,\" applied without asking whether the surface needs to feel layered over moving content (its only legitimate use) or simply distinct from its neighbor (which a flat fill and a 1px border accomplish without the performance cost of backdrop-filter).", "section": "elevation" }
     ],
     "dos": [
       "Do pick one neutral family (slate or zinc, not both) before touching any surface, and migrate its neighbors to match rather than adding a third option.",
       "Do collapse the three competing purples (indigo-500, violet-500, purple-500) into a single deliberate accent with named roles, per PRODUCT.md's call for visual confidence and a real point of view.",
       "Do treat .glass-panel / .glass-button as defaults to question, not defaults to extend; reach for a flat fill plus a hairline border first and reserve blur for surfaces that genuinely float over moving content.",
-      "Do either commit to Space Grotesk as a real display voice (used where display type actually appears) or remove it; a declared-but-unused token is worse than no token."
+      "Do give display and body type separate jobs: a confident display voice for headline moments, a quieter denser-friendly face for labels, forms, and data, so the tool can disappear into the task."
     ],
     "donts": [
       "Don't add a sixth color to a palette that already has five competing near-duplicates (two neutral families, three accent purples); subtract before adding.",
