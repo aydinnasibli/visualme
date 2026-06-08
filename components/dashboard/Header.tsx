@@ -6,9 +6,11 @@ import ThemeToggle from '@/components/dashboard/ThemeToggle';
 interface HeaderProps {
   user: UserResource | null;
   label?: string;
+  /** Page-specific action(s) rendered before the theme toggle (e.g. a tool launcher button). */
+  actions?: React.ReactNode;
 }
 
-const Header = ({ user, label = 'Playground' }: HeaderProps) => {
+const Header = ({ user, label = 'Playground', actions }: HeaderProps) => {
   return (
     <header className="fixed top-0 left-0 right-0 h-16 flex items-center justify-between px-6 z-20 border-b border-edge/60 bg-surface-0/70 backdrop-blur-md">
       <div className="flex items-center gap-3">
@@ -19,6 +21,7 @@ const Header = ({ user, label = 'Playground' }: HeaderProps) => {
         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-1 text-ink-faint border border-edge ml-2">{label}</span>
       </div>
       <div className="flex items-center gap-3">
+        {actions}
         <ThemeToggle />
         <div className="h-6 w-px bg-edge/70" />
         <Link href="/my-visualizations" className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors" title="My Visualizations">
