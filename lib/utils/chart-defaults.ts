@@ -48,51 +48,97 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     expandAndCollapse: true,
     initialTreeDepth: 2,
     emphasis: { focus: 'descendant' },
+    lineStyle: { curveness: 0.5 },
   },
   treemap: {
     roam: true,
     breadcrumb: { show: true },
     emphasis: { focus: 'descendant' },
+    itemStyle: { borderRadius: 4, gapWidth: 2 },
   },
   sunburst: {
     emphasis: { focus: 'ancestor' },
     label: { show: true },
+    itemStyle: { borderRadius: 6, borderWidth: 1 },
   },
   sankey: {
     draggable: true,
     emphasis: { focus: 'adjacency' },
     lineStyle: { curveness: 0.5, opacity: 0.4 },
+    itemStyle: { borderRadius: 2 },
   },
   pie: {
     avoidLabelOverlap: true,
+    itemStyle: { borderRadius: 6, borderWidth: 2 },
+    label: { formatter: '{b}: {d}%' },
     emphasis: { focus: 'self', scale: true, scaleSize: 6 },
   },
   scatter: {
+    symbolSize: 10,
+    itemStyle: { opacity: 0.8 },
     emphasis: { focus: 'series' },
   },
   effectScatter: {
+    symbolSize: 14,
+    rippleEffect: { brushType: 'stroke' },
     emphasis: { focus: 'series' },
   },
   bar: {
+    barMaxWidth: 48,
+    itemStyle: { borderRadius: 4 },
     emphasis: { focus: 'series' },
   },
   line: {
-    emphasis: { focus: 'series' },
+    smooth: true,
     symbolSize: 6,
+    lineStyle: { width: 2.5 },
+    emphasis: { focus: 'series' },
   },
   radar: {
+    symbolSize: 4,
+    lineStyle: { width: 2 },
     emphasis: { focus: 'self' },
   },
   funnel: {
+    minSize: '10%',
+    maxSize: '100%',
+    gap: 2,
+    label: { show: true, position: 'inside' },
     emphasis: { focus: 'self', label: { show: true } },
   },
   heatmap: {
+    itemStyle: { borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.4)' },
     emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } },
   },
   parallel: {
-    emphasis: { focus: 'series' },
+    lineStyle: { width: 1.5, opacity: 0.5 },
+    emphasis: { focus: 'series', lineStyle: { width: 3, opacity: 0.9 } },
   },
   themeRiver: {
+    emphasis: { focus: 'series' },
+  },
+  candlestick: {
+    itemStyle: {
+      color: '#26A69A',
+      color0: '#EF5350',
+      borderColor: '#26A69A',
+      borderColor0: '#EF5350',
+    },
+  },
+  boxplot: {
+    itemStyle: { borderWidth: 1.5 },
+    emphasis: { itemStyle: { borderWidth: 2.5 } },
+  },
+  gauge: {
+    progress: { show: true, width: 12 },
+    axisLine: { lineStyle: { width: 12 } },
+    pointer: { show: true },
+    anchor: { show: true, size: 12, itemStyle: { borderWidth: 4 } },
+    title: { show: true },
+    detail: { valueAnimation: true },
+  },
+  pictorialBar: {
+    barCategoryGap: '40%',
     emphasis: { focus: 'series' },
   },
 };

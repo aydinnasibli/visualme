@@ -27,83 +27,59 @@ export default function HelpPage() {
     }
   ];
 
+  const cards = [
+    { icon: Rocket, title: 'Getting Started', desc: 'Learn the basics of creating your first visualization in seconds.', cta: 'Read Guide' },
+    { icon: Database, title: 'Data Formatting', desc: 'Best practices for structuring your prompts and data for best results.', cta: 'View Examples' },
+    { icon: Activity, title: 'Tips & Tricks', desc: 'Advanced techniques to get the most out of the AI engine.', cta: 'Learn More' },
+    { icon: Wrench, title: 'Troubleshooting', desc: 'Solutions for common issues and error messages.', cta: 'Get Help' },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-900 relative selection:bg-indigo-500/20">
-      <Header user={user || null} />
+    <div className="min-h-screen bg-surface-0 relative selection:bg-accent/20">
+      <Header user={user || null} label="Help" />
       <div className="max-w-4xl mx-auto p-6 pt-24">
-        <h1 className="text-3xl font-bold text-white mb-2">Help & Support</h1>
-        <p className="text-zinc-400 mb-8">Find answers to common questions and learn how to use VisualMe.</p>
+        <h1 className="font-display text-3xl font-bold text-ink mb-2">Help & Support</h1>
+        <p className="text-ink-muted mb-8">Find answers to common questions and learn how to use VisualMe.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-slate-800 border border-white/10 rounded-xl p-6 hover:border-indigo-500/50 transition-colors group cursor-pointer">
-            <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 mb-4 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-              <Rocket className="w-7 h-7" />
+          {cards.map(({ icon: Icon, title, desc, cta }) => (
+            <div key={title} className="surface-panel rounded-xl p-6 hover:border-accent/30 transition-colors group cursor-pointer">
+              <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-4 group-hover:bg-accent group-hover:text-surface-0 transition-colors">
+                <Icon className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-semibold text-ink mb-2">{title}</h3>
+              <p className="text-ink-muted text-sm">{desc}</p>
+              <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">
+                {cta} <ChevronRight className="w-4 h-4 text-ink-faint" />
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Getting Started</h3>
-            <p className="text-zinc-400 text-sm">Learn the basics of creating your first visualization in seconds.</p>
-            <div className="mt-4 flex items-center text-indigo-400 text-sm font-medium">
-              Read Guide <ChevronRight className="w-4 h-4 text-zinc-500" />
-            </div>
-          </div>
-
-          <div className="bg-slate-800 border border-white/10 rounded-xl p-6 hover:border-indigo-500/50 transition-colors group cursor-pointer">
-            <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-4 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-              <Database className="w-7 h-7" />
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Data Formatting</h3>
-            <p className="text-zinc-400 text-sm">Best practices for structuring your prompts and data for best results.</p>
-            <div className="mt-4 flex items-center text-indigo-400 text-sm font-medium">
-              View Examples <ChevronRight className="w-4 h-4 text-zinc-500" />
-            </div>
-          </div>
-
-          <div className="bg-slate-800 border border-white/10 rounded-xl p-6 hover:border-indigo-500/50 transition-colors group cursor-pointer">
-            <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 mb-4 group-hover:bg-purple-500 group-hover:text-white transition-colors">
-              <Activity className="w-7 h-7" />
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Tips & Tricks</h3>
-            <p className="text-zinc-400 text-sm">Advanced techniques to get the most out of the AI engine.</p>
-            <div className="mt-4 flex items-center text-indigo-400 text-sm font-medium">
-              Learn More <ChevronRight className="w-4 h-4 text-zinc-500" />
-            </div>
-          </div>
-
-          <div className="bg-slate-800 border border-white/10 rounded-xl p-6 hover:border-indigo-500/50 transition-colors group cursor-pointer">
-            <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-              <Wrench className="w-7 h-7" />
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Troubleshooting</h3>
-            <p className="text-zinc-400 text-sm">Solutions for common issues and error messages.</p>
-            <div className="mt-4 flex items-center text-indigo-400 text-sm font-medium">
-              Get Help <ChevronRight className="w-4 h-4 text-zinc-500" />
-            </div>
-          </div>
+          ))}
         </div>
 
-        <h2 className="text-2xl font-bold text-white mb-6">Frequently Asked Questions</h2>
+        <h2 className="text-2xl font-bold text-ink mb-6">Frequently Asked Questions</h2>
         <div className="space-y-4 mb-12">
           {faqs.map((faq, index) => (
-            <details key={index} className="group bg-slate-800 border border-white/10 rounded-xl overflow-hidden">
-              <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors list-none">
-                <span className="font-medium text-zinc-200">{faq.question}</span>
-                <ChevronDown className="transition-transform group-open:rotate-180 text-zinc-500 w-5 h-5" />
+            <details key={index} className="group surface-panel rounded-xl overflow-hidden">
+              <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-2/60 transition-colors list-none">
+                <span className="font-medium text-ink">{faq.question}</span>
+                <ChevronDown className="transition-transform group-open:rotate-180 text-ink-faint w-5 h-5" />
               </summary>
-              <div className="px-4 pb-4 text-zinc-400 text-sm leading-relaxed border-t border-white/5 pt-4">
+              <div className="px-4 pb-4 text-ink-muted text-sm leading-relaxed border-t border-edge pt-4">
                 {faq.answer}
               </div>
             </details>
           ))}
         </div>
 
-        <div className="bg-linear-to-r from-indigo-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold text-white mb-2">Still need help?</h2>
-          <p className="text-zinc-300 mb-6">Our support team is available to assist you with any questions or issues.</p>
+        <div className="bg-accent/8 border border-accent/20 rounded-2xl p-8 text-center">
+          <h2 className="text-2xl font-bold text-ink mb-2">Still need help?</h2>
+          <p className="text-ink-muted mb-6">Our support team is available to assist you with any questions or issues.</p>
           <div className="flex items-center justify-center gap-4">
-            <button className="px-6 py-2.5 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition-colors flex items-center gap-2">
+            <button className="px-6 py-2.5 bg-accent text-surface-0 font-medium rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2">
               <Mail className="w-5 h-5" />
               Contact Support
             </button>
-            <button className="px-6 py-2.5 bg-slate-900 border border-white/10 text-white font-medium rounded-lg hover:bg-white/5 transition-colors flex items-center gap-2">
+            <button className="px-6 py-2.5 surface-control text-ink font-medium rounded-lg transition-colors flex items-center gap-2">
               <MessageSquare className="w-5 h-5" />
               Join Community
             </button>

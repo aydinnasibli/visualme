@@ -139,18 +139,17 @@ export const CHART_TYPES: ChartTypeOption[] = [
   { series: 'pie', label: 'Pie Chart', description: 'Show proportions of a whole', icon: 'PieChart', tuned: true, variants: PIE_VARIANTS },
   { series: 'scatter', label: 'Scatter Plot', description: 'Reveal correlation between two variables', icon: 'ScatterChart', tuned: true, variants: SCATTER_VARIANTS },
   { series: 'effectScatter', label: 'Effect Scatter', description: 'Animated scatter for highlighting key points', icon: 'Sparkle', tuned: true },
-  { series: 'candlestick', label: 'Candlestick', description: 'Open/high/low/close price movement', icon: 'CandlestickChart', tuned: false },
-  { series: 'pictorialBar', label: 'Pictorial Bar', description: 'Symbol-based bars for expressive comparisons', icon: 'AlignEndHorizontal', tuned: false },
+  { series: 'candlestick', label: 'Candlestick', description: 'Open/high/low/close price movement', icon: 'CandlestickChart', tuned: true },
+  { series: 'pictorialBar', label: 'Pictorial Bar', description: 'Symbol-based bars for expressive comparisons', icon: 'AlignEndHorizontal', tuned: true },
 
   // ── Statistical charts ──
-  { series: 'boxplot', label: 'Box Plot', description: 'Summarize distribution via quartiles and outliers', icon: 'BoxSelect', tuned: false },
+  { series: 'boxplot', label: 'Box Plot', description: 'Summarize distribution via quartiles and outliers', icon: 'BoxSelect', tuned: true },
   { series: 'heatmap', label: 'Heatmap', description: 'Show intensity across two dimensions', icon: 'Grid3x3', tuned: true, variants: HEATMAP_VARIANTS },
   { series: 'radar', label: 'Radar Chart', description: 'Compare multiple variables on shared axes', icon: 'Radar', tuned: true, variants: RADAR_VARIANTS },
   { series: 'parallel', label: 'Parallel Coordinates', description: 'Compare many dimensions side by side', icon: 'AlignVerticalSpaceAround', tuned: true },
-  { series: 'gauge', label: 'Gauge', description: 'Show a single value against a range', icon: 'Gauge', tuned: false, variants: GAUGE_VARIANTS },
+  { series: 'gauge', label: 'Gauge', description: 'Show a single value against a range', icon: 'Gauge', tuned: true, variants: GAUGE_VARIANTS },
   { series: 'funnel', label: 'Funnel', description: 'Visualize stages of a narrowing process', icon: 'Filter', tuned: true, variants: FUNNEL_VARIANTS },
   { series: 'themeRiver', label: 'Theme River', description: 'Show how themes ebb and flow over time', icon: 'Waves', tuned: true },
-  { series: 'calendar', label: 'Calendar Heatmap', description: 'Show daily values across a calendar grid', icon: 'CalendarDays', tuned: false },
 
   // ── Graph, hierarchy & flow charts ──
   { series: 'graph', label: 'Network Graph', description: 'Map relationships and connections between entities', icon: 'Share2', tuned: true, variants: GRAPH_VARIANTS },
