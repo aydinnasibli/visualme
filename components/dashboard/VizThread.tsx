@@ -351,11 +351,11 @@ export default function VizThread({
             </div>
             <div className="w-full space-y-1.5">
               {[
-                { label: 'Mind map of machine learning concepts', icon: '🧠' },
-                { label: 'Software deployment pipeline flowchart', icon: '🔀' },
-                { label: 'Timeline of World War II key events', icon: '📅' },
-                { label: 'Compare React vs Vue vs Angular', icon: '📋' },
-                { label: 'Network graph of blockchain technology', icon: '🕸️' },
+                { label: 'Sankey diagram of a SaaS startup\'s revenue and cost flow', icon: '🌊' },
+                { label: 'Sunburst chart: global energy mix by source and region', icon: '⚡' },
+                { label: 'Treemap of S&P 500 companies by sector and market cap', icon: '📈' },
+                { label: 'Theme river: social media platform popularity 2012–2024', icon: '📡' },
+                { label: 'Radar comparison of iPhone 16, Galaxy S25, and Pixel 9', icon: '📱' },
               ].map(({ label, icon }) => (
                 <button
                   key={label}
