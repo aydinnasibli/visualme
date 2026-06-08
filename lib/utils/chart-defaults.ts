@@ -38,7 +38,7 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
   graph: {
     roam: true,
     draggable: true,
-    label: { show: true },
+    label: { show: true, overflow: 'truncate', width: 90 },
     emphasis: { focus: 'adjacency', scale: 1.1 },
     force: { repulsion: 120, edgeLength: 90, gravity: 0.1 },
     lineStyle: { curveness: 0.15, opacity: 0.6 },
@@ -47,6 +47,7 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     roam: true,
     expandAndCollapse: true,
     initialTreeDepth: 2,
+    label: { overflow: 'truncate', width: 110 },
     emphasis: { focus: 'descendant' },
     lineStyle: { curveness: 0.5 },
   },
@@ -54,11 +55,14 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     roam: true,
     breadcrumb: { show: true },
     emphasis: { focus: 'descendant' },
+    label: { overflow: 'truncate' },
     itemStyle: { borderRadius: 4, gapWidth: 2 },
   },
   sunburst: {
     emphasis: { focus: 'ancestor' },
-    label: { show: true },
+    // Hide labels on segments too narrow to read — avoids garbled text in the inner rings.
+    minAngle: 3,
+    label: { show: true, overflow: 'truncate', width: 80 },
     itemStyle: { borderRadius: 6, borderWidth: 1 },
   },
   sankey: {
@@ -66,48 +70,61 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     emphasis: { focus: 'adjacency' },
     lineStyle: { curveness: 0.5, opacity: 0.4 },
     itemStyle: { borderRadius: 2 },
+    label: { overflow: 'truncate', width: 120 },
   },
   pie: {
     avoidLabelOverlap: true,
+    // Suppress the label entirely on slices too thin to read — prevents a cluster
+    // of callout lines on heavily-segmented charts.
+    minShowLabelAngle: 4,
     itemStyle: { borderRadius: 6, borderWidth: 2 },
-    label: { formatter: '{b}: {d}%' },
+    label: { formatter: '{b}: {d}%', overflow: 'truncate', width: 140 },
+    // Shorter leader lines keep labels closer to the chart body and within the
+    // canvas bounds — avoids the common "label bleeds off the right/left edge" problem.
+    labelLine: { length: 8, length2: 12, smooth: true },
     emphasis: { focus: 'self', scale: true, scaleSize: 6 },
   },
   scatter: {
     symbolSize: 10,
     itemStyle: { opacity: 0.8 },
+    label: { overflow: 'truncate', width: 80 },
     emphasis: { focus: 'series' },
   },
   effectScatter: {
     symbolSize: 14,
     rippleEffect: { brushType: 'stroke' },
+    label: { overflow: 'truncate', width: 80 },
     emphasis: { focus: 'series' },
   },
   bar: {
     barMaxWidth: 48,
     itemStyle: { borderRadius: 4 },
+    label: { overflow: 'truncate', width: 80 },
     emphasis: { focus: 'series' },
   },
   line: {
     smooth: true,
     symbolSize: 6,
     lineStyle: { width: 2.5 },
+    label: { overflow: 'truncate', width: 80 },
     emphasis: { focus: 'series' },
   },
   radar: {
     symbolSize: 4,
     lineStyle: { width: 2 },
+    label: { overflow: 'truncate', width: 80 },
     emphasis: { focus: 'self' },
   },
   funnel: {
     minSize: '10%',
     maxSize: '100%',
     gap: 2,
-    label: { show: true, position: 'inside' },
+    label: { show: true, position: 'inside', overflow: 'truncate', width: 120 },
     emphasis: { focus: 'self', label: { show: true } },
   },
   heatmap: {
     itemStyle: { borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.4)' },
+    label: { overflow: 'truncate', width: 60 },
     emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } },
   },
   parallel: {
@@ -115,6 +132,7 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     emphasis: { focus: 'series', lineStyle: { width: 3, opacity: 0.9 } },
   },
   themeRiver: {
+    label: { overflow: 'truncate', width: 100 },
     emphasis: { focus: 'series' },
   },
   candlestick: {
@@ -134,11 +152,12 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     axisLine: { lineStyle: { width: 12 } },
     pointer: { show: true },
     anchor: { show: true, size: 12, itemStyle: { borderWidth: 4 } },
-    title: { show: true },
-    detail: { valueAnimation: true },
+    title: { show: true, overflow: 'truncate', width: 80 },
+    detail: { valueAnimation: true, overflow: 'truncate', width: 80 },
   },
   pictorialBar: {
     barCategoryGap: '40%',
+    label: { overflow: 'truncate', width: 80 },
     emphasis: { focus: 'series' },
   },
 };

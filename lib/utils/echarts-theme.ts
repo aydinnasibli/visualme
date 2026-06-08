@@ -25,10 +25,8 @@ const SPACING_GRID: Record<ChartSpacing, { top: number; bottom: number; left: nu
   spacious:    { top: 88,  bottom: 72, left: 80,  right: 64 },
 };
 
-// 'top' sits in the top-right corner — titles default to top-left, so this
-// avoids the two colliding regardless of whether a subtitle is present.
 const LEGEND_BY_POSITION: Record<BrandTheme['legendPosition'], Record<string, unknown> | null> = {
-  top:    { top: 8, right: 8, orient: 'horizontal' },
+  top:    { right: 8, orient: 'horizontal' },   // 'top' offset is computed dynamically to clear the title
   bottom: { bottom: 8, left: 'center', orient: 'horizontal' },
   left:   { left: 8, top: 'middle', orient: 'vertical' },
   right:  { right: 8, top: 'middle', orient: 'vertical' },
@@ -235,13 +233,19 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   const legendOverride = LEGEND_BY_POSITION[theme.legendPosition];
   const original = option as Record<string, unknown>;
 
+  // Compute once — used for both legend placement and grid-top guard below.
+  const isTopLegend = legendOverride !== null && 'right' in (legendOverride ?? {});
+  const hasTitle    = Boolean(original.title);
+  const hasSubtext  = hasTitle && Boolean((original.title as Record<string, unknown>)?.subtext);
+  const legendTopOffset = isTopLegend && hasTitle ? (hasSubtext ? 68 : 48) : 8;
+
   const themed: Record<string, unknown> = JSON.parse(JSON.stringify(original));
 
   themed.color = theme.palette;
   themed.backgroundColor = theme.background;
   themed.textStyle = { ...baseTextStyle(theme, theme.fontSize.axisLabel), ...(original.textStyle as object) };
 
-  themed.title = original.title
+  themed.title = hasTitle
     ? {
         ...(original.title as object),
         textStyle: {
@@ -259,14 +263,21 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   // Only style a legend if the structural spec already declared one — the
   // theme restyles/repositions it but never decides whether one belongs.
   if (original.legend !== undefined) {
-    themed.legend = legendOverride
-      ? {
-          ...legendOverride,
-          textStyle: baseTextStyle(theme, theme.fontSize.legend, theme.mutedTextColor),
-          ...(original.legend as object),
-        }
-      : { ...(original.legend as object), show: false };
+    if (legendOverride) {
+      themed.legend = {
+        ...legendOverride,
+        ...(isTopLegend ? { top: legendTopOffset } : {}),
+        textStyle: baseTextStyle(theme, theme.fontSize.legend, theme.mutedTextColor),
+        ...(original.legend as object),
+      };
+    } else {
+      themed.legend = { ...(original.legend as object), show: false };
+    }
   }
+
+  // Let ECharts automatically hide overlapping labels instead of stacking them —
+  // most critical for dense pie charts and scatter plots.
+  themed.labelLayout = { hideOverlap: true, ...(original.labelLayout as object) };
 
   themed.tooltip = {
     backgroundColor: theme.mode === 'dark' ? '#27272a' : '#ffffff',
@@ -276,7 +287,32 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   };
 
   if (original.grid !== undefined || original.xAxis !== undefined || original.yAxis !== undefined) {
-    themed.grid = { ...grid, containLabel: true, ...(original.grid as object) };
+    // Guard: ensure the cartesian plot area starts below the title and any top-positioned
+    // legend. ECharts doesn't factor these non-grid elements into its layout pass, so
+    // without this the chart body can overlap the title row or legend row.
+    const topLegendHasContent = isTopLegend && original.legend !== undefined;
+    const minTop = (() => {
+      if (topLegendHasContent) return legendTopOffset + 28;   // legend bottom edge + gap
+      if (hasTitle)            return hasSubtext ? 72 : 52;   // title bottom edge + gap
+      return 0;
+    })();
+    const effectiveGridTop = Math.max(grid.top, minTop);
+    themed.grid = { ...grid, top: effectiveGridTop, containLabel: true, ...(original.grid as object) };
+  }
+
+  // Radar axis-name overflow — indicator names are often long phrases; truncate
+  // them at the axis label level so they don't overrun adjacent spokes.
+  if (original.radar !== undefined) {
+    const radarArr = Array.isArray(original.radar) ? original.radar : [original.radar];
+    themed.radar = radarArr.map((r) => ({
+      ...(r as object),
+      axisName: {
+        overflow: 'truncate',
+        width: 80,
+        ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor),
+        ...((r as Record<string, unknown>).axisName as object),
+      },
+    }));
   }
 
   themed.xAxis = themeAxes(original.xAxis as EChartsOption['xAxis'], theme);
