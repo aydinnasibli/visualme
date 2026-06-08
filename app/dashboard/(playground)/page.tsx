@@ -12,7 +12,7 @@ import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { readFileAttachment, composePromptWithAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
-import { composePromptWithChartType, type ChartSelection } from '@/lib/utils/chart-types';
+import { composePromptWithChartType, getStyleEffect, type ChartSelection } from '@/lib/utils/chart-types';
 import { toast } from 'sonner';
 
 import Header from '@/components/dashboard/Header';
@@ -163,6 +163,7 @@ function DashboardContent() {
     const displayPrompt = trimmed
       || (pendingChartType ? `${pendingChartType.type.label}${pendingChartType.variant ? ` — ${pendingChartType.variant.label}` : ''}` : `Visualize ${pendingAttachment!.name}`);
     const aiInput = composePromptWithChartType(composePromptWithAttachment(trimmed, pendingAttachment), pendingChartType);
+    const pendingStyleEffect = getStyleEffect(pendingChartType);
 
     setInput('');
     setAttachment(null);
@@ -173,7 +174,7 @@ function DashboardContent() {
 
     try {
       const genTimer = setTimeout(() => setLoadingStep('generating'), 250);
-      const data = await generateVisualization(aiInput);
+      const data = await generateVisualization(aiInput, pendingStyleEffect);
       clearTimeout(genTimer);
 
       if (!data.success || !data.spec) {

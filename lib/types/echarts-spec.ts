@@ -11,6 +11,15 @@ import type { EChartsOption } from 'echarts';
 
 export type ThemeMode = 'light' | 'dark';
 
+/**
+ * Variant-driven visual effects that the theme layer applies deterministically
+ * rather than asking the AI to author them — keeps "structure only, no styling"
+ * intact for the spec generator while still honoring what the user picked in
+ * the chart-type gallery (e.g. "Gradient Area" needs a real `linearGradient`
+ * object, which the AI is told never to write).
+ */
+export type ChartStyleEffect = 'gradient-area';
+
 export type LegendPosition = 'top' | 'bottom' | 'left' | 'right' | 'none';
 
 export type ChartSpacing = 'compact' | 'comfortable' | 'spacious';
@@ -62,6 +71,8 @@ export interface VisualizationSpec {
   option: EChartsOption;
   theme: BrandTheme;
   title?: string;
+  /** Deterministic visual effect requested via the chart-type gallery (e.g. gradient area fill) — applied by `applyBrandTheme`, not authored by the AI. */
+  styleEffect?: ChartStyleEffect;
 }
 
 // ============================================================================

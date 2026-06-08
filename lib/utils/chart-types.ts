@@ -20,6 +20,8 @@
 // charts, and graph/hierarchy/flow charts.
 // ============================================================================
 
+import type { ChartStyleEffect } from '@/lib/types/echarts-spec';
+
 export interface ChartTypeVariant {
   /** Stable slug, also shown alongside the type name in the selection chip. */
   value: string;
@@ -27,8 +29,17 @@ export interface ChartTypeVariant {
   label: string;
   /** One-line description of how this variant differs from the base form. */
   description: string;
-  /** Instruction fragment appended to the forced-type instruction — tells the AI exactly how to shape this variant. */
+  /**
+   * Instruction fragment appended to the forced-type instruction — tells the AI
+   * exactly how to shape this variant STRUCTURALLY (series composition, axes,
+   * stacking, layout). Must never ask for colors/gradients/fonts: the spec
+   * generator's system prompt explicitly forbids styling and will strip it —
+   * any visual effect a variant needs belongs in `styleEffect` instead, where
+   * the theme layer applies it deterministically and on-brand.
+   */
   instruction: string;
+  /** Deterministic visual effect this variant promises — applied by `applyBrandTheme` after generation, not authored by the AI (see `ChartStyleEffect`). */
+  styleEffect?: ChartStyleEffect;
 }
 
 export interface ChartTypeOption {
@@ -52,6 +63,11 @@ export interface ChartSelection {
   variant?: ChartTypeVariant;
 }
 
+/** The deterministic visual effect (if any) a selection promises — to be applied by the theme layer post-generation, not the AI. */
+export function getStyleEffect(selection: ChartSelection | null): ChartStyleEffect | undefined {
+  return selection?.variant?.styleEffect;
+}
+
 const BAR_VARIANTS: ChartTypeVariant[] = [
   { value: 'vertical', label: 'Vertical Bars', description: 'Standard column chart', instruction: "Use vertical bars (category axis on x, value axis on y)." },
   { value: 'horizontal', label: 'Horizontal Bars', description: 'Bars extend left to right — good for long category labels', instruction: "Use horizontal bars (value axis on x, category axis on y)." },
@@ -66,7 +82,7 @@ const LINE_VARIANTS: ChartTypeVariant[] = [
   { value: 'basic', label: 'Basic Line', description: 'Straight segments between data points', instruction: "Use straight line segments (smooth: false)." },
   { value: 'smooth', label: 'Smoothed Line', description: 'Curved interpolation between points', instruction: "Smooth the line curve (smooth: true)." },
   { value: 'area', label: 'Area Chart', description: 'Filled region under the line emphasizes volume', instruction: "Fill the area under each line (areaStyle) to emphasize volume/magnitude." },
-  { value: 'gradient-area', label: 'Gradient Area', description: 'Area fill fades from solid to transparent', instruction: "Fill the area under the line with a top-to-bottom linear gradient (areaStyle.color as a linearGradient) that fades to transparent." },
+  { value: 'gradient-area', label: 'Gradient Area', description: 'Area fill fades from solid to transparent', instruction: "Fill the area under each line (areaStyle: {}) — same as a basic area chart structurally; the fade-to-transparent gradient is applied automatically afterward, so do not author its color.", styleEffect: 'gradient-area' },
   { value: 'stacked', label: 'Stacked Lines', description: 'Lines stack so each sits on top of the one before', instruction: "Stack the line series using the same `stack` id (without area fill) so each line builds on the previous one's values." },
   { value: 'stacked-area', label: 'Stacked Area', description: 'Filled areas stack to show cumulative totals', instruction: "Stack the series with filled areas (stack id + areaStyle) so they sum to a cumulative total." },
   { value: 'step', label: 'Step Line', description: 'Right-angle steps between values', instruction: "Render the line as steps between data points (step: 'middle')." },

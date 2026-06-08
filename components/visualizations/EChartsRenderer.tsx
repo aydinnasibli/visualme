@@ -39,7 +39,7 @@ export default function EChartsRenderer({ spec, className }: EChartsRendererProp
     if (!spec?.option) return null;
     const appMode = mounted && resolvedTheme === 'light' ? 'light' : mounted ? 'dark' : spec.theme.mode;
     const syncedTheme = withAppMode(spec.theme, appMode);
-    return applyBrandTheme(applyChartDefaults(spec.option), syncedTheme);
+    return applyBrandTheme(applyChartDefaults(spec.option), syncedTheme, spec.styleEffect);
   }, [spec, mounted, resolvedTheme]);
 
   // `autoResize` only reacts to `window` resize events — it stays unaware of

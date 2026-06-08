@@ -14,7 +14,7 @@ import type {
   XAXisComponentOption,
   YAXisComponentOption,
 } from 'echarts';
-import type { BrandTheme, ChartSpacing, ThemeMode } from '@/lib/types/echarts-spec';
+import type { BrandTheme, ChartSpacing, ChartStyleEffect, ThemeMode } from '@/lib/types/echarts-spec';
 import { DEFAULT_LIGHT_THEME, DEFAULT_DARK_THEME } from '@/lib/types/echarts-spec';
 
 type AxisOption = ComposeOption<XAXisComponentOption | YAXisComponentOption>;
@@ -105,15 +105,67 @@ function removeSankeyCycles(links: unknown): unknown {
   return kept;
 }
 
+/** Converts a `#rrggbb` hex color to `rgba(r, g, b, alpha)`; falls back to passing the input through if it isn't 6-digit hex (e.g. already rgba/named/css var). */
+function hexToRgba(hex: string, alpha: number): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return hex;
+  const int = parseInt(match[1], 16);
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Builds an ECharts `linearGradient` color object that fades a base color from
+ * translucent (top) to fully transparent (bottom) — the "Gradient Area" line
+ * variant's promised effect. Authored here (not by the AI) so the gradient is
+ * always valid ECharts graphic syntax and stays on-brand with the series' own
+ * palette color, the same color it would otherwise render with solid.
+ */
+function gradientAreaFill(baseColor: string): Record<string, unknown> {
+  return {
+    type: 'linear',
+    x: 0, y: 0, x2: 0, y2: 1,
+    colorStops: [
+      { offset: 0, color: hexToRgba(baseColor, 0.45) },
+      { offset: 1, color: hexToRgba(baseColor, 0) },
+    ],
+  };
+}
+
+/**
+ * Applies a variant's deterministic visual effect to one themed series entry.
+ * `paletteColor` is the color ECharts would assign this series from the global
+ * palette by index — used so the gradient matches what the line itself renders
+ * in, rather than introducing an unrelated color.
+ */
+function applyStyleEffect(
+  themed: Record<string, unknown>,
+  type: string | undefined,
+  styleEffect: ChartStyleEffect | undefined,
+  paletteColor: string
+): void {
+  if (styleEffect === 'gradient-area' && type === 'line' && themed.areaStyle !== undefined) {
+    const areaStyle = (themed.areaStyle ?? {}) as Record<string, unknown>;
+    const baseColor = typeof areaStyle.color === 'string' ? areaStyle.color : paletteColor;
+    themed.areaStyle = { ...areaStyle, color: gradientAreaFill(baseColor) };
+  }
+}
+
 /** Adds brand-consistent rounding/borders to series that support itemStyle, without overriding AI-authored colors per data point. */
-function themeSeries(series: EChartsOption['series'], theme: BrandTheme): EChartsOption['series'] {
+function themeSeries(series: EChartsOption['series'], theme: BrandTheme, styleEffect?: ChartStyleEffect): EChartsOption['series'] {
   if (!series) return series;
   const list = Array.isArray(series) ? series : [series];
 
-  return list.map((s) => {
+  return list.map((s, index) => {
     const seriesEntry = s as Record<string, unknown>;
     const type = seriesEntry.type as string | undefined;
     const themed: Record<string, unknown> = { ...seriesEntry };
+
+    if (styleEffect) {
+      applyStyleEffect(themed, type, styleEffect, theme.palette[index % theme.palette.length]);
+    }
 
     if (type === 'bar' && theme.borderRadius) {
       themed.itemStyle = {
@@ -178,7 +230,7 @@ export function withAppMode(theme: BrandTheme, appMode: ThemeMode): BrandTheme {
  * the original option's chart type, encodings, and data pass through
  * untouched (deep-cloned to avoid mutating AI-cached specs).
  */
-export function applyBrandTheme(option: EChartsOption, theme: BrandTheme): EChartsOption {
+export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleEffect?: ChartStyleEffect): EChartsOption {
   const grid = SPACING_GRID[theme.spacing];
   const legendOverride = LEGEND_BY_POSITION[theme.legendPosition];
   const original = option as Record<string, unknown>;
@@ -229,7 +281,7 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme): EChar
 
   themed.xAxis = themeAxes(original.xAxis as EChartsOption['xAxis'], theme);
   themed.yAxis = themeAxes(original.yAxis as EChartsOption['yAxis'], theme);
-  themed.series = themeSeries(original.series as EChartsOption['series'], theme);
+  themed.series = themeSeries(original.series as EChartsOption['series'], theme, styleEffect);
 
   return themed as EChartsOption;
 }

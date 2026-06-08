@@ -6,7 +6,7 @@ import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/mo
 import { generateChartSpec } from '@/lib/services/spec-generator';
 import { editChartSpec } from '@/lib/services/spec-editor';
 import { calculateCost, sanitizeVisualization } from '@/lib/utils/helpers';
-import { DEFAULT_SUNSET_THEME, type VisualizationSpec } from '@/lib/types/echarts-spec';
+import { DEFAULT_SUNSET_THEME, type VisualizationSpec, type ChartStyleEffect } from '@/lib/types/echarts-spec';
 import type { EChartsOption } from 'echarts';
 import {
   validateInputLength,
@@ -29,7 +29,7 @@ import type {
 /**
  * Generate a new visualization from user input
  */
-export async function generateVisualization(input: string): Promise<VisualizationResponse> {
+export async function generateVisualization(input: string, styleEffect?: ChartStyleEffect): Promise<VisualizationResponse> {
   const startTime = Date.now();
 
   const fail = (error: string, reason = ''): VisualizationResponse => ({
@@ -70,6 +70,7 @@ export async function generateVisualization(input: string): Promise<Visualizatio
         option: cached.option,
         theme: DEFAULT_SUNSET_THEME,
         title: cached.title,
+        styleEffect,
       };
 
       return {
@@ -114,6 +115,7 @@ export async function generateVisualization(input: string): Promise<Visualizatio
       option: data.option,
       theme: DEFAULT_SUNSET_THEME,
       title: data.title,
+      styleEffect,
     };
 
     return {
