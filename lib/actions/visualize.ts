@@ -1,5 +1,6 @@
 'use server';
 
+import { after } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
@@ -95,8 +96,9 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       return fail('This content is not suitable for visualization', data.reason);
     }
 
-    // ── Store in cache (fire-and-forget, not on the critical path) ────────────
-    setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason }).catch(() => {});
+    // ── Store in cache after the response — `after()` keeps the Vercel function
+    // alive past the response boundary so the write is guaranteed to complete.
+    after(() => setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason }).catch(() => {}));
 
     // ── Deduct actual token cost based on real OpenAI usage ───────────────────
     const actualCost = calcInternalTokens(promptTokens, completionTokens);

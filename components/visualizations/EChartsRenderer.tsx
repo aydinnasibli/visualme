@@ -6,6 +6,7 @@ import ReactECharts from "echarts-for-react";
 import { applyBrandTheme, withAppMode } from "@/lib/utils/echarts-theme";
 import { applyChartDefaults } from "@/lib/utils/chart-defaults";
 import type { VisualizationSpec } from "@/lib/types/echarts-spec";
+import { DEFAULT_SUNSET_THEME } from "@/lib/types/echarts-spec";
 
 interface EChartsRendererProps {
   spec: VisualizationSpec;
@@ -37,8 +38,9 @@ export default function EChartsRenderer({ spec, className }: EChartsRendererProp
 
   const themedOption = useMemo(() => {
     if (!spec?.option) return null;
-    const appMode = mounted && resolvedTheme === 'light' ? 'light' : mounted ? 'dark' : spec.theme.mode;
-    const syncedTheme = withAppMode(spec.theme, appMode);
+    const theme = spec.theme ?? DEFAULT_SUNSET_THEME;
+    const appMode = mounted && resolvedTheme === 'light' ? 'light' : mounted ? 'dark' : theme.mode;
+    const syncedTheme = withAppMode(theme, appMode);
     return applyBrandTheme(applyChartDefaults(spec.option), syncedTheme, spec.styleEffect);
   }, [spec, mounted, resolvedTheme]);
 
@@ -47,15 +49,21 @@ export default function EChartsRenderer({ spec, className }: EChartsRendererProp
   // reflows), which is what produces a chart stuck rendering at whatever tiny
   // size its container happened to be on first paint. A ResizeObserver tracks
   // the actual container box and tells the ECharts instance to re-measure.
+  // RAF-batching the callback prevents multiple rapid resize calls during
+  // sidebar open/close animations from causing visible chart flickering.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
+    let raf = 0;
     const observer = new ResizeObserver(() => {
-      chartRef.current?.getEchartsInstance().resize();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        chartRef.current?.getEchartsInstance().resize();
+      });
     });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); cancelAnimationFrame(raf); };
   }, []);
 
   if (!themedOption) return <EmptyState />;

@@ -3,16 +3,37 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Share2, CheckCircle, BarChart3,
+  Share2, CheckCircle, BarChart3, LineChart, PieChart, ScatterChart,
+  Sparkle, CandlestickChart, AlignEndHorizontal, BoxSelect, Grid3x3,
+  Radar, AlignVerticalSpaceAround, Gauge, Filter, Waves, GitBranch,
+  LayoutGrid, CircleDot, Workflow,
   Pencil, Sparkles, X, Download, ImageIcon,
   Globe, FileJson, FileSpreadsheet, FileCode, Zap,
 } from 'lucide-react';
+import type { ElementType } from 'react';
 import { toast } from 'sonner';
+
+/* ── Series type → icon + label ── */
+const SERIES_ICON: Record<string, ElementType> = {
+  bar: BarChart3, line: LineChart, pie: PieChart, scatter: ScatterChart,
+  effectScatter: Sparkle, candlestick: CandlestickChart, pictorialBar: AlignEndHorizontal,
+  boxplot: BoxSelect, heatmap: Grid3x3, radar: Radar, parallel: AlignVerticalSpaceAround,
+  gauge: Gauge, funnel: Filter, themeRiver: Waves, graph: Share2,
+  tree: GitBranch, treemap: LayoutGrid, sunburst: CircleDot, sankey: Workflow,
+};
+const SERIES_LABEL: Record<string, string> = {
+  bar: 'Bar Chart', line: 'Line Chart', pie: 'Pie Chart', scatter: 'Scatter Plot',
+  effectScatter: 'Effect Scatter', candlestick: 'Candlestick', pictorialBar: 'Pictorial Bar',
+  boxplot: 'Box Plot', heatmap: 'Heatmap', radar: 'Radar Chart', parallel: 'Parallel Coords',
+  gauge: 'Gauge', funnel: 'Funnel', themeRiver: 'Theme River', graph: 'Network Graph',
+  tree: 'Tree', treemap: 'Treemap', sunburst: 'Sunburst', sankey: 'Sankey',
+};
 import type { ThreadEntry } from '@/components/dashboard/VizThread';
 import { VisualizationErrorBoundary } from '@/components/VisualizationErrorBoundary';
 import EditPanel from '@/components/dashboard/EditPanel';
 import EChartsRenderer from '@/components/visualizations/EChartsRenderer';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
+import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
 
 /* ── Header action button ── */
 function ActionBtn({
@@ -94,16 +115,19 @@ export interface FocusPanelProps {
   setManualEditJson: (json: string) => void;
   handleManualEdit: () => void;
   onThemeChange: (theme: BrandTheme) => void;
+  onTitleChange?: (title: string) => void;
 }
 
 export default function FocusPanel({
   thread, saving, onSave, onShare, onExportData,
   chatHistory, handleChatMessage, isEditing,
   manualEditJson, setManualEditJson, handleManualEdit,
-  onThemeChange,
+  onThemeChange, onTitleChange,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState('');
   const [exporting, setExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +140,12 @@ export default function FocusPanel({
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [exportOpen]);
+
+  /* Reset inline title editor whenever the active thread changes */
+  useEffect(() => {
+    setEditingTitle(false);
+    setEditTitleValue('');
+  }, [thread?.id]);
 
   const vizAreaRef = useRef<HTMLDivElement | null>(null);
 
@@ -154,25 +184,65 @@ export default function FocusPanel({
     );
   }
 
+  /* ── Series type badge — thread is guaranteed non-null beyond this point ── */
+  const s = thread.spec.option.series;
+  const seriesType = s
+    ? ((Array.isArray(s) ? s[0] : s) as Record<string, unknown>)?.type as string | undefined
+    : undefined;
+  const BadgeIcon: ElementType = (seriesType ? SERIES_ICON[seriesType] : undefined) ?? BarChart3;
+  const badgeLabel = (seriesType ? SERIES_LABEL[seriesType] : undefined)
+    ?? (seriesType ? seriesType.charAt(0).toUpperCase() + seriesType.slice(1) : 'Chart');
+
+  /* ── Resolved theme — fallback guards against old DB specs with no theme field ── */
+  const resolvedTheme = thread.spec.theme ?? DEFAULT_SUNSET_THEME;
+
   return (
     <div className="w-full h-full flex bg-surface-0">
       {/* ── Main viz area ── */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 h-12 shrink-0 border-b border-edge bg-surface-1">
-          {/* Type badge */}
+          {/* Type badge — derived from the actual series type in the spec */}
           <div
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-md"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-md shrink-0"
             style={{ background: 'oklch(72% 0.13 55 / 0.08)', border: '1px solid oklch(72% 0.13 55 / 0.18)' }}
           >
-            <BarChart3 size={12} className="text-accent" />
-            <span className="text-[11px] font-semibold text-accent">Chart</span>
+            <BadgeIcon size={12} className="text-accent" />
+            <span className="text-[11px] font-semibold text-accent">{badgeLabel}</span>
           </div>
 
-          {/* Title */}
-          <h2 className="text-sm font-semibold text-ink-muted truncate flex-1" title={thread.title}>
-            {thread.title}
-          </h2>
+          {/* Title — click to rename */}
+          {editingTitle ? (
+            <input
+              autoFocus
+              value={editTitleValue}
+              onChange={e => setEditTitleValue(e.target.value)}
+              onBlur={() => {
+                setEditingTitle(false);
+                const trimmed = editTitleValue.trim();
+                if (trimmed && trimmed !== thread.title) onTitleChange?.(trimmed);
+                else setEditTitleValue(thread.title);
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setEditingTitle(false);
+                  const trimmed = editTitleValue.trim();
+                  if (trimmed && trimmed !== thread.title) onTitleChange?.(trimmed);
+                  else setEditTitleValue(thread.title);
+                }
+                if (e.key === 'Escape') { setEditingTitle(false); setEditTitleValue(thread.title); }
+              }}
+              className="text-sm font-semibold text-ink bg-transparent border-b border-accent/50 focus:outline-none flex-1 min-w-0 pb-px"
+            />
+          ) : (
+            <h2
+              className="text-sm font-semibold text-ink-muted truncate flex-1 cursor-text hover:text-ink transition-colors"
+              title="Click to rename"
+              onClick={() => { setEditingTitle(true); setEditTitleValue(thread.title); }}
+            >
+              {thread.title}
+            </h2>
+          )}
 
           {/* Metadata chip */}
           {thread.metadata?.aiModel && (
@@ -307,7 +377,7 @@ export default function FocusPanel({
                   manualEditJson={manualEditJson}
                   setManualEditJson={setManualEditJson}
                   handleManualEdit={handleManualEdit}
-                  theme={thread.spec.theme}
+                  theme={resolvedTheme}
                   onThemeChange={onThemeChange}
                 />
               </div>

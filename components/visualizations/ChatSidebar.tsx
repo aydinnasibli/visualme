@@ -25,8 +25,10 @@ interface ChatSidebarProps {
 }
 
 const SUGGESTIONS = [
-  "Change the color scheme to blue",
-  "Add a new node called 'Details'",
+  "Add data labels showing the exact value on each data point",
+  "Highlight the maximum value with a contrasting color",
+  "Switch this to a line chart",
+  "Add a second series for year-over-year comparison",
 ];
 
 export default function ChatSidebar({

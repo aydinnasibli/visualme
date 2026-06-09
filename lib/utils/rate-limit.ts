@@ -1,7 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { getRedis } from '@/lib/utils/redis';
 
-export type RateLimitOperation = 'generate' | 'edit' | 'expand';
+export type RateLimitOperation = 'generate' | 'edit';
 
 /**
  * Sliding-window limits per operation type.
@@ -9,9 +9,8 @@ export type RateLimitOperation = 'generate' | 'edit' | 'expand';
  * Token balance (monthly cap) is a separate, orthogonal concern.
  */
 const WINDOW_CONFIG: Record<RateLimitOperation, { requests: number; window: `${number} ${'s' | 'm' | 'h' | 'd'}` }> = {
-  generate: { requests: 5,  window: '10 m' },  // 5 generations per 10 minutes
+  generate: { requests: 10, window: '10 m' },  // 10 generations per 10 minutes
   edit:     { requests: 15, window: '10 m' },  // 15 edits per 10 minutes
-  expand:   { requests: 25, window: '10 m' },  // 25 expansions per 10 minutes
 };
 
 const _limiters = new Map<RateLimitOperation, Ratelimit>();
@@ -45,7 +44,12 @@ export async function checkRateLimit(
   }
 
   try {
-    const { success, remaining, reset } = await limiter.limit(userId);
+    const { success, remaining, reset, pending } = await limiter.limit(userId);
+    // On Vercel Node.js, the function is killed after the response is sent so
+    // fire-and-forget promises get cut off. Awaiting `pending` guarantees the
+    // analytics write reaches Upstash before this action returns. The .catch()
+    // swallows network errors so a failed analytics flush never blocks the user.
+    await pending.catch(() => {});
     return {
       allowed: success,
       remaining,

@@ -375,6 +375,12 @@ function DashboardContent() {
 
   const handleNew = useCallback(() => setActiveId(null), []);
 
+  const handleTitleChange = useCallback((title: string) => {
+    if (!activeThread) return;
+    const id = activeThread.id;
+    setThreads(p => p.map(t => t.id === id ? { ...t, title } : t));
+  }, [activeThread]);
+
   /* ── Loading overlay step text ── */
   const stepText =
     loadingStep === 'analyzing'  ? 'Analyzing your input…' :
@@ -461,6 +467,7 @@ function DashboardContent() {
             setManualEditJson={setManualEditJson}
             handleManualEdit={handleManualEdit}
             onThemeChange={handleThemeChange}
+            onTitleChange={handleTitleChange}
           />
         </div>
       </div>
