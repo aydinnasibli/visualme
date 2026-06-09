@@ -51,6 +51,11 @@ const VisualizationSchema = new Schema<SavedVisualization>(
       ],
       default: [],
     },
+    liveData: {
+      url: { type: String },
+      interval: { type: Number, default: 0 },
+      lastRefreshed: { type: String },
+    },
   },
   {
     timestamps: true,

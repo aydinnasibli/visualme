@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useCallback, useRef, Suspense } from 'react';
+import React, { useState, useCallback, useRef, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import {
-  generateVisualization, saveVisualization, editVisualizationAction, getVisualizationById,
+  generateVisualization, saveVisualization, editVisualizationAction,
+  getVisualizationById, saveLiveDataConfig,
 } from '@/lib/actions/visualize';
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type { SavedVisualization } from '@/lib/types/visualization';
@@ -78,6 +79,7 @@ function DashboardContent() {
 
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   /* ── Sidebar collapse ── */
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -114,6 +116,7 @@ function DashboardContent() {
               generatedAt: typeof viz.metadata.generatedAt === 'string' ? viz.metadata.generatedAt : viz.metadata.generatedAt?.toString(),
               aiModel: viz.metadata.aiModel,
             } : undefined,
+            liveData: viz.liveData,
           };
           setThreads([entry]);
           setActiveId(entry.id);
@@ -264,7 +267,8 @@ function DashboardContent() {
   }, [activeThread]);
 
   const handleSave = useCallback(async () => {
-    if (!activeThread || !isSignedIn) { toast.error('Please sign in to save'); return; }
+    if (!activeThread) return;
+    if (isSignedIn === false) { toast.error('Please sign in to save'); return; }
     const id = activeThread.id;
     setSaving(true);
     try {
@@ -317,7 +321,9 @@ function DashboardContent() {
       const a = document.createElement('a');
       a.href = url;
       a.download = res.data.filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success(`Exported as ${format.toUpperCase()}`);
     } catch { toast.error('Export failed'); }
@@ -380,6 +386,97 @@ function DashboardContent() {
     const id = activeThread.id;
     setThreads(p => p.map(t => t.id === id ? { ...t, title } : t));
   }, [activeThread]);
+
+  /* ── Live data config ── */
+  const handleLiveDataChange = useCallback(async (config: { url: string; interval: number } | null) => {
+    if (!activeThread) return;
+    const id = activeThread.id;
+
+    // Optimistic update
+    setThreads(p => p.map(t => t.id === id
+      ? { ...t, liveData: config ? { ...config, lastRefreshed: t.liveData?.lastRefreshed } : undefined }
+      : t
+    ));
+
+    // Persist if already saved
+    if (activeThread.vizId) {
+      const res = await saveLiveDataConfig(activeThread.vizId, config);
+      if (!res.success) toast.error(res.error || 'Failed to save live data config');
+      else toast.success(config ? 'Live data connected!' : 'Live data disconnected');
+    } else {
+      toast.success(config ? 'Live data connected! Save the visualization to persist it.' : 'Live data disconnected');
+    }
+  }, [activeThread]);
+
+  const handleRefreshLiveData = useCallback(async () => {
+    if (!activeThread?.liveData?.url || isRefreshing) return;
+    const id = activeThread.id;
+    setIsRefreshing(true);
+
+    try {
+      const res = await fetch(`/api/live-data?url=${encodeURIComponent(activeThread.liveData.url)}`);
+      const data: { rawCsv?: string; headers?: string[]; rowCount?: number; error?: string } = await res.json();
+
+      if (!res.ok || data.error || !data.rawCsv) {
+        toast.error(data.error || `Failed to fetch live data (HTTP ${res.status})`);
+        return;
+      }
+
+      const preview = data.rawCsv.slice(0, 6000);
+      const editPrompt =
+        `Update this chart with the latest data from the live source (${data.rowCount ?? '?'} rows, columns: ${(data.headers ?? []).join(', ')}).\n\n` +
+        `New CSV data:\n\`\`\`csv\n${preview}\n\`\`\`\n\n` +
+        `Keep the same chart type, structure, axis labels, and series names. Only replace the data values.`;
+
+      const editRes = await editVisualizationAction(editPrompt, activeThread.spec.option, activeThread.vizId || undefined, []);
+      if (!editRes.success || !editRes.option) {
+        toast.error(editRes.error || 'Data refresh failed');
+        return;
+      }
+
+      const now = new Date().toISOString();
+      setThreads(p => p.map(t => t.id === id ? {
+        ...t,
+        spec: { ...t.spec, option: editRes.option! },
+        liveData: t.liveData ? { ...t.liveData, lastRefreshed: now } : undefined,
+      } : t));
+      setManualEditJson(JSON.stringify(editRes.option, null, 2));
+
+      // Persist lastRefreshed to DB
+      if (activeThread.vizId && activeThread.liveData) {
+        await saveLiveDataConfig(activeThread.vizId, {
+          url: activeThread.liveData.url,
+          interval: activeThread.liveData.interval,
+          lastRefreshed: now,
+        });
+      }
+
+      toast.success(`Chart refreshed — ${data.rowCount ?? '?'} rows`);
+    } catch {
+      toast.error('Live data refresh failed');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [activeThread, isRefreshing]);
+
+  /* ── Auto-refresh on interval ──
+   * Use a ref to always call the latest handleRefreshLiveData without
+   * restarting the interval on every render (React docs "latest ref" pattern).
+   */
+  const refreshCallbackRef = useRef(handleRefreshLiveData);
+  useEffect(() => { refreshCallbackRef.current = handleRefreshLiveData; });
+
+  useEffect(() => {
+    const url = activeThread?.liveData?.url;
+    const interval = activeThread?.liveData?.interval;
+    const threadId = activeThread?.id;
+    if (!url || !interval) return;
+    const ms = interval * 60 * 1000;
+    const timer = setInterval(() => { refreshCallbackRef.current(); }, ms);
+    return () => clearInterval(timer);
+  // threadId ensures we restart the interval when the user switches threads,
+  // even if the new thread has the same URL/interval values.
+  }, [activeThread?.liveData?.url, activeThread?.liveData?.interval, activeThread?.id]);
 
   /* ── Loading overlay step text ── */
   const stepText =
@@ -468,6 +565,9 @@ function DashboardContent() {
             handleManualEdit={handleManualEdit}
             onThemeChange={handleThemeChange}
             onTitleChange={handleTitleChange}
+            onLiveDataChange={handleLiveDataChange}
+            onRefreshLiveData={handleRefreshLiveData}
+            isRefreshing={isRefreshing}
           />
         </div>
       </div>

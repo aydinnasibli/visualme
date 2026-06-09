@@ -42,6 +42,13 @@ export interface VisualizationMetadata {
 // DATABASE MODELS
 // ============================================================================
 
+export interface LiveDataConfig {
+  url: string;
+  /** Refresh interval in minutes. 0 = manual only. */
+  interval: number;
+  lastRefreshed?: string;
+}
+
 export interface SavedVisualization {
   _id?: string;
   userId: string;
@@ -57,6 +64,7 @@ export interface SavedVisualization {
     content: string;
     timestamp: Date | string;
   }>;
+  liveData?: LiveDataConfig;
 }
 
 export interface UserUsage {

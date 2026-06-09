@@ -9,6 +9,7 @@ import {
   LayoutGrid, CircleDot, Workflow,
   Pencil, Sparkles, X, Download, ImageIcon,
   Globe, FileJson, FileSpreadsheet, FileCode, Zap,
+  Rss, RefreshCw, Clock, Link, Unlink,
 } from 'lucide-react';
 import type { ElementType } from 'react';
 import { toast } from 'sonner';
@@ -116,20 +117,35 @@ export interface FocusPanelProps {
   handleManualEdit: () => void;
   onThemeChange: (theme: BrandTheme) => void;
   onTitleChange?: (title: string) => void;
+  onLiveDataChange?: (config: { url: string; interval: number } | null) => void;
+  onRefreshLiveData?: () => Promise<void>;
+  isRefreshing?: boolean;
 }
+
+const INTERVAL_OPTIONS = [
+  { label: 'Manual', value: 0 },
+  { label: 'Every hour', value: 60 },
+  { label: 'Every 6h', value: 360 },
+  { label: 'Daily', value: 1440 },
+] as const;
 
 export default function FocusPanel({
   thread, saving, onSave, onShare, onExportData,
   chatHistory, handleChatMessage, isEditing,
   manualEditJson, setManualEditJson, handleManualEdit,
   onThemeChange, onTitleChange,
+  onLiveDataChange, onRefreshLiveData, isRefreshing,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [liveUrlInput, setLiveUrlInput] = useState('');
+  const [liveInterval, setLiveInterval] = useState(0);
   const exportRef = useRef<HTMLDivElement>(null);
+  const liveRef = useRef<HTMLDivElement>(null);
 
   /* Close export dropdown only when clicking outside it */
   useEffect(() => {
@@ -140,6 +156,23 @@ export default function FocusPanel({
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [exportOpen]);
+
+  /* Close live panel when clicking outside */
+  useEffect(() => {
+    if (!liveOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!liveRef.current?.contains(e.target as Node)) setLiveOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [liveOpen]);
+
+  /* Sync URL input when thread changes */
+  useEffect(() => {
+    setLiveUrlInput(thread?.liveData?.url ?? '');
+    setLiveInterval(thread?.liveData?.interval ?? 0);
+    setLiveOpen(false);
+  }, [thread?.id]);
 
   /* Reset inline title editor whenever the active thread changes */
   useEffect(() => {
@@ -157,12 +190,15 @@ export default function FocusPanel({
     setExporting(true);
     setExportOpen(false);
     try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(vizAreaRef.current, { backgroundColor: '#09090b', pixelRatio: 2 });
+      const canvas = vizAreaRef.current.querySelector('canvas') as HTMLCanvasElement | null;
+      if (!canvas) { toast.error('No chart canvas found'); return; }
+      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `${safeTitle(thread)}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       toast.success('Exported as PNG');
     } catch {
       toast.error('PNG export failed');
@@ -309,18 +345,144 @@ export default function FocusPanel({
                       <ImageIcon size={13} className="text-ink-faint" /> Export as PNG
                     </button>
                     <div className="h-px bg-edge mx-3 my-1" />
-                    <button onClick={() => { setExportOpen(false); onExportData('json'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors" title={!thread.vizId ? 'Save first to export' : undefined}>
-                      <FileJson size={13} className={thread.vizId ? 'text-accent' : 'text-ink-faint/50'} />
-                      <span className={!thread.vizId ? 'text-ink-faint/50' : ''}>Export as JSON</span>
+                    <button onClick={() => { setExportOpen(false); onExportData('json'); }} disabled={!thread.vizId} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-ink-muted hover:enabled:bg-surface-3 hover:enabled:text-ink" title={!thread.vizId ? 'Save the visualization first' : undefined}>
+                      <FileJson size={13} className="text-accent" />
+                      Export as JSON
                     </button>
-                    <button onClick={() => { setExportOpen(false); onExportData('csv'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors" title={!thread.vizId ? 'Save first to export' : undefined}>
-                      <FileSpreadsheet size={13} className={thread.vizId ? 'text-accent' : 'text-ink-faint/50'} />
-                      <span className={!thread.vizId ? 'text-ink-faint/50' : ''}>Export as CSV</span>
+                    <button onClick={() => { setExportOpen(false); onExportData('csv'); }} disabled={!thread.vizId} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-ink-muted hover:enabled:bg-surface-3 hover:enabled:text-ink" title={!thread.vizId ? 'Save the visualization first' : undefined}>
+                      <FileSpreadsheet size={13} className="text-accent" />
+                      Export as CSV
                     </button>
-                    <button onClick={() => { setExportOpen(false); onExportData('html'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors" title={!thread.vizId ? 'Save first to export' : undefined}>
-                      <FileCode size={13} className={thread.vizId ? 'text-accent' : 'text-ink-faint/50'} />
-                      <span className={!thread.vizId ? 'text-ink-faint/50' : ''}>Export as HTML</span>
+                    <button onClick={() => { setExportOpen(false); onExportData('html'); }} disabled={!thread.vizId} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-ink-muted hover:enabled:bg-surface-3 hover:enabled:text-ink" title={!thread.vizId ? 'Save the visualization first' : undefined}>
+                      <FileCode size={13} className="text-accent" />
+                      Export as HTML
                     </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Live Data dropdown */}
+            <div className="relative" ref={liveRef}>
+              <ActionBtn
+                title={thread.liveData?.url ? 'Live data connected' : 'Connect live data source'}
+                onClick={() => setLiveOpen(p => !p)}
+                active={liveOpen || !!thread.liveData?.url}
+                variant={thread.liveData?.url ? 'success' : 'default'}
+              >
+                <Rss size={12} />
+                <span>Live</span>
+                {thread.liveData?.url && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0"
+                    style={{ boxShadow: '0 0 4px var(--color-success)' }}
+                  />
+                )}
+              </ActionBtn>
+
+              <AnimatePresence>
+                {liveOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                    transition={{ duration: 0.13 }}
+                    className="absolute right-0 top-full mt-1.5 w-72 rounded-xl z-50 bg-surface-2 border border-edge shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+                  >
+                    <div className="p-3 flex flex-col gap-2.5">
+                      {/* Header */}
+                      <div className="flex items-center gap-2">
+                        <Rss size={12} className="text-accent" />
+                        <span className="text-xs font-semibold text-ink">Live Data</span>
+                        {thread.liveData?.url && (
+                          <span className="ml-auto text-[10px] font-medium text-success flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                            Connected
+                          </span>
+                        )}
+                      </div>
+
+                      {/* URL input */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-medium text-ink-faint flex items-center gap-1">
+                          <Link size={9} /> Google Sheets or CSV URL
+                        </label>
+                        <input
+                          value={liveUrlInput}
+                          onChange={e => setLiveUrlInput(e.target.value)}
+                          placeholder="https://docs.google.com/spreadsheets/…"
+                          className="w-full text-[11px] px-2.5 py-1.5 rounded-lg bg-surface-3 border border-edge text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent/50 transition-colors"
+                        />
+                      </div>
+
+                      {/* Refresh interval */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-medium text-ink-faint flex items-center gap-1">
+                          <Clock size={9} /> Auto-refresh
+                        </label>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {INTERVAL_OPTIONS.map(opt => (
+                            <button
+                              key={opt.value}
+                              onClick={() => setLiveInterval(opt.value)}
+                              className="text-[10px] font-medium px-2 py-0.5 rounded-md border transition-colors"
+                              style={{
+                                background: liveInterval === opt.value ? 'oklch(72% 0.13 55 / 0.12)' : 'transparent',
+                                borderColor: liveInterval === opt.value ? 'oklch(72% 0.13 55 / 0.4)' : 'var(--color-edge)',
+                                color: liveInterval === opt.value ? 'var(--color-accent)' : 'var(--color-ink-faint)',
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Last refreshed */}
+                      {thread.liveData?.lastRefreshed && (
+                        <p className="text-[10px] text-ink-faint">
+                          Last refreshed: {new Date(thread.liveData.lastRefreshed).toLocaleString()}
+                        </p>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-1.5 pt-0.5">
+                        {thread.liveData?.url && (
+                          <button
+                            onClick={() => { onRefreshLiveData?.(); setLiveOpen(false); }}
+                            disabled={isRefreshing}
+                            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-edge text-ink-muted hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <RefreshCw size={11} className={isRefreshing ? 'animate-spin' : ''} />
+                            {isRefreshing ? 'Refreshing…' : 'Refresh now'}
+                          </button>
+                        )}
+
+                        {liveUrlInput.trim() && (
+                          <button
+                            onClick={() => {
+                              onLiveDataChange?.({ url: liveUrlInput.trim(), interval: liveInterval });
+                              setLiveOpen(false);
+                            }}
+                            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg text-white transition-colors ml-auto"
+                            style={{ background: 'var(--color-accent)' }}
+                          >
+                            <Link size={11} />
+                            {thread.liveData?.url ? 'Update' : 'Connect'}
+                          </button>
+                        )}
+
+                        {thread.liveData?.url && (
+                          <button
+                            onClick={() => { onLiveDataChange?.(null); setLiveOpen(false); }}
+                            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-edge text-danger hover:bg-surface-3 transition-colors"
+                          >
+                            <Unlink size={11} />
+                            Disconnect
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

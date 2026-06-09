@@ -400,7 +400,7 @@ export async function getUserVisualizations(limit?: number) {
     await connectToDatabase();
 
     const query = VisualizationModel.find({ userId })
-      .select('_id userId title spec metadata isPublic createdAt updatedAt history')
+      .select('_id userId title spec metadata isPublic createdAt updatedAt history liveData')
       .sort({ updatedAt: -1 });
 
     const visualizations = await (limit ? query.limit(limit) : query).lean();
@@ -447,6 +447,49 @@ export async function getVisualizationById(id: string) {
   } catch (error) {
     console.error('Error fetching visualization by ID:', error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch visualization'), data: null };
+  }
+}
+
+/**
+ * Save or clear a live data config on a saved visualization.
+ * Pass null for liveData to disconnect the live source.
+ */
+export async function saveLiveDataConfig(
+  visualizationId: string,
+  liveData: { url: string; interval: number; lastRefreshed?: string } | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) return { success: false, error: idValidation.error };
+
+    if (liveData) {
+      let parsed: URL;
+      try { parsed = new URL(liveData.url); } catch {
+        return { success: false, error: 'Invalid URL' };
+      }
+      if (parsed.protocol !== 'https:') {
+        return { success: false, error: 'Only HTTPS URLs are allowed' };
+      }
+    }
+
+    await connectToDatabase();
+
+    const update = liveData
+      ? { $set: { liveData } }
+      : { $unset: { liveData: '' } };
+
+    const result = await VisualizationModel.updateOne({ _id: visualizationId, userId }, update);
+    if (result.matchedCount === 0) {
+      return { success: false, error: 'Visualization not found or unauthorized' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving live data config:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to save live data config') };
   }
 }
 

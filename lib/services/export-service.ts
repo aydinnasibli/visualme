@@ -5,6 +5,8 @@
 
 import type { SavedVisualization, ExportFormat, ExportOptions } from '../types/visualization';
 import { generateShareId } from '../utils/helpers';
+import { applyBrandTheme } from '../utils/echarts-theme';
+import { applyChartDefaults } from '../utils/chart-defaults';
 
 /**
  * Generate a shareable link for a visualization
@@ -50,11 +52,18 @@ export function exportAsJSON(visualization: SavedVisualization, options?: Export
 }
 
 /**
+ * Wraps a CSV cell value in quotes if it contains commas, quotes, or newlines.
+ */
+function csvCell(v: unknown): string {
+  const s = String(v ?? '');
+  return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
  * Export visualization series data as CSV.
- * Flattens each ECharts series' data array into rows — works for any
- * category/value-shaped series (bar, line, pie, scatter, radar, etc).
- * Falls back to a JSON dump for series shapes that don't flatten cleanly
- * (graphs, trees, sankeys — structurally relational, not tabular).
+ * Handles indexed bar/line series by joining with xAxis.data category labels.
+ * Falls back to JSON for relational types (graph, tree, sankey) whose data
+ * isn't meaningfully tabular.
  */
 export function exportAsCSV(visualization: SavedVisualization): string {
   const { option } = visualization.spec;
@@ -62,8 +71,14 @@ export function exportAsCSV(visualization: SavedVisualization): string {
 
   if (!series.length) return exportAsJSON(visualization);
 
+  // Pull x-axis category labels for indexed bar/line series (data: number[])
+  const xAxisRaw = (option as Record<string, unknown>).xAxis;
+  const primaryXAxis = (Array.isArray(xAxisRaw) ? xAxisRaw[0] : xAxisRaw) as Record<string, unknown> | undefined;
+  const xCategories = Array.isArray(primaryXAxis?.data) ? (primaryXAxis!.data as unknown[]).map(String) : null;
+
   try {
-    const rows: string[] = ['series,name,value'];
+    const rows: string[] = [];
+    let header = '';
     let wroteAny = false;
 
     for (const s of series) {
@@ -72,18 +87,33 @@ export function exportAsCSV(visualization: SavedVisualization): string {
       const data = entry.data;
       if (!Array.isArray(data)) continue;
 
-      for (const point of data) {
-        if (point && typeof point === 'object' && !Array.isArray(point)) {
+      for (let i = 0; i < data.length; i++) {
+        const point = data[i];
+
+        if (point !== null && point !== undefined && typeof point === 'object' && !Array.isArray(point)) {
           const p = point as Record<string, unknown>;
           if ('name' in p && 'value' in p) {
-            rows.push(`${seriesName},${String(p.name)},${String(p.value)}`);
+            if (!header) { header = 'series,name,value'; rows.push(header); }
+            // Radar value is an array — join readable
+            const val = Array.isArray(p.value) ? p.value.join(' | ') : p.value;
+            rows.push(`${csvCell(seriesName)},${csvCell(p.name)},${csvCell(val)}`);
             wroteAny = true;
           }
         } else if (Array.isArray(point)) {
-          rows.push(`${seriesName},,${point.join(' / ')}`);
+          if (!header) {
+            header = 'series,' + point.map((_, idx) => `col${idx + 1}`).join(',');
+            rows.push(header);
+          }
+          rows.push(`${csvCell(seriesName)},${point.map(csvCell).join(',')}`);
           wroteAny = true;
         } else if (typeof point === 'number' || typeof point === 'string') {
-          rows.push(`${seriesName},,${String(point)}`);
+          // Indexed series — join with x-axis category if available
+          if (!header) {
+            header = xCategories ? 'series,category,value' : 'series,index,value';
+            rows.push(header);
+          }
+          const cat = xCategories ? (xCategories[i] ?? i) : i;
+          rows.push(`${csvCell(seriesName)},${csvCell(cat)},${csvCell(point)}`);
           wroteAny = true;
         }
       }
@@ -96,11 +126,14 @@ export function exportAsCSV(visualization: SavedVisualization): string {
 }
 
 /**
- * Generate HTML for a standalone visualization snapshot.
- * Embeds the raw spec — for full interactivity, use the web application.
+ * Generate a standalone HTML file for the visualization.
+ * Pre-applies the full brand theme server-side so the exported file looks
+ * identical to the in-app chart — no partial theme re-application needed.
  */
 export function exportAsHTML(visualization: SavedVisualization): string {
   const { spec, title } = visualization;
+  const themedOption = applyBrandTheme(applyChartDefaults(spec.option), spec.theme, spec.styleEffect);
+  const bg = spec.theme.background === 'transparent' ? '#09090b' : (spec.theme.background ?? '#09090b');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -109,79 +142,39 @@ export function exportAsHTML(visualization: SavedVisualization): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title || 'Visualization'}</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      background: ${bg};
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px;
-    }
-    .header {
-      text-align: center;
-      color: white;
-      margin-bottom: 30px;
-    }
-    .header h1 {
-      font-size: 2rem;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .container {
-      width: 100%;
-      max-width: 1200px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 30px;
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      justify-content: center;
+      padding: 24px;
     }
     #chart {
-      background: white;
-      border-radius: 8px;
-      min-height: 480px;
+      width: 100%;
+      max-width: 1200px;
+      height: 600px;
+      border-radius: 12px;
     }
-    .metadata {
-      color: #ccc;
-      font-size: 0.875rem;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    .footer {
+      margin-top: 16px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
-  <div class="header">
-    <h1>${title || 'Visualization'}</h1>
-  </div>
-
-  <div class="container">
-    <div id="chart"></div>
-
-    <div class="metadata">
-      <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-      <p><strong>Note:</strong> This is a standalone HTML snapshot. For full interactivity and editing, use the web application.</p>
-    </div>
-  </div>
-
+  <div id="chart"></div>
+  <div class="footer">Generated by VisualMe &middot; ${new Date().toLocaleDateString()}</div>
   <script>
-    const option = ${JSON.stringify(spec.option)};
-    const theme = ${JSON.stringify(spec.theme)};
-    option.color = theme.palette;
-    option.backgroundColor = theme.background;
-    const chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas', height: 480 });
+    var option = ${JSON.stringify(themedOption)};
+    var chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas' });
     chart.setOption(option);
-    window.addEventListener('resize', () => chart.resize());
+    window.addEventListener('resize', function() { chart.resize(); });
   </script>
 </body>
 </html>`;

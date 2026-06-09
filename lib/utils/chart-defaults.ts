@@ -123,7 +123,7 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     emphasis: { focus: 'self', label: { show: true } },
   },
   heatmap: {
-    itemStyle: { borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.4)' },
+    itemStyle: { borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(128,128,128,0.25)' },
     label: { overflow: 'truncate', width: 60 },
     emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } },
   },

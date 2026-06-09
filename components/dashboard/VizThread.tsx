@@ -35,6 +35,11 @@ export interface ThreadEntry {
     aiModel?: string;
     fromCache?: boolean;
   };
+  liveData?: {
+    url: string;
+    interval: number;
+    lastRefreshed?: string;
+  };
 }
 
 /* ── Thread card ── */

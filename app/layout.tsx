@@ -29,7 +29,7 @@ export default function RootLayout({
           />
         </head>
         <body className="bg-surface-0 text-ink antialiased overflow-x-hidden selection:bg-accent/25 selection:text-ink">
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <ExtendedNodesProvider>
               {children}
               <ThemedToaster />

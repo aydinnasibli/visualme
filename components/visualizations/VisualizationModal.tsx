@@ -68,7 +68,9 @@ export default function VisualizationModal({
       const a = document.createElement('a');
       a.href = url;
       a.download = res.data.filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success(`Exported as ${format.toUpperCase()}`);
     } catch { toast.error('Export failed'); }
@@ -78,12 +80,15 @@ export default function VisualizationModal({
     const area = document.querySelector('[data-viz-area]') as HTMLElement;
     if (!area) { toast.error('Could not capture visualization'); return; }
     try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(area, { backgroundColor: '#09090b', pixelRatio: 2 });
+      const canvas = area.querySelector('canvas') as HTMLCanvasElement | null;
+      if (!canvas) { toast.error('No chart canvas found'); return; }
+      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `${currentVisualization?.title?.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'visualization'}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       toast.success('Exported as PNG');
     } catch { toast.error('PNG export failed'); }
   };

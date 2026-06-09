@@ -319,5 +319,36 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   themed.yAxis = themeAxes(original.yAxis as EChartsOption['yAxis'], theme);
   themed.series = themeSeries(original.series as EChartsOption['series'], theme, styleEffect);
 
+  // Style the visualMap (used by heatmaps) so its text adapts to the current theme mode.
+  if (original.visualMap !== undefined) {
+    const vmList = Array.isArray(original.visualMap) ? original.visualMap : [original.visualMap];
+    const themedVms = vmList.map((vm) => ({
+      ...(vm as object),
+      textStyle: {
+        color: theme.mutedTextColor,
+        fontFamily: theme.fontFamily,
+        fontSize: theme.fontSize?.axisLabel ?? 11,
+        ...((vm as Record<string, unknown>).textStyle as object),
+      },
+    }));
+    themed.visualMap = Array.isArray(original.visualMap) ? themedVms : themedVms[0];
+  }
+
+  // Style the calendar component (used by calendar heatmaps).
+  if (original.calendar !== undefined) {
+    const calList = Array.isArray(original.calendar) ? original.calendar : [original.calendar];
+    const themedCals = calList.map((cal) => {
+      const c = (cal as Record<string, unknown>);
+      return {
+        ...c,
+        itemStyle: { borderColor: theme.borderColor, ...(c.itemStyle as object) },
+        dayLabel: { color: theme.mutedTextColor, fontFamily: theme.fontFamily, ...(c.dayLabel as object) },
+        monthLabel: { color: theme.mutedTextColor, fontFamily: theme.fontFamily, ...(c.monthLabel as object) },
+        yearLabel: { color: theme.textColor, fontFamily: theme.fontFamily, ...(c.yearLabel as object) },
+      };
+    });
+    themed.calendar = Array.isArray(original.calendar) ? themedCals : themedCals[0];
+  }
+
   return themed as EChartsOption;
 }
