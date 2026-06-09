@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { Sun, Moon, Check, Palette, Type, LayoutGrid } from 'lucide-react';
+import { Check, Palette, Type, LayoutGrid } from 'lucide-react';
 import type { BrandTheme, ChartSpacing, LegendPosition } from '@/lib/types/echarts-spec';
-import { DEFAULT_LIGHT_THEME, DEFAULT_DARK_THEME } from '@/lib/types/echarts-spec';
 
 /* ── Curated brand palette presets — the "beautiful + on-brand" personalization layer ── */
 const PALETTE_PRESETS: { name: string; colors: string[] }[] = [
@@ -82,18 +81,6 @@ export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
 
   const update = (patch: Partial<BrandTheme>) => onChange({ ...theme, ...patch });
 
-  const setMode = (mode: 'light' | 'dark') => {
-    const base = mode === 'dark' ? DEFAULT_DARK_THEME : DEFAULT_LIGHT_THEME;
-    // Preserve the user's chosen palette/typography/layout — only swap surface colors.
-    update({
-      mode,
-      background: base.background,
-      textColor: base.textColor,
-      mutedTextColor: base.mutedTextColor,
-      borderColor: base.borderColor,
-    });
-  };
-
   const setPalette = (colors: string[]) => update({ palette: colors });
 
   const setPrimaryColor = (hex: string) => {
@@ -103,28 +90,6 @@ export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-6 custom-scrollbar">
-      {/* Mode */}
-      <Section icon={theme.mode === 'dark' ? Moon : Sun} title="Mode">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setMode('light')}
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
-              theme.mode === 'light' ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface-2 border-edge text-ink-faint hover:text-ink-muted'
-            }`}
-          >
-            <Sun size={13} /> Light
-          </button>
-          <button
-            onClick={() => setMode('dark')}
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
-              theme.mode === 'dark' ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface-2 border-edge text-ink-faint hover:text-ink-muted'
-            }`}
-          >
-            <Moon size={13} /> Dark
-          </button>
-        </div>
-      </Section>
-
       {/* Palette */}
       <Section icon={Palette} title="Brand Palette">
         <div className="grid grid-cols-2 gap-2">
@@ -194,7 +159,7 @@ export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
             max={28}
             value={theme.fontSize.title}
             onChange={e => update({ fontSize: { ...theme.fontSize, title: Number(e.target.value) } })}
-            className="w-full accent-[var(--color-accent)]"
+            className="w-full accent-accent"
           />
         </div>
 
@@ -216,7 +181,7 @@ export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
                 tooltip: Number(e.target.value),
               },
             })}
-            className="w-full accent-[var(--color-accent)]"
+            className="w-full accent-accent"
           />
         </div>
       </Section>
@@ -256,7 +221,7 @@ export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
             max={16}
             value={theme.borderRadius ?? 0}
             onChange={e => update({ borderRadius: Number(e.target.value) })}
-            className="w-full accent-[var(--color-accent)]"
+            className="w-full accent-accent"
           />
         </div>
       </Section>

@@ -7,6 +7,7 @@ import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/mo
 import { generateChartSpec } from '@/lib/services/spec-generator';
 import { editChartSpec } from '@/lib/services/spec-editor';
 import { calculateCost, sanitizeVisualization } from '@/lib/utils/helpers';
+import { resolveVariant } from '@/lib/utils/chart-types';
 import { DEFAULT_SUNSET_THEME, type VisualizationSpec, type ChartStyleEffect } from '@/lib/types/echarts-spec';
 import type { EChartsOption } from 'echarts';
 import {
@@ -96,6 +97,15 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       return fail('This content is not suitable for visualization', data.reason);
     }
 
+    // ── Resolve variant + styleEffect ─────────────────────────────────────────
+    // When the user explicitly picked a chart type via the modal, `styleEffect`
+    // is already set from the modal selection. For free-text prompts it's
+    // undefined — use the AI-declared seriesType/variantKey to fill the gap so
+    // effects like gradient-area are applied even without the modal.
+    const detectedSelection = resolveVariant(data.seriesType, data.variantKey);
+    const resolvedStyleEffect: ChartStyleEffect | undefined =
+      styleEffect ?? detectedSelection?.variant?.styleEffect;
+
     // ── Store in cache after the response — `after()` keeps the Vercel function
     // alive past the response boundary so the write is guaranteed to complete.
     after(() => setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason }).catch(() => {}));
@@ -117,7 +127,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       option: data.option,
       theme: DEFAULT_SUNSET_THEME,
       title: data.title,
-      styleEffect,
+      styleEffect: resolvedStyleEffect,
     };
 
     return {
@@ -126,6 +136,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       title: data.title,
       reason: data.reason,
       fromCache: false,
+      detectedSelection: detectedSelection ?? undefined,
       metadata: {
         generatedAt: new Date(),
         processingTime,

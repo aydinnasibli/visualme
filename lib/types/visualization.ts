@@ -7,6 +7,7 @@
 // ============================================================================
 
 import type { VisualizationSpec } from './echarts-spec';
+import type { ChartSelection } from '@/lib/utils/chart-types';
 
 export interface FileData {
   filename: string;
@@ -28,6 +29,8 @@ export interface VisualizationResponse {
   title?: string;
   /** True when the result was served from cache (no AI call, no token cost). */
   fromCache?: boolean;
+  /** The chart type + variant the AI auto-detected (free-text path only; undefined when user explicitly chose via modal or result came from cache). */
+  detectedSelection?: ChartSelection;
 }
 
 export interface VisualizationMetadata {

@@ -1,6 +1,6 @@
 import type { UserResource } from '@clerk/types';
 import Link from 'next/link';
-import { Settings, FolderOpen } from 'lucide-react';
+import { Settings, FolderOpen, LayoutDashboard } from 'lucide-react';
 import ThemeToggle from '@/components/dashboard/ThemeToggle';
 
 interface HeaderProps {
@@ -26,6 +26,9 @@ const Header = ({ user, label = 'Playground', actions }: HeaderProps) => {
         <div className="h-6 w-px bg-edge/70" />
         <Link href="/my-visualizations" className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors" title="My Visualizations">
           <FolderOpen className="w-[18px] h-[18px]" />
+        </Link>
+        <Link href="/dashboard/builder" className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors" title="Dashboard Builder">
+          <LayoutDashboard className="w-[18px] h-[18px]" />
         </Link>
         <Link href="/dashboard/settings" className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors" title="Settings">
           <Settings className="w-[18px] h-[18px]" />

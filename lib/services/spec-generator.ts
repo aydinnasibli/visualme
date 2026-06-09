@@ -17,6 +17,8 @@ export interface ChartSpecResult {
   title: string;
   option: EChartsOption;
   reason: string;
+  seriesType: string;
+  variantKey: string | null;
 }
 
 const SYSTEM_PROMPT = `You are an expert data visualization designer. Given a user's text — a topic, a dataset, or a request — you compose a single Apache ECharts \`option\` object that best represents it.
@@ -46,18 +48,90 @@ CRITICAL — DATA QUALITY:
 - Names/labels must be specific and domain-accurate, not generic.
 
 CHART TYPE SELECTION GUIDE:
-- Trends/progressions over time → line (use \`smooth: true\` for organic data)
-- Categorical comparisons/rankings → bar (horizontal via swapped xAxis/yAxis for long labels)
-- Proportions/composition → pie (donut via \`radius: ['40%','65%']\`), or treemap/sunburst for nested proportions
-- Correlations/distributions → scatter (use \`data: [[x,y,size]]\` and \`symbolSize\` callback for bubble charts)
+- Trends/progressions over time → line
+- Categorical comparisons/rankings → bar
+- Proportions/composition → pie, or treemap/sunburst for nested proportions
+- Correlations/distributions → scatter
 - Density/patterns over two categorical axes → heatmap with \`visualMap\`
 - Relationships/concepts/knowledge graphs → graph (layout 'force', include \`categories\` for grouping, \`roam: true\`)
-- Hierarchies/org structures/file trees → tree (orient 'LR' or 'TB')
+- Hierarchies/org structures/file trees → tree
 - Multi-stage flows with magnitude → sankey
 - Multi-dimensional entity comparison → radar (normalize to comparable scales) or parallel
 - Sequential processes/conversions → funnel
-- Project schedules/Gantt-style → custom series with category yAxis (task names) and horizontal bar ranges via renderItem, OR a simpler horizontal bar chart encoding start/duration
+- Project schedules/Gantt-style → bar with horizontal variant (swap axes, encode start + duration)
 - Single KPI/status → gauge
+
+VARIANT SELECTION — after choosing the series type, pick the best \`variantKey\` from this catalog. The variantKey changes the option structure you must produce (described inline). Pick null for types with no variants listed.
+
+bar:
+  "vertical" (default — category x, value y) |
+  "horizontal" (swap axes when labels are long >12 chars avg or >10 categories) |
+  "stacked" (add same \`stack\` id — subcategories summing to a per-group total) |
+  "grouped" (multiple series, no stack — side-by-side direct comparison) |
+  "waterfall" (transparent base series + positive/negative series for running totals) |
+  "negative" (values cross zero — profit/loss, deltas above/below baseline) |
+  "polar" (polar radiusAxis/angleAxis — cyclical or dramatic radial comparison)
+
+line:
+  "smooth" (default — \`smooth: true\`, organic continuous trends) |
+  "basic" (\`smooth: false\` — sharp transitions, exact point-to-point) |
+  "area" (\`areaStyle: {}\` — volume/quantity magnitude matters) |
+  "gradient-area" (\`areaStyle: {}\` — single prominent series, premium flagship look; gradient applied post-gen, do not author its color) |
+  "stacked-area" (same \`stack\` id + \`areaStyle: {}\` — series sum to a cumulative total) |
+  "stacked" (same \`stack\` id, no areaStyle — multi-series building without fill) |
+  "step" (\`step: 'middle'\` — discrete/state-based changes, threshold crossings) |
+  "polar" (polar radiusAxis/angleAxis — periodic/cyclical patterns)
+
+pie:
+  "donut" (default — \`radius: ['40%','70%']\`, modern hollow center) |
+  "basic" (full circle — ≤4 large segments or whole-circle emphasis) |
+  "rose" (\`roseType: 'radius'\` — dramatic magnitude differences between segments) |
+  "nested" (multiple pie series with different radius ranges — two-level breakdown) |
+  "half-donut" (\`startAngle: 180, endAngle: 0\` — single proportion/completion rate)
+
+scatter:
+  "basic" (default — uniform points, two numeric dimensions) |
+  "bubble" (vary \`symbolSize\` by third data dimension) |
+  "regression" (scatter points + overlaid \`line\` series as computed trend line) |
+  "single-axis" (\`singleAxis\` coordinate — one-dimensional distribution)
+
+graph:
+  "force" (default — \`layout: 'force'\`, physics clustering) |
+  "circular" (\`layout: 'circular'\` — ≤15 nodes or ring structure tells the story) |
+  "none-fixed" (\`layout: 'none'\` with explicit x/y per node)
+
+heatmap:
+  "cartesian" (default — categorical xAxis/yAxis + visualMap) |
+  "calendar" (calendar coordinate system — daily time-series: commits, activity)
+
+radar:
+  "filled" (default — \`areaStyle: {}\` on each series for shaded shape) |
+  "outline" (no areaStyle — multiple overlapping entities where fill obscures comparison) |
+  "multiple" (array of radar configs + matching series — groups needing separate grids)
+
+funnel:
+  "basic" (default — single narrowing funnel) |
+  "compare" (two mirrored funnels for A/B comparison) |
+  "multiple" (array of side-by-side funnel series — >2 independent processes)
+
+gauge:
+  "progress" (default — \`progress: { show: true }\`, thick arc no needle) |
+  "basic" (classic dial with pointer) |
+  "ring" (concentric progress arcs — multiple KPIs) |
+  "grade" (\`axisLine.lineStyle.color\` as tier stops — performance band zones)
+
+tree:
+  "left-right" (default — \`orient: 'LR'\`) |
+  "top-bottom" (\`orient: 'TB'\` — wide/shallow hierarchy) |
+  "radial" (\`layout: 'radial'\` — balanced branches, org charts)
+
+sankey:
+  "horizontal" (default — \`orient: 'horizontal'\`) |
+  "vertical" (\`orient: 'vertical'\` — top-to-bottom narrative) |
+  "levels" (assign node \`depth\` + \`nodeAlign: 'left'\` — explicit column alignment)
+
+No variants (set variantKey to null): effectScatter, candlestick, boxplot, parallel, themeRiver, treemap, sunburst, pictorialBar, custom.
+For multi-series charts declare the primary/dominant series type and its variantKey.
 
 Example structural skeletons (THESE SHOW STRUCTURE ONLY — your data must be richer and topic-specific):
 
@@ -95,24 +169,29 @@ ANALYSIS PROCESS:
 1. Read the user's input and identify the underlying data shape and intent (what story should this chart tell?).
 2. If the input is purely conversational, nonsensical, or has no visualizable content, set "visualizable": false.
 3. Otherwise, choose the ECharts primitive(s) that best express that shape — combine series types in one option when it strengthens the story (e.g. bar + line for revenue vs growth-rate).
-4. Compose the full structural option with rich, realistic, topic-specific data.
-5. Write a one-sentence "title" (the chart's display title — should match \`option.title.text\`) and a one-sentence "reason" explaining why this composition fits the content.
+4. Pick the best variantKey for the primary/dominant series type using the VARIANT SELECTION guide. Make sure the option structure matches what the variant requires (e.g. smooth:true for "smooth", areaStyle:{} for "area"/"gradient-area", stack id for "stacked").
+5. Compose the full structural option with rich, realistic, topic-specific data.
+6. Write a one-sentence "title" (the chart's display title — should match \`option.title.text\`) and a one-sentence "reason" explaining why this composition and variant fit the content.
 
 Respond with ONLY valid JSON in this exact shape:
 {
   "visualizable": true,
   "title": "Display title for the chart",
-  "reason": "One sentence on why this chart composition fits the input",
+  "reason": "One sentence on why this chart composition and variant fit the input",
+  "seriesType": "line",
+  "variantKey": "smooth",
   "option": { ... full ECharts option, structure only, no styling ... }
 }
 
 If not visualizable:
-{ "visualizable": false, "title": "", "reason": "One sentence explaining why this can't be visualized", "option": {} }`;
+{ "visualizable": false, "title": "", "reason": "One sentence explaining why this can't be visualized", "seriesType": "", "variantKey": null, "option": {} }`;
 
 interface RawSpecResponse {
   visualizable: boolean;
   title: string;
   reason: string;
+  seriesType: string;
+  variantKey: string | null;
   option: EChartsOption;
 }
 
@@ -129,7 +208,7 @@ export async function generateChartSpec(userInput: string): Promise<AIResult<Cha
   );
 
   return {
-    data: { title: data.title, option: data.option, reason: data.reason },
+    data: { title: data.title, option: data.option, reason: data.reason, seriesType: data.seriesType, variantKey: data.variantKey ?? null },
     visualizable: data.visualizable,
     promptTokens,
     completionTokens,

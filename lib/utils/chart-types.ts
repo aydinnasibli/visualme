@@ -176,6 +176,24 @@ export const CHART_TYPES: ChartTypeOption[] = [
 ];
 
 /**
+ * Resolves a series type + variantKey (as declared by the AI in free-text
+ * generation) back to a `ChartSelection` so the correct `styleEffect` can be
+ * extracted and applied by `applyBrandTheme`. Returns null when the series
+ * type is unknown or the type has no variants at all.
+ */
+export function resolveVariant(
+  seriesType: string | undefined | null,
+  variantKey: string | null | undefined
+): ChartSelection | null {
+  if (!seriesType) return null;
+  const type = CHART_TYPES.find(c => c.series === seriesType);
+  if (!type) return null;
+  if (!variantKey || !type.variants?.length) return { type };
+  const variant = type.variants.find(v => v.value === variantKey);
+  return { type, variant };
+}
+
+/**
  * Turns a chosen chart type (optionally narrowed to a variant) into an
  * explicit instruction prepended to the user's prompt — overriding the AI's
  * own "pick the best primitive for this data" judgment for this one request,
