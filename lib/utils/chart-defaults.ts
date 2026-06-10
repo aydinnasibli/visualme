@@ -38,127 +38,156 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
   graph: {
     roam: true,
     draggable: true,
-    label: { show: true, overflow: 'truncate', width: 90 },
-    emphasis: { focus: 'adjacency', scale: 1.1 },
-    force: { repulsion: 120, edgeLength: 90, gravity: 0.1 },
-    lineStyle: { curveness: 0.15, opacity: 0.6 },
+    // Labels outside the node symbol prevent text being clipped by the symbol border.
+    label: { show: true, position: 'right', overflow: 'truncate', width: 80 },
+    emphasis: { focus: 'adjacency', scale: 1.15, itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.3)' } },
+    force: { repulsion: 140, edgeLength: [60, 120], gravity: 0.08 },
+    lineStyle: { curveness: 0.2, opacity: 0.5 },
   },
   tree: {
     roam: true,
     expandAndCollapse: true,
-    initialTreeDepth: 2,
-    label: { overflow: 'truncate', width: 110 },
-    emphasis: { focus: 'descendant' },
+    initialTreeDepth: 3,
+    // Labels adjacent to the node symbol rather than inside keep them readable at any zoom.
+    label: { overflow: 'truncate', width: 120 },
+    leaves: { label: { overflow: 'truncate', width: 120 } },
+    emphasis: { focus: 'descendant', itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.25)' } },
     lineStyle: { curveness: 0.5 },
+    // Symbol size slightly larger so small labels don't clip into the node.
+    symbolSize: 7,
   },
   treemap: {
     roam: true,
-    breadcrumb: { show: true },
+    breadcrumb: { show: true, height: 22 },
     emphasis: { focus: 'descendant' },
-    label: { overflow: 'truncate' },
-    itemStyle: { borderRadius: 4, gapWidth: 2 },
+    // width required so truncation activates — without it cells just clip silently.
+    label: { overflow: 'truncate', width: 120, ellipsis: true },
+    upperLabel: { show: true, height: 22, overflow: 'truncate', width: 120 },
+    itemStyle: { borderRadius: 3, gapWidth: 2, borderWidth: 1 },
   },
   sunburst: {
     emphasis: { focus: 'ancestor' },
-    // Hide labels on segments too narrow to read — avoids garbled text in the inner rings.
-    minAngle: 3,
-    label: { show: true, overflow: 'truncate', width: 80 },
-    itemStyle: { borderRadius: 6, borderWidth: 1 },
+    // Stop thin slices rendering phantom lines — minAngle suppresses the wedge itself.
+    minAngle: 4,
+    // minShowLabelAngle > minAngle means labels vanish before the slice does.
+    label: { show: true, overflow: 'truncate', width: 72, rotate: 'radial' },
+    itemStyle: { borderRadius: 4, borderWidth: 1 },
   },
   sankey: {
     draggable: true,
-    emphasis: { focus: 'adjacency' },
-    lineStyle: { curveness: 0.5, opacity: 0.4 },
-    itemStyle: { borderRadius: 2 },
-    label: { overflow: 'truncate', width: 120 },
+    emphasis: { focus: 'adjacency', itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.25)' } },
+    lineStyle: { curveness: 0.5, opacity: 0.35 },
+    itemStyle: { borderRadius: 3 },
+    label: { overflow: 'truncate', width: 110 },
+    nodeGap: 12,
+    nodeWidth: 16,
   },
   pie: {
     avoidLabelOverlap: true,
-    // Suppress the label entirely on slices too thin to read — prevents a cluster
-    // of callout lines on heavily-segmented charts.
-    minShowLabelAngle: 4,
-    itemStyle: { borderRadius: 6, borderWidth: 2 },
-    label: { formatter: '{b}: {d}%', overflow: 'truncate', width: 140 },
-    // Shorter leader lines keep labels closer to the chart body and within the
-    // canvas bounds — avoids the common "label bleeds off the right/left edge" problem.
-    labelLine: { length: 8, length2: 12, smooth: true },
-    emphasis: { focus: 'self', scale: true, scaleSize: 6 },
+    // minAngle stops zero-area wedges from producing orphaned label lines.
+    minAngle: 3,
+    // Suppress labels on slices too narrow to read — set slightly above minAngle so
+    // labels disappear before the wedge disappears (no dangling callout lines).
+    minShowLabelAngle: 6,
+    itemStyle: { borderRadius: 5, borderWidth: 2 },
+    label: { formatter: '{b}: {d}%', overflow: 'truncate', width: 130 },
+    // Short leader lines keep labels close to the chart body — prevents labels
+    // bleeding outside the canvas on charts with many small slices.
+    labelLine: { length: 8, length2: 10, smooth: true, minTurnAngle: 135 },
+    emphasis: { focus: 'self', scale: true, scaleSize: 5 },
   },
   scatter: {
-    symbolSize: 10,
-    itemStyle: { opacity: 0.8 },
-    label: { overflow: 'truncate', width: 80 },
-    emphasis: { focus: 'series' },
+    symbolSize: 9,
+    symbol: 'circle',
+    itemStyle: { opacity: 0.75 },
+    // Position above the point prevents the label sitting on top of the symbol.
+    label: { position: 'top', overflow: 'truncate', width: 80 },
+    emphasis: { focus: 'series', scale: true },
   },
   effectScatter: {
-    symbolSize: 14,
-    rippleEffect: { brushType: 'stroke' },
-    label: { overflow: 'truncate', width: 80 },
+    symbolSize: 12,
+    symbol: 'circle',
+    rippleEffect: { brushType: 'stroke', scale: 2.5 },
+    label: { position: 'top', overflow: 'truncate', width: 80 },
     emphasis: { focus: 'series' },
   },
   bar: {
-    barMaxWidth: 48,
+    barMaxWidth: 52,
     itemStyle: { borderRadius: 4 },
     label: { overflow: 'truncate', width: 80 },
-    emphasis: { focus: 'series' },
+    emphasis: { focus: 'series', itemStyle: { shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.2)' } },
   },
   line: {
     smooth: true,
-    symbolSize: 6,
+    // Smaller symbol keeps dense time-series clean; circle is the most legible form.
+    symbolSize: 4,
+    symbol: 'circle',
     lineStyle: { width: 2.5 },
     label: { overflow: 'truncate', width: 80 },
     emphasis: { focus: 'series' },
   },
   radar: {
     symbolSize: 4,
+    symbol: 'circle',
     lineStyle: { width: 2 },
     label: { overflow: 'truncate', width: 80 },
-    emphasis: { focus: 'self' },
+    emphasis: { focus: 'self', scale: true },
   },
   funnel: {
-    minSize: '10%',
+    minSize: '5%',
     maxSize: '100%',
-    gap: 2,
+    gap: 3,
+    // Inside labels for upper (wide) stages; labelLine for bottom (narrow) ones.
     label: { show: true, position: 'inside', overflow: 'truncate', width: 120 },
+    labelLine: { length: 12, lineStyle: { width: 1 } },
     emphasis: { focus: 'self', label: { show: true } },
+    itemStyle: { borderRadius: 3 },
   },
   heatmap: {
-    itemStyle: { borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(128,128,128,0.25)' },
-    label: { overflow: 'truncate', width: 60 },
-    emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } },
+    itemStyle: { borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(128,128,128,0.15)' },
+    label: { overflow: 'truncate', width: 56 },
+    emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
   },
   parallel: {
-    lineStyle: { width: 1.5, opacity: 0.5 },
-    emphasis: { focus: 'series', lineStyle: { width: 3, opacity: 0.9 } },
+    lineStyle: { width: 1, opacity: 0.45 },
+    emphasis: { focus: 'series', lineStyle: { width: 2.5, opacity: 0.95 } },
   },
   themeRiver: {
-    label: { overflow: 'truncate', width: 100 },
+    label: { overflow: 'truncate', width: 90 },
     emphasis: { focus: 'series' },
+    boundaryGap: ['10%', '10%'],
   },
   candlestick: {
+    barMaxWidth: 20,
+    // Semantic up/down colors — intentionally not palette-driven so the trading
+    // convention (green = up, red = down) is always preserved regardless of brand.
     itemStyle: {
-      color: '#26A69A',
-      color0: '#EF5350',
-      borderColor: '#26A69A',
-      borderColor0: '#EF5350',
+      color: '#26a69a',
+      color0: '#ef5350',
+      borderColor: '#26a69a',
+      borderColor0: '#ef5350',
+      borderWidth: 1,
     },
   },
   boxplot: {
-    itemStyle: { borderWidth: 1.5 },
-    emphasis: { itemStyle: { borderWidth: 2.5 } },
+    itemStyle: { borderWidth: 1.5, opacity: 0.85 },
+    emphasis: { itemStyle: { borderWidth: 2.5, opacity: 1, shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.25)' } },
   },
   gauge: {
-    progress: { show: true, width: 12 },
-    axisLine: { lineStyle: { width: 12 } },
-    pointer: { show: true },
-    anchor: { show: true, size: 12, itemStyle: { borderWidth: 4 } },
-    title: { show: true, overflow: 'truncate', width: 80 },
-    detail: { valueAnimation: true, overflow: 'truncate', width: 80 },
+    progress: { show: true, width: 14, roundCap: true },
+    axisLine: { lineStyle: { width: 14 } },
+    axisTick: { show: false },
+    splitLine: { length: 10, lineStyle: { width: 2 } },
+    axisLabel: { distance: 16 },
+    pointer: { show: true, length: '60%', width: 6 },
+    anchor: { show: true, size: 10, itemStyle: { borderWidth: 3 } },
+    title: { show: true, overflow: 'truncate', width: 100, offsetCenter: [0, '72%'] },
+    detail: { valueAnimation: true, overflow: 'truncate', width: 100, offsetCenter: [0, '40%'] },
   },
   pictorialBar: {
     barCategoryGap: '40%',
     label: { overflow: 'truncate', width: 80 },
-    emphasis: { focus: 'series' },
+    emphasis: { focus: 'series', itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.2)' } },
   },
 };
 

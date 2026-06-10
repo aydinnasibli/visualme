@@ -191,6 +191,48 @@ function themeSeries(series: EChartsOption['series'], theme: BrandTheme, styleEf
       };
     }
 
+    // Treemap: style the breadcrumb navigation trail and upper-level labels.
+    if (type === 'treemap') {
+      const bc = (seriesEntry.breadcrumb ?? {}) as Record<string, unknown>;
+      themed.breadcrumb = {
+        ...bc,
+        height: bc.height ?? 22,
+        itemStyle: {
+          textStyle: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.textColor) },
+          ...(bc.itemStyle as object),
+        },
+      };
+      const ul = (seriesEntry.upperLabel ?? {}) as Record<string, unknown>;
+      themed.upperLabel = {
+        ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.textColor),
+        ...ul,
+      };
+    }
+
+    // Gauge: title (the metric name) and detail (the value) need explicit font/color
+    // since ECharts doesn't inherit from the global textStyle for these sub-elements.
+    if (type === 'gauge') {
+      const title = (seriesEntry.title ?? {}) as Record<string, unknown>;
+      themed.title = {
+        fontFamily: theme.fontFamily,
+        fontSize: theme.fontSize.axisLabel,
+        color: theme.mutedTextColor,
+        overflow: 'truncate',
+        width: 100,
+        ...title,
+      };
+      const detail = (seriesEntry.detail ?? {}) as Record<string, unknown>;
+      themed.detail = {
+        fontFamily: theme.fontFamily,
+        fontSize: theme.fontSize.title,
+        fontWeight: theme.fontWeight?.title ?? 600,
+        color: theme.textColor,
+        overflow: 'truncate',
+        width: 100,
+        ...detail,
+      };
+    }
+
     if (type === 'sankey') {
       themed.links = removeSankeyCycles(seriesEntry.links);
     }
@@ -283,6 +325,8 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
     backgroundColor: theme.mode === 'dark' ? '#27272a' : '#ffffff',
     borderColor: theme.borderColor,
     textStyle: baseTextStyle(theme, theme.fontSize.tooltip, theme.textColor),
+    // Prevent tooltip from overflowing the canvas boundary — important on small containers.
+    confine: true,
     ...(original.tooltip as object),
   };
 
@@ -318,6 +362,55 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   themed.xAxis = themeAxes(original.xAxis as EChartsOption['xAxis'], theme);
   themed.yAxis = themeAxes(original.yAxis as EChartsOption['yAxis'], theme);
   themed.series = themeSeries(original.series as EChartsOption['series'], theme, styleEffect);
+
+  // ── Polar coordinate axes (used by polar bar, line, scatter, heatmap variants) ──
+  // Without explicit theming these stay at ECharts defaults and look inconsistent.
+  if (original.radiusAxis !== undefined) {
+    const axes = Array.isArray(original.radiusAxis) ? original.radiusAxis : [original.radiusAxis];
+    themed.radiusAxis = axes.map((ax) => ({
+      ...(ax as object),
+      axisLabel: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...(((ax as Record<string, unknown>).axisLabel) as object) },
+      axisLine: { lineStyle: { color: theme.borderColor }, ...((ax as Record<string, unknown>).axisLine as object) },
+      splitLine: { lineStyle: { color: theme.borderColor, type: 'dashed' }, ...((ax as Record<string, unknown>).splitLine as object) },
+      nameTextStyle: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...((ax as Record<string, unknown>).nameTextStyle as object) },
+    }));
+  }
+  if (original.angleAxis !== undefined) {
+    const axes = Array.isArray(original.angleAxis) ? original.angleAxis : [original.angleAxis];
+    themed.angleAxis = axes.map((ax) => ({
+      ...(ax as object),
+      axisLabel: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...(((ax as Record<string, unknown>).axisLabel) as object) },
+      axisLine: { lineStyle: { color: theme.borderColor }, ...((ax as Record<string, unknown>).axisLine as object) },
+      splitLine: { lineStyle: { color: theme.borderColor, type: 'dashed' }, ...((ax as Record<string, unknown>).splitLine as object) },
+    }));
+  }
+
+  // ── Parallel coordinates axes ──
+  // Each dimension column in a parallel chart is a parallelAxis entry; without
+  // theming these render with full-brightness default text that clashes with the
+  // dashboard surface.
+  if (original.parallelAxis !== undefined) {
+    const axes = Array.isArray(original.parallelAxis) ? original.parallelAxis : [original.parallelAxis];
+    themed.parallelAxis = axes.map((ax) => ({
+      ...(ax as object),
+      nameTextStyle: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), overflow: 'truncate', width: 100, ...((ax as Record<string, unknown>).nameTextStyle as object) },
+      axisLabel: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), overflow: 'truncate', width: 80, ...((ax as Record<string, unknown>).axisLabel as object) },
+      axisLine: { lineStyle: { color: theme.borderColor }, ...((ax as Record<string, unknown>).axisLine as object) },
+      nameGap: 28,
+      nameLocation: 'end',
+    }));
+  }
+
+  // ── Single axis (used by single-axis scatter variant) ──
+  if (original.singleAxis !== undefined) {
+    const axes = Array.isArray(original.singleAxis) ? original.singleAxis : [original.singleAxis];
+    themed.singleAxis = axes.map((ax) => ({
+      ...(ax as object),
+      axisLabel: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...((ax as Record<string, unknown>).axisLabel as object) },
+      axisLine: { lineStyle: { color: theme.borderColor }, ...((ax as Record<string, unknown>).axisLine as object) },
+      nameTextStyle: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...((ax as Record<string, unknown>).nameTextStyle as object) },
+    }));
+  }
 
   // Style the visualMap (used by heatmaps) so its text adapts to the current theme mode.
   if (original.visualMap !== undefined) {
