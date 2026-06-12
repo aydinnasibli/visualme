@@ -100,11 +100,21 @@ export default function EChartsRenderer({ spec, className, forceMode }: EChartsR
         if (attempts < 5) { attempts++; raf = requestAnimationFrame(tryResize); }
         return;
       }
-      inst.resize({ width: clientWidth, height: clientHeight });
+      // `clientWidth`/`clientHeight` include this container's own padding (e.g.
+      // `p-6`), but the chart div ECharts measures fills only `el`'s *content*
+      // box (`width/height: 100%` minus that padding). Resizing to the
+      // padding-inclusive size makes the chart `2 * padding` larger than that
+      // box, overflowing into the ancestor `overflow-hidden` wrapper and getting
+      // its right/bottom edge clipped (axis labels, legend). Subtract `el`'s own
+      // padding so the chart matches the box it actually renders into.
+      const cs = getComputedStyle(el);
+      const width = clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const height = clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      inst.resize({ width, height });
       constrainTitleWidth();
       const canvas = inst.getDom().querySelector('canvas');
-      const styleW = canvas ? parseFloat(canvas.style.width) : clientWidth;
-      if (attempts < 5 && styleW !== clientWidth) {
+      const styleW = canvas ? parseFloat(canvas.style.width) : width;
+      if (attempts < 5 && styleW !== width) {
         attempts++;
         raf = requestAnimationFrame(tryResize);
       } else {

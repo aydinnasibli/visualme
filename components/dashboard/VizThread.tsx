@@ -84,7 +84,7 @@ function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; 
         type="button"
         title="Delete session"
         onClick={e => { e.stopPropagation(); onDelete(entry.id); }}
-        className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center text-ink-faint hover:text-danger hover:bg-surface-3 transition-colors opacity-0 group-hover:opacity-100"
+        className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center text-ink-faint hover:text-danger hover:bg-surface-3 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
       >
         <Trash2 size={12} />
       </button>
@@ -294,9 +294,9 @@ function ThreadInput({
         >
           <Sigma size={13} />
         </button>
-        <span className="hidden md:flex items-center gap-1.5 px-1.5 py-1 rounded-lg text-[11px] font-medium text-ink-faint">
+        <span className="hidden md:flex items-center gap-1.5 px-1.5 py-1 rounded-lg text-[11px] font-medium text-ink-faint whitespace-nowrap">
           <Sparkles size={11} className="text-accent/60" />
-          AI composes the chart
+          AI-composed
         </span>
         <div className="flex-1" />
         <button
