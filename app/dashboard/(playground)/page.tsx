@@ -7,13 +7,16 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import {
   generateVisualization, saveVisualization, editVisualizationAction,
-  getVisualizationById, saveLiveDataConfig,
+  getVisualizationById, saveLiveDataConfig, createSession, getUserSessions,
+  updateVisualizationTitle, deleteVisualization,
 } from '@/lib/actions/visualize';
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { readFileAttachment, composePromptWithAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
 import { composePromptWithChartType, getStyleEffect, type ChartSelection } from '@/lib/utils/chart-types';
+import { composePromptWithLiveSheet, type LiveSheetData } from '@/lib/utils/live-sheet';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { toast } from 'sonner';
 
 import Header from '@/components/dashboard/Header';
@@ -31,15 +34,46 @@ function genId() {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
 }
 
+/* Consume a "re-visualize" handoff left in sessionStorage by another page. */
+function readRevisualizeHandoff(): { entry: ThreadEntry; title: string } | null {
+  if (typeof window === 'undefined') return null;
+  const rev = sessionStorage.getItem('revisualize_data');
+  if (!rev) return null;
+  try {
+    const parsed: SavedVisualization = JSON.parse(rev);
+    const entry: ThreadEntry = {
+      id: genId(),
+      prompt: parsed.metadata?.originalInput || parsed.title || '',
+      spec: parsed.spec,
+      title: parsed.title || 'Visualization',
+      chatHistory: (parsed.history || []) as ThreadEntry['chatHistory'],
+      vizId: parsed._id || null,
+      isSaved: false,
+      isPublic: parsed.isPublic ?? false,
+      shareId: parsed.shareId ?? null,
+      metadata: parsed.metadata ? {
+        generatedAt: typeof parsed.metadata.generatedAt === 'string' ? parsed.metadata.generatedAt : parsed.metadata.generatedAt?.toString(),
+        aiModel: parsed.metadata.aiModel,
+      } : undefined,
+    };
+    return { entry, title: parsed.title || 'Visualization' };
+  } catch {
+    return null;
+  }
+}
+
 /* ── Dashboard ── */
 function DashboardContent() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const searchParams = useSearchParams();
 
+  /* ── "Re-visualize" handoff from another page (sessionStorage), consumed once on mount ── */
+  const [revHandoff] = useState(() => searchParams.get('id') ? null : readRevisualizeHandoff());
+
   /* ── Thread state ── */
-  const [threads, setThreads]       = useState<ThreadEntry[]>([]);
-  const [activeId, setActiveId]     = useState<string | null>(null);
+  const [threads, setThreads]       = useState<ThreadEntry[]>(() => revHandoff ? [revHandoff.entry] : []);
+  const [activeId, setActiveId]     = useState<string | null>(() => revHandoff?.entry.id ?? null);
   const activeThread = threads.find(t => t.id === activeId) ?? null;
 
   /* ── Loading / input ── */
@@ -65,17 +99,26 @@ function DashboardContent() {
 
   /* ── Statistical test run (independent of chart generation — scoped to whichever dataset is attached) ── */
   const [statRun, setStatRun] = useState<StatRun | null>(null);
-  const handleRunStat = useCallback((run: StatRun) => setStatRun(run), []);
-  const handleClearStat = useCallback(() => setStatRun(null), []);
+  const handleRunStat = useCallback((run: StatRun) => setStatRun(run), [setStatRun]);
+  const handleClearStat = useCallback(() => setStatRun(null), [setStatRun]);
 
   const handleRemoveAttachment = useCallback(() => {
     setAttachment(null);
     setStatRun(null);
-  }, []);
+  }, [setStatRun]);
 
   /* ── Forced chart type (gallery picker) — overrides the AI's own type judgment for the next request ── */
   const [chartType, setChartType] = useState<ChartSelection | null>(null);
   const handleClearChartType = useCallback(() => setChartType(null), []);
+
+  /* ── Live Google Sheet / CSV connected via the composer ── */
+  const [liveSheet, setLiveSheet] = useState<LiveSheetData | null>(null);
+  const handleConnectLiveSheet = useCallback((data: LiveSheetData) => {
+    setLiveSheet(data);
+    setAttachment(null);
+    setStatRun(null);
+  }, [setStatRun]);
+  const handleDisconnectLiveSheet = useCallback(() => setLiveSheet(null), []);
 
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
@@ -84,12 +127,31 @@ function DashboardContent() {
   /* ── Sidebar collapse ── */
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  /* ── Responsive: below `lg`, the session panel becomes an overlay drawer ── */
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+
+  // On mobile, auto-show the session panel when there's nothing active (so the
+  // composer is reachable) and auto-hide it once a visualization is selected.
+  const [prevMobileNav, setPrevMobileNav] = useState({ activeId, isMobile });
+  if (activeId !== prevMobileNav.activeId || isMobile !== prevMobileNav.isMobile) {
+    setPrevMobileNav({ activeId, isMobile });
+    if (isMobile) setSidebarOpen(activeId === null);
+  }
+
   /* ── Edit panel ── */
   const [isEditing, setIsEditing]   = useState(false);
-  const [manualEditJson, setManualEditJson] = useState('');
+  const [manualEditJson, setManualEditJson] = useState(() => revHandoff ? JSON.stringify(revHandoff.entry.spec.option, null, 2) : '');
 
   /* ── URL / session load ── */
   const [seenId, setSeenId]         = useState<string | null>(null);
+  const sessionsLoadedRef = useRef(false);
+
+  // Notify + clean up sessionStorage for the "re-visualize" handoff consumed above.
+  useEffect(() => {
+    if (!revHandoff) return;
+    sessionStorage.removeItem('revisualize_data');
+    toast.success(`Loaded "${revHandoff.title}"`);
+  }, [revHandoff]);
 
   React.useEffect(() => {
     const idFromUrl = searchParams.get('id');
@@ -129,51 +191,64 @@ function DashboardContent() {
 
     if (idFromUrl) { loadById(idFromUrl); return; }
 
-    const rev = sessionStorage.getItem('revisualize_data');
-    if (rev) {
+    // Already hydrated from a "re-visualize" handoff on first render.
+    if (revHandoff) return;
+
+    // No deep link / handoff — hydrate the sidebar with the user's persisted sessions
+    if (sessionsLoadedRef.current || isSignedIn !== true) return;
+    sessionsLoadedRef.current = true;
+
+    const loadSessions = async () => {
       try {
-        const parsed: SavedVisualization = JSON.parse(rev);
-        const entry: ThreadEntry = {
-          id: genId(),
-          prompt: parsed.metadata?.originalInput || parsed.title || '',
-          spec: parsed.spec,
-          title: parsed.title || 'Visualization',
-          chatHistory: (parsed.history || []) as ThreadEntry['chatHistory'],
-          vizId: parsed._id || null,
-          isSaved: false,
-          isPublic: parsed.isPublic ?? false,
-          shareId: parsed.shareId ?? null,
-          metadata: parsed.metadata ? {
-            generatedAt: typeof parsed.metadata.generatedAt === 'string' ? parsed.metadata.generatedAt : parsed.metadata.generatedAt?.toString(),
-            aiModel: parsed.metadata.aiModel,
-          } : undefined,
-        };
-        setThreads([entry]);
-        setActiveId(entry.id);
-        setManualEditJson(JSON.stringify(parsed.spec.option, null, 2));
-        sessionStorage.removeItem('revisualize_data');
-        toast.success(`Loaded "${parsed.title}"`);
-      } catch { toast.error('Failed to load visualization data'); }
-    }
+        const res = await getUserSessions();
+        if (res.success && res.data) {
+          const entries: ThreadEntry[] = (res.data as SavedVisualization[]).map(viz => ({
+            id: genId(),
+            prompt: viz.metadata?.originalInput || viz.title || '',
+            spec: viz.spec,
+            title: viz.title || 'Visualization',
+            chatHistory: (viz.history || []) as ThreadEntry['chatHistory'],
+            vizId: viz._id || null,
+            isSaved: viz.isSaved ?? true,
+            isPublic: viz.isPublic ?? false,
+            shareId: viz.shareId ?? null,
+            metadata: viz.metadata ? {
+              generatedAt: typeof viz.metadata.generatedAt === 'string' ? viz.metadata.generatedAt : viz.metadata.generatedAt?.toString(),
+              aiModel: viz.metadata.aiModel,
+            } : undefined,
+            liveData: viz.liveData,
+          }));
+          setThreads(entries);
+        }
+      } catch { /* sidebar hydration is best-effort */ }
+    };
+    loadSessions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, isSignedIn, revHandoff]);
 
   /* ── Handlers ── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
-    if ((!trimmed && !attachment && !chartType) || loading) return;
+    if ((!trimmed && !attachment && !chartType && !liveSheet) || loading) return;
 
     const pendingAttachment = attachment;
     const pendingChartType = chartType;
+    const pendingLiveSheet = liveSheet;
     const displayPrompt = trimmed
-      || (pendingChartType ? `${pendingChartType.type.label}${pendingChartType.variant ? ` — ${pendingChartType.variant.label}` : ''}` : `Visualize ${pendingAttachment!.name}`);
-    const aiInput = composePromptWithChartType(composePromptWithAttachment(trimmed, pendingAttachment), pendingChartType);
+      || (pendingChartType ? `${pendingChartType.type.label}${pendingChartType.variant ? ` — ${pendingChartType.variant.label}` : ''}`
+        : pendingAttachment ? `Visualize ${pendingAttachment.name}`
+        : 'Visualize connected Google Sheet');
+    const aiInput = composePromptWithChartType(
+      composePromptWithLiveSheet(composePromptWithAttachment(trimmed, pendingAttachment), pendingLiveSheet),
+      pendingChartType,
+    );
     const pendingStyleEffect = getStyleEffect(pendingChartType);
 
     setInput('');
     setAttachment(null);
     setChartType(null);
+    setLiveSheet(null);
     setLoading(true);
     setLoadingPrompt(displayPrompt);
     setLoadingStep('analyzing');
@@ -188,11 +263,16 @@ function DashboardContent() {
         setInput(trimmed);
         if (pendingAttachment) setAttachment(pendingAttachment);
         if (pendingChartType) setChartType(pendingChartType);
+        if (pendingLiveSheet) setLiveSheet(pendingLiveSheet);
         return;
       }
 
       setLoadingStep('finalizing');
       await new Promise(r => setTimeout(r, 300));
+
+      const liveDataForEntry = pendingLiveSheet
+        ? { url: pendingLiveSheet.url, interval: 0, lastRefreshed: new Date().toISOString() }
+        : undefined;
 
       const entry: ThreadEntry = {
         id: genId(),
@@ -210,15 +290,32 @@ function DashboardContent() {
           aiModel: data.metadata.aiModel,
           fromCache: data.fromCache,
         } : undefined,
+        liveData: liveDataForEntry,
       };
       setThreads(p => [...p, entry]);
       setActiveId(entry.id);
       setManualEditJson(JSON.stringify(data.spec.option, null, 2));
+
+      // Auto-persist as a session — patch vizId once the doc is created
+      createSession(
+        entry.title,
+        entry.spec,
+        data.metadata ?? { generatedAt: new Date(), originalInput: aiInput },
+        [],
+        liveDataForEntry ?? null,
+      ).then(res => {
+        if (res.success && res.id) {
+          setThreads(p => p.map(t => t.id === entry.id ? { ...t, vizId: res.id! } : t));
+        } else if (!res.success) {
+          console.error('Failed to persist session:', res.error);
+        }
+      });
     } catch {
       toast.error('An unexpected error occurred.');
       setInput(trimmed);
       if (pendingAttachment) setAttachment(pendingAttachment);
       if (pendingChartType) setChartType(pendingChartType);
+      if (pendingLiveSheet) setLiveSheet(pendingLiveSheet);
     } finally {
       setLoading(false);
       setLoadingStep(null);
@@ -385,7 +482,34 @@ function DashboardContent() {
     if (!activeThread) return;
     const id = activeThread.id;
     setThreads(p => p.map(t => t.id === id ? { ...t, title } : t));
+
+    if (activeThread.vizId) {
+      updateVisualizationTitle(activeThread.vizId, title).then(res => {
+        if (!res.success) toast.error(res.error || 'Failed to rename');
+      });
+    }
   }, [activeThread]);
+
+  const handleDeleteThread = useCallback((id: string) => {
+    const thread = threads.find(t => t.id === id);
+    if (!thread) return;
+
+    toast('Delete this session?', {
+      action: {
+        label: 'Delete',
+        onClick: async () => {
+          setThreads(p => p.filter(t => t.id !== id));
+          setActiveId(prev => prev === id ? null : prev);
+          if (thread.vizId) {
+            const res = await deleteVisualization(thread.vizId);
+            if (!res.success) toast.error(res.error || 'Failed to delete');
+          }
+        },
+      },
+      cancel: { label: 'Cancel', onClick: () => {} },
+      duration: 5000,
+    });
+  }, [threads]);
 
   /* ── Live data config ── */
   const handleLiveDataChange = useCallback(async (config: { url: string; interval: number } | null) => {
@@ -469,7 +593,6 @@ function DashboardContent() {
   useEffect(() => {
     const url = activeThread?.liveData?.url;
     const interval = activeThread?.liveData?.interval;
-    const threadId = activeThread?.id;
     if (!url || !interval) return;
     const ms = interval * 60 * 1000;
     const timer = setInterval(() => { refreshCallbackRef.current(); }, ms);
@@ -489,18 +612,31 @@ function DashboardContent() {
       <Header user={user || null} />
 
       <div className="flex-1 flex overflow-hidden min-h-0 pt-16 relative">
+        {/* ── Mobile backdrop for the session drawer ── */}
+        {isMobile && sidebarOpen && (
+          <div
+            className="lg:hidden fixed top-16 inset-x-0 bottom-0 z-30 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* ── Left: Thread panel ── */}
         <AnimatePresence initial={false}>
           {sidebarOpen && (
             <motion.div
               key="sidebar"
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 340, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
+              initial={isMobile ? { x: '-100%' } : { width: 0, opacity: 0 }}
+              animate={isMobile ? { x: 0 } : { width: 340, opacity: 1 }}
+              exit={isMobile ? { x: '-100%' } : { width: 0, opacity: 0 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="shrink-0 overflow-hidden flex flex-col bg-surface-1 border-r border-edge"
+              className={
+                isMobile
+                  ? 'fixed top-16 bottom-0 left-0 z-40 w-[85vw] max-w-[340px] flex flex-col bg-surface-1 border-r border-edge'
+                  : 'shrink-0 overflow-hidden flex flex-col bg-surface-1 border-r border-edge'
+              }
             >
-              <div className="w-[340px] h-full flex flex-col">
+              <div className="w-full lg:w-[340px] h-full flex flex-col">
                 <VizThread
                   threads={threads}
                   activeId={activeId}
@@ -521,6 +657,10 @@ function DashboardContent() {
                   statRun={statRun}
                   onRunStat={handleRunStat}
                   onClearStat={handleClearStat}
+                  liveSheet={liveSheet}
+                  onConnectLiveSheet={handleConnectLiveSheet}
+                  onDisconnectLiveSheet={handleDisconnectLiveSheet}
+                  onDelete={handleDeleteThread}
                 />
               </div>
             </motion.div>
@@ -532,7 +672,7 @@ function DashboardContent() {
           onClick={() => setSidebarOpen((p) => !p)}
           title={sidebarOpen ? 'Collapse panel' : 'Expand panel'}
           className="absolute top-1/2 -translate-y-1/2 z-20 w-5 h-11 rounded-r-lg flex items-center justify-center bg-surface-2 border border-l-0 border-edge text-ink-faint hover:text-ink hover:bg-surface-3 transition-[left,colors] duration-200"
-          style={{ left: sidebarOpen ? 340 : 0 }}
+          style={{ left: sidebarOpen ? (isMobile ? 'min(340px, 85vw)' : 340) : 0 }}
         >
           {sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
         </button>

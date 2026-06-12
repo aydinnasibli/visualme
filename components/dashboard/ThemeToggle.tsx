@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { useMounted } from '@/lib/hooks/useMounted';
 
 const OPTIONS = [
   { value: 'light',  label: 'Light',  icon: Sun },
@@ -18,10 +18,8 @@ const OPTIONS = [
  */
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
   // Avoid hydration mismatch — `theme` is only known once mounted on the client.
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const active = mounted ? theme : 'dark';
 

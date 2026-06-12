@@ -74,7 +74,7 @@ export default function SignUpPage() {
                   identityPreviewText: "text-zinc-300",
                   identityPreviewEditButton: "text-indigo-400 hover:text-indigo-300",
                 },
-                layout: {
+                options: {
                   socialButtonsPlacement: 'bottom',
                   socialButtonsVariant: 'blockButton',
                 },

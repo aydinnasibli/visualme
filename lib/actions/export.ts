@@ -10,6 +10,7 @@ import {
   exportAsHTML,
 } from '@/lib/services/export-service';
 import { validateObjectId, sanitizeError } from '@/lib/utils/validation';
+import { sanitizeVisualization } from '@/lib/utils/helpers';
 import type { ExportFormat, SavedVisualization } from '@/lib/types/visualization';
 
 /**
@@ -131,7 +132,7 @@ export async function createShareLink(
     }
 
     // Generate share link
-    const { shareId, shareUrl } = await generateShareLink(visualizationId, userId, options);
+    const { shareId, shareUrl } = await generateShareLink();
 
     // Update visualization with share ID
     visualization.shareId = shareId;
@@ -170,20 +171,9 @@ export async function getSharedVisualization(shareId: string) {
       return { success: false, error: 'Shared visualization not found or is private' };
     }
 
-    const data: SavedVisualization = {
-      _id: visualization._id.toString(),
-      userId: visualization.userId,
-      title: visualization.title,
-      spec: visualization.spec,
-      metadata: visualization.metadata,
-      isPublic: visualization.isPublic,
-      shareId: visualization.shareId ?? undefined,
-      createdAt: visualization.createdAt,
-      updatedAt: visualization.updatedAt,
-      history: visualization.history,
-    };
+    const data = sanitizeVisualization(visualization);
 
-    return { success: true, data };
+    return { success: true, data: data as SavedVisualization };
   } catch (error) {
     console.error('Get shared visualization error:', error);
     return {

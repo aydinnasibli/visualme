@@ -15,7 +15,6 @@
 import { jStat } from 'jstat';
 import {
   DEFAULT_ALPHA,
-  type ColumnType,
   type DatasetColumn,
   type StatTestId,
   type StatTestOption,
@@ -129,7 +128,7 @@ function significanceLine(pValue: number, alpha: number): string {
 
 // ── One-sample t-test ────────────────────────────────────────────────────────
 
-export function runOneSampleTTest(
+function runOneSampleTTest(
   column: DatasetColumn,
   hypothesizedMean: number,
   alpha: number = DEFAULT_ALPHA
@@ -162,7 +161,7 @@ export function runOneSampleTTest(
 
 // ── Independent samples t-test (Welch's — robust to unequal variances) ─────
 
-export function runIndependentTTest(
+function runIndependentTTest(
   valueColumn: DatasetColumn,
   groupColumn: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
@@ -210,7 +209,7 @@ export function runIndependentTTest(
 
 // ── Paired samples t-test ────────────────────────────────────────────────────
 
-export function runPairedTTest(
+function runPairedTTest(
   columnA: DatasetColumn,
   columnB: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
@@ -252,7 +251,7 @@ export function runPairedTTest(
 
 // ── One-way ANOVA ────────────────────────────────────────────────────────────
 
-export function runOneWayAnova(
+function runOneWayAnova(
   valueColumn: DatasetColumn,
   groupColumn: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
@@ -300,7 +299,7 @@ export function runOneWayAnova(
 
 // ── Chi-square test of independence ─────────────────────────────────────────
 
-export function runChiSquareTest(
+function runChiSquareTest(
   columnA: DatasetColumn,
   columnB: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
@@ -366,7 +365,7 @@ export function runChiSquareTest(
 
 // ── Pearson correlation ──────────────────────────────────────────────────────
 
-export function runPearsonCorrelation(
+function runPearsonCorrelation(
   columnA: DatasetColumn,
   columnB: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
@@ -439,4 +438,4 @@ export function runStatTest({ testId, columns, hypothesizedMean, alpha = DEFAULT
   }
 }
 
-export type { ColumnType, DatasetColumn, StatTestId, StatTestOption, StatTestResult };
+export type { DatasetColumn, StatTestOption, StatTestResult };

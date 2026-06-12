@@ -56,6 +56,20 @@ const VisualizationSchema = new Schema<SavedVisualization>(
       interval: { type: Number, default: 0 },
       lastRefreshed: { type: String },
     },
+    // Auto-persisted "session" docs (created on every generation) are
+    // ephemeral until the user explicitly saves — `isSaved: false` plus
+    // `sessionExpiresAt` marks them for TTL cleanup. Pre-existing docs and
+    // explicitly-saved docs have isSaved=true (or missing, treated as saved)
+    // and no sessionExpiresAt, so they're never touched by the TTL index.
+    // No `default` here on purpose: a schema default would apply to hydrated
+    // (non-lean) legacy docs missing this field, making `isSaved === false`
+    // checks misidentify pre-existing saved visualizations as ephemeral sessions.
+    isSaved: {
+      type: Boolean,
+    },
+    sessionExpiresAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -67,6 +81,9 @@ VisualizationSchema.index({ userId: 1, createdAt: -1 });
 VisualizationSchema.index({ shareId: 1 }, { unique: true, sparse: true });
 VisualizationSchema.index({ isPublic: 1, createdAt: -1 });
 VisualizationSchema.index({ 'metadata.generatedAt': -1 });
+// TTL: documents are removed once sessionExpiresAt is in the past. Docs
+// without this field (saved/legacy/live) are never expired.
+VisualizationSchema.index({ sessionExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const VisualizationModel: Model<SavedVisualization> =
   mongoose.models.Visualization || mongoose.model<SavedVisualization>('Visualization', VisualizationSchema);

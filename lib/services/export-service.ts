@@ -3,7 +3,7 @@
  * Handles exporting visualizations in various formats (PNG, SVG, PDF, JSON, CSV, HTML)
  */
 
-import type { SavedVisualization, ExportFormat, ExportOptions } from '../types/visualization';
+import type { SavedVisualization, ExportOptions } from '../types/visualization';
 import { generateShareId } from '../utils/helpers';
 import { applyBrandTheme } from '../utils/echarts-theme';
 import { applyChartDefaults } from '../utils/chart-defaults';
@@ -11,15 +11,7 @@ import { applyChartDefaults } from '../utils/chart-defaults';
 /**
  * Generate a shareable link for a visualization
  */
-export async function generateShareLink(
-  visualizationId: string,
-  userId: string,
-  options: {
-    expiresIn?: number;
-    password?: string;
-    isPublic: boolean;
-  }
-): Promise<{ shareId: string; shareUrl: string }> {
+export async function generateShareLink(): Promise<{ shareId: string; shareUrl: string }> {
   const shareId = generateShareId();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const shareUrl = `${baseUrl}/share/${shareId}`;
@@ -92,11 +84,21 @@ export function exportAsCSV(visualization: SavedVisualization): string {
 
         if (point !== null && point !== undefined && typeof point === 'object' && !Array.isArray(point)) {
           const p = point as Record<string, unknown>;
-          if ('name' in p && 'value' in p) {
-            if (!header) { header = 'series,name,value'; rows.push(header); }
+          if ('value' in p) {
             // Radar value is an array — join readable
             const val = Array.isArray(p.value) ? p.value.join(' | ') : p.value;
-            rows.push(`${csvCell(seriesName)},${csvCell(p.name)},${csvCell(val)}`);
+            if ('name' in p) {
+              if (!header) { header = 'series,name,value'; rows.push(header); }
+              rows.push(`${csvCell(seriesName)},${csvCell(p.name)},${csvCell(val)}`);
+            } else {
+              // Indexed point with a style override, e.g. { value, itemStyle } — treat like a plain value
+              if (!header) {
+                header = xCategories ? 'series,category,value' : 'series,index,value';
+                rows.push(header);
+              }
+              const cat = xCategories ? (xCategories[i] ?? i) : i;
+              rows.push(`${csvCell(seriesName)},${csvCell(cat)},${csvCell(val)}`);
+            }
             wroteAny = true;
           }
         } else if (Array.isArray(point)) {
@@ -178,45 +180,4 @@ export function exportAsHTML(visualization: SavedVisualization): string {
   </script>
 </body>
 </html>`;
-}
-
-/**
- * Validate export format for a visualization. Every spec is a single
- * ECharts option now, so format support is uniform across all charts.
- */
-export function canExportAs(_visualizationType: string, exportFormat: ExportFormat): boolean {
-  switch (exportFormat) {
-    case 'csv':
-    case 'svg':
-    case 'png':
-    case 'pdf':
-    case 'html':
-    case 'json':
-      return true;
-    default:
-      return false;
-  }
-}
-
-/**
- * Get file extension for export format
- */
-export function getFileExtension(format: ExportFormat): string {
-  return format;
-}
-
-/**
- * Get MIME type for export format
- */
-export function getMimeType(format: ExportFormat): string {
-  const mimeTypes: Record<ExportFormat, string> = {
-    png: 'image/png',
-    svg: 'image/svg+xml',
-    pdf: 'application/pdf',
-    json: 'application/json',
-    csv: 'text/csv',
-    html: 'text/html',
-  };
-
-  return mimeTypes[format];
 }

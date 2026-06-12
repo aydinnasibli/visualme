@@ -407,7 +407,7 @@ export async function getAdminAnalytics(): Promise<{
 
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
 
-    const [vizByDay, userByPlan, tokenByTier] = await Promise.all([
+    const [vizByDayRaw, userByPlan, tokenByTier] = await Promise.all([
       VisualizationModel.aggregate([
         { $match: { createdAt: { $gte: fourteenDaysAgo } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
@@ -427,10 +427,21 @@ export async function getAdminAnalytics(): Promise<{
       ]),
     ])
 
+    // Zero-fill every day in the range so the trend chart always shows a
+    // continuous 14-day timeline instead of only the days with activity.
+    const countByDay = new Map(
+      (vizByDayRaw as { _id: string; count: number }[]).map(d => [d._id, d.count])
+    )
+    const vizByDay = Array.from({ length: 14 }, (_, i) => {
+      const date = new Date(Date.now() - (13 - i) * 24 * 60 * 60 * 1000)
+      const key = date.toISOString().slice(0, 10)
+      return { _id: key, count: countByDay.get(key) ?? 0 }
+    })
+
     return {
       success: true,
       data: {
-        vizByDay: vizByDay as { _id: string; count: number }[],
+        vizByDay,
         userByPlan: userByPlan as { _id: string; count: number }[],
         tokenByTier: tokenByTier as AnalyticsData['tokenByTier'],
       },

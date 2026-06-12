@@ -1,6 +1,7 @@
 'use server';
 
 import { after } from 'next/server';
+import type { Types } from 'mongoose';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
@@ -26,6 +27,8 @@ import { getCachedVisualization, setCachedVisualization } from '@/lib/utils/cach
 import type {
   VisualizationResponse,
   VisualizationMetadata,
+  LiveDataConfig,
+  SavedVisualization,
 } from '@/lib/types/visualization';
 
 /**
@@ -152,6 +155,56 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
 }
 
 /**
+ * Auto-persist a freshly generated visualization as an ephemeral "session" —
+ * created immediately after generation, without a "Save" click. Unlike
+ * `saveVisualization`, this never counts against the saved-visualization
+ * limit and expires via `sessionExpiresAt` (TTL) unless connected to a live
+ * data source (which never expires).
+ */
+export async function createSession(
+  title: string,
+  spec: VisualizationSpec,
+  metadata: VisualizationMetadata,
+  history?: { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[],
+  liveData?: LiveDataConfig | null
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    const titleValidation = validateTitle(title);
+    if (!titleValidation.valid) return { success: false, error: titleValidation.error };
+
+    const dataValidation = validateDataSize(spec);
+    if (!dataValidation.valid) return { success: false, error: dataValidation.error };
+
+    await connectToDatabase();
+
+    const sessionExpiresAt = liveData?.url ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const visualization = await VisualizationModel.create({
+      userId,
+      title: titleValidation.sanitized,
+      spec,
+      metadata,
+      isPublic: false,
+      isSaved: false,
+      sessionExpiresAt,
+      ...(liveData?.url ? { liveData } : {}),
+      history: (history || []).map(h => ({
+        ...h,
+        timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp,
+      })),
+    });
+
+    return { success: true, id: visualization._id.toString() };
+  } catch (error) {
+    console.error('Error creating session:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to create session') };
+  }
+}
+
+/**
  * Edit an existing visualization's chart spec via AI (or answer a question about it)
  */
 export async function editVisualizationAction(
@@ -214,7 +267,7 @@ export async function editVisualizationAction(
       UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
     ]);
 
-    let updatedVisualization: any = null;
+    let updatedVisualization: SavedVisualization | null = null;
 
     // If the option was modified and we have an ID, update the database
     if (result.option && visualizationId) {
@@ -223,6 +276,11 @@ export async function editVisualizationAction(
        if (visualization) {
          visualization.spec = { ...visualization.spec, option: result.option };
          visualization.updatedAt = new Date();
+
+         // Keep an active, non-saved, non-live session alive while in use
+         if (visualization.isSaved === false && !visualization.liveData?.url) {
+           visualization.sessionExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+         }
 
          // Update history — messages already includes the new user message, so only append assistant reply
          if (messages) {
@@ -267,7 +325,7 @@ export async function saveVisualization(
   isPublic: boolean = false,
   id?: string,
   history?: { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[]
-): Promise<{ success: boolean; id?: string; error?: string; data?: any }> {
+): Promise<{ success: boolean; id?: string; error?: string; data?: SavedVisualization | null }> {
   try {
     const { userId } = await auth();
 
@@ -305,24 +363,48 @@ export async function saveVisualization(
 
        visualization = await VisualizationModel.findOne({ _id: id, userId });
 
-       if (visualization) {
-         visualization.title = title; // Update title if changed
-         visualization.spec = spec;
-         visualization.metadata = metadata;
-         visualization.isPublic = isPublic;
-         if (history) {
-           visualization.history = history.map(h => ({
-             ...h,
-             timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
-           }));
-         }
-         visualization.updatedAt = new Date();
-         await visualization.save();
-       } else {
+       if (!visualization) {
          // ID provided but not found, could imply user is trying to hack or it was deleted.
          // Fallback to creating new? No, safer to error if ID was explicit.
          return { success: false, error: 'Visualization not found or unauthorized' };
        }
+
+       // First explicit save of an auto-persisted session — enforce the saved-visualizations limit
+       if (visualization.isSaved === false) {
+         const user = await UserModel.findOrCreate(userId);
+         const maxAllowed = tier === 'free'
+           ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
+           : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
+
+         if (user.savedVisualizations.length >= maxAllowed) {
+           return {
+             success: false,
+             error: `Maximum saved visualizations limit reached (${maxAllowed}). Please delete some or upgrade your plan.`
+           };
+         }
+
+         visualization.isSaved = true;
+         visualization.sessionExpiresAt = undefined;
+
+         const visualizationIdStr = visualization._id.toString();
+         if (!user.savedVisualizations.some(vId => vId.toString() === visualizationIdStr)) {
+           user.savedVisualizations.push(visualization._id as unknown as Types.ObjectId);
+           await user.save();
+         }
+       }
+
+       visualization.title = title; // Update title if changed
+       visualization.spec = spec;
+       visualization.metadata = metadata;
+       visualization.isPublic = isPublic;
+       if (history) {
+         visualization.history = history.map(h => ({
+           ...h,
+           timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
+         }));
+       }
+       visualization.updatedAt = new Date();
+       await visualization.save();
     } else {
       // Check for existing visualization with same title (Legacy behavior)
       // Only do this if we didn't search by ID.
@@ -343,6 +425,19 @@ export async function saveVisualization(
            }));
         }
         existingVisualization.updatedAt = new Date();
+
+        if (existingVisualization.isSaved === false) {
+          existingVisualization.isSaved = true;
+          existingVisualization.sessionExpiresAt = undefined;
+
+          const user = await UserModel.findOrCreate(userId);
+          const visualizationIdStr = existingVisualization._id.toString();
+          if (!user.savedVisualizations.some(vId => vId.toString() === visualizationIdStr)) {
+            user.savedVisualizations.push(existingVisualization._id as unknown as Types.ObjectId);
+            await user.save();
+          }
+        }
+
         await existingVisualization.save();
 
         visualization = existingVisualization;
@@ -368,6 +463,7 @@ export async function saveVisualization(
           spec,
           metadata,
           isPublic,
+          isSaved: true,
           history: history ? history.map(h => ({
              ...h,
              timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
@@ -379,7 +475,7 @@ export async function saveVisualization(
         const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
 
         if (!exists) {
-          user.savedVisualizations.push(visualization._id as any);
+          user.savedVisualizations.push(visualization._id as unknown as Types.ObjectId);
           await user.save();
         }
       }
@@ -410,7 +506,7 @@ export async function getUserVisualizations(limit?: number) {
 
     await connectToDatabase();
 
-    const query = VisualizationModel.find({ userId })
+    const query = VisualizationModel.find({ userId, isSaved: { $ne: false } })
       .select('_id userId title spec metadata isPublic createdAt updatedAt history liveData')
       .sort({ updatedAt: -1 });
 
@@ -418,11 +514,77 @@ export async function getUserVisualizations(limit?: number) {
 
     return {
       success: true,
-      data: visualizations.map(v => sanitizeVisualization(v)),
+      data: visualizations.map(v => sanitizeVisualization(v)).filter((v): v is SavedVisualization => v !== null),
     };
   } catch (error) {
     console.error('Error fetching visualizations:', error);
-    return { success: false, error: sanitizeError(error, 'Failed to fetch visualizations'), data: [] };
+    return { success: false, error: sanitizeError(error, 'Failed to fetch visualizations'), data: [] as SavedVisualization[] };
+  }
+}
+
+/**
+ * Get all of the current user's visualization "sessions" — saved
+ * visualizations, live-data-connected visualizations, and not-yet-expired
+ * ephemeral sessions — for hydrating the sidebar on load.
+ */
+export async function getUserSessions(limit: number = 50) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: 'Authentication required', data: [] };
+    }
+
+    await connectToDatabase();
+
+    const visualizations = await VisualizationModel.find({ userId })
+      .select('_id title spec metadata isPublic shareId createdAt updatedAt history liveData isSaved')
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return {
+      success: true,
+      data: visualizations.map(v => sanitizeVisualization(v)).filter((v): v is SavedVisualization => v !== null),
+    };
+  } catch (error) {
+    console.error('Error fetching sessions:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to fetch sessions'), data: [] as SavedVisualization[] };
+  }
+}
+
+/**
+ * Persist a sidebar/title rename for an existing visualization.
+ */
+export async function updateVisualizationTitle(
+  visualizationId: string,
+  title: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) return { success: false, error: idValidation.error };
+
+    const titleValidation = validateTitle(title);
+    if (!titleValidation.valid) return { success: false, error: titleValidation.error };
+
+    await connectToDatabase();
+
+    const result = await VisualizationModel.updateOne(
+      { _id: visualizationId, userId },
+      { $set: { title: titleValidation.sanitized, updatedAt: new Date() } }
+    );
+
+    if (result.matchedCount === 0) {
+      return { success: false, error: 'Visualization not found or unauthorized' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating visualization title:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to update title') };
   }
 }
 
@@ -488,14 +650,24 @@ export async function saveLiveDataConfig(
 
     await connectToDatabase();
 
-    const update = liveData
-      ? { $set: { liveData } }
-      : { $unset: { liveData: '' } };
-
-    const result = await VisualizationModel.updateOne({ _id: visualizationId, userId }, update);
-    if (result.matchedCount === 0) {
+    const doc = await VisualizationModel.findOne({ _id: visualizationId, userId }).select('isSaved');
+    if (!doc) {
       return { success: false, error: 'Visualization not found or unauthorized' };
     }
+
+    let update: Record<string, unknown>;
+    if (liveData) {
+      // Connecting to a live source: never expires.
+      update = { $set: { liveData }, $unset: { sessionExpiresAt: '' } };
+    } else {
+      update = { $unset: { liveData: '' } };
+      if (doc.isSaved === false) {
+        // Disconnecting from an unsaved session: resume normal session TTL.
+        update.$set = { sessionExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) };
+      }
+    }
+
+    await VisualizationModel.updateOne({ _id: visualizationId, userId }, update);
 
     return { success: true };
   } catch (error) {

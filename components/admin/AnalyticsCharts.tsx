@@ -35,7 +35,11 @@ const tooltipStyle = {
 
 export default function AnalyticsCharts({ data }: { data: AnalyticsData }) {
   const vizData = data.vizByDay.map(d => ({
-    name: d._id,
+    name: new Date(`${d._id}T00:00:00Z`).toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }),
     count: d.count,
   }))
 
@@ -138,7 +142,7 @@ export default function AnalyticsCharts({ data }: { data: AnalyticsData }) {
               <Tooltip
                 contentStyle={tooltipStyle}
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                formatter={(value: number, name: string) => [
+                formatter={(value, name) => [
                   value,
                   name === 'used' ? 'Avg tokens used' : 'Avg token limit',
                 ]}

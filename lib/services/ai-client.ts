@@ -21,7 +21,7 @@ export interface AIResult<T> {
 
 let openai: OpenAI | null = null;
 
-export function getOpenAIClient() {
+function getOpenAIClient() {
   if (!openai) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

@@ -30,7 +30,7 @@
  * lightness keep both modes feeling like the same product.
  */
 @theme {
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
 
   --color-surface-0: oklch(98% 0.004 252);
   --color-surface-1: oklch(96% 0.006 252);

@@ -9,17 +9,6 @@
 import type { VisualizationSpec } from './echarts-spec';
 import type { ChartSelection } from '@/lib/utils/chart-types';
 
-export interface FileData {
-  filename: string;
-  content: string;
-  type: 'csv' | 'json' | 'txt' | 'pdf';
-}
-
-export interface VisualizationRequest {
-  input: string;
-  fileData?: FileData;
-}
-
 export interface VisualizationResponse {
   spec?: VisualizationSpec;
   reason: string;
@@ -68,6 +57,10 @@ export interface SavedVisualization {
     timestamp: Date | string;
   }>;
   liveData?: LiveDataConfig;
+  /** False = ephemeral session (auto-persisted, subject to TTL); true/missing = explicitly saved (permanent). */
+  isSaved?: boolean;
+  /** Server-only TTL marker for ephemeral sessions — never selected for client responses. */
+  sessionExpiresAt?: Date;
 }
 
 export interface UserUsage {
@@ -88,20 +81,8 @@ export interface UserUsage {
 
 export type ExportFormat = 'png' | 'svg' | 'pdf' | 'json' | 'csv' | 'html';
 
-export interface ExportRequest {
-  visualizationId: string;
-  format: ExportFormat;
-  options?: ExportOptions;
-}
-
 export interface ExportOptions {
   resolution?: number; // For PNG (1x, 2x, 3x)
   includeMetadata?: boolean;
   title?: string;
-}
-
-export interface ShareLinkOptions {
-  expiresIn?: number; // Days until expiration
-  password?: string;
-  isPublic: boolean;
 }

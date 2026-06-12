@@ -12,7 +12,6 @@ interface CachedConnection {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var mongoose: CachedConnection | undefined;
 }
 
@@ -54,5 +53,3 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 
   return cached.conn;
 }
-
-export default connectToDatabase;

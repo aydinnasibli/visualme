@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'crypto';
+import type { SavedVisualization } from '@/lib/types/visualization';
 
 /**
  * Generate a unique share ID for visualizations
@@ -32,28 +33,6 @@ export function validateFileType(filename: string, allowedTypes: string[] = ['cs
 }
 
 /**
- * Sanitize filename for safe storage
- */
-export function sanitizeFilename(filename: string): string {
-  return filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-}
-
-/**
- * Format bytes to human-readable string
- */
-export function formatBytes(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return '0 Bytes';
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
-
-/**
  * Calculate processing cost estimate.
  * Every generation now runs the same single AI composition call, so the
  * base cost is flat — only the variable cost scales with input length.
@@ -64,74 +43,42 @@ export function calculateCost(inputLength: number): number {
   return Number((baseCost + variableCost).toFixed(3));
 }
 
-/**
- * Truncate text to specified length
- */
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + '...';
+interface RawVisualizationDoc {
+  toObject?: () => Record<string, unknown>;
+  [key: string]: unknown;
 }
 
-/**
- * Check if string is valid JSON
- */
-export function isValidJSON(str: string): boolean {
-  try {
-    JSON.parse(str);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Parse CSV string to array of objects
- */
-export function parseCSVToJSON(csv: string): Array<Record<string, any>> {
-  const lines = csv.trim().split('\n');
-  if (lines.length === 0) return [];
-
-  const headers = lines[0].split(',').map(h => h.trim());
-  const result: Array<Record<string, any>> = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim());
-    const obj: Record<string, any> = {};
-
-    headers.forEach((header, index) => {
-      obj[header] = values[index];
-    });
-
-    result.push(obj);
-  }
-
-  return result;
-}
+const toIsoString = (value: unknown): string | undefined =>
+  value ? new Date(value as string | number | Date).toISOString() : undefined;
 
 /**
  * Sanitize visualization object for client-side use
  * Converts ObjectIds to strings and Dates to ISO strings to prevent serialization errors
  */
-export function sanitizeVisualization(viz: any): any {
+export function sanitizeVisualization(viz: unknown): SavedVisualization | null {
   if (!viz) return null;
 
+  const raw = viz as RawVisualizationDoc;
   // If it's a Mongoose document, convert to object first
-  const obj = typeof viz.toObject === 'function' ? viz.toObject() : viz;
+  const obj = typeof raw.toObject === 'function' ? raw.toObject() : raw;
+
+  const metadata = obj.metadata as Record<string, unknown> | undefined;
+  const history = obj.history as Array<Record<string, unknown>> | undefined;
 
   return {
     ...obj,
-    _id: obj._id?.toString(),
-    userId: obj.userId?.toString(),
-    createdAt: obj.createdAt ? new Date(obj.createdAt).toISOString() : undefined,
-    updatedAt: obj.updatedAt ? new Date(obj.updatedAt).toISOString() : undefined,
-    metadata: obj.metadata ? {
-      ...obj.metadata,
-      generatedAt: obj.metadata.generatedAt ? new Date(obj.metadata.generatedAt).toISOString() : undefined,
+    _id: (obj._id as { toString(): string } | undefined)?.toString(),
+    userId: (obj.userId as { toString(): string } | undefined)?.toString(),
+    createdAt: toIsoString(obj.createdAt),
+    updatedAt: toIsoString(obj.updatedAt),
+    metadata: metadata ? {
+      ...metadata,
+      generatedAt: toIsoString(metadata.generatedAt),
     } : undefined,
-    history: Array.isArray(obj.history) ? obj.history.map((h: any) => ({
+    history: Array.isArray(history) ? history.map((h) => ({
       role: h.role,
       content: h.content,
-      timestamp: h.timestamp ? new Date(h.timestamp).toISOString() : new Date().toISOString(),
+      timestamp: h.timestamp ? toIsoString(h.timestamp) : new Date().toISOString(),
     })) : [],
-  };
+  } as unknown as SavedVisualization;
 }

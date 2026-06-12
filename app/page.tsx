@@ -1,38 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import { Bricolage_Grotesque } from 'next/font/google';
 import {
-  ArrowRight, ArrowUpRight, Check, Sun, Moon, Monitor,
+  ArrowRight, ArrowUpRight, Check,
   Upload, MessageSquare, Palette, Code2, BarChart3, Share2,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import ReactECharts from 'echarts-for-react';
 import { CHART_TYPES } from '@/lib/utils/chart-types';
+import { useMounted } from '@/lib/hooks/useMounted';
+import Header from '@/components/layout/Header';
 
 const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
 });
-
-/* ── Theme toggle ── */
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="w-8 h-8" />;
-
-  const cycle = () =>
-    setTheme(theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system');
-
-  return (
-    <button onClick={cycle} className="w-8 h-8 rounded-lg flex items-center justify-center border border-edge hover:bg-surface-2 transition-colors" title={`Theme: ${theme}`}>
-      {theme === 'light' ? <Sun size={14} className="text-ink-muted" /> : theme === 'dark' ? <Moon size={14} className="text-ink-muted" /> : <Monitor size={14} className="text-ink-muted" />}
-    </button>
-  );
-}
 
 /* ── ECharts showcase ── */
 function buildOption(kind: string, isDark: boolean) {
@@ -64,8 +47,7 @@ const SHOWCASE = [
 
 function ShowcaseChart({ kind }: { kind: string }) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   if (!mounted) return <div className="w-full h-full rounded-lg bg-surface-1 animate-pulse" />;
   return <ReactECharts option={buildOption(kind, resolvedTheme !== 'light')} notMerge opts={{ renderer: 'canvas' }} style={{ height: '100%', width: '100%', minHeight: 160 }} />;
 }
@@ -73,8 +55,7 @@ function ShowcaseChart({ kind }: { kind: string }) {
 /* ── Hero mockup — a convincing snapshot of the real product ── */
 function HeroMockup() {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   const isDark = mounted ? resolvedTheme !== 'light' : true;
 
   const heroChartOption = buildOption('bar', isDark);
@@ -108,7 +89,7 @@ function HeroMockup() {
       {/* 3-panel body */}
       <div className="flex" style={{ height: 320 }}>
         {/* Thread sidebar */}
-        <div className="shrink-0 flex flex-col border-r border-edge bg-surface-1" style={{ width: 170 }}>
+        <div className="hidden md:flex shrink-0 flex-col border-r border-edge bg-surface-1" style={{ width: 170 }}>
           <div className="px-3 h-8 flex items-center border-b border-edge">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-ink-faint">Thread</span>
           </div>
@@ -127,7 +108,7 @@ function HeroMockup() {
         </div>
 
         {/* Chart canvas */}
-        <div className="flex-1 flex flex-col min-w-0 border-r border-edge">
+        <div className="flex-1 flex flex-col min-w-0 md:border-r border-edge">
           <div className="h-8 px-3 flex items-center gap-2 border-b border-edge bg-surface-1">
             <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-surface-3 border border-edge text-ink-muted">Bar Chart</span>
             <span className="text-[9px] flex-1 truncate text-ink-muted">Compare PostgreSQL vs MySQL vs Mongo</span>
@@ -145,7 +126,7 @@ function HeroMockup() {
         </div>
 
         {/* Refinement chat */}
-        <div className="shrink-0 flex flex-col" style={{ width: 180 }}>
+        <div className="hidden md:flex shrink-0 flex-col" style={{ width: 180 }}>
           <div className="h-8 px-3 flex items-center border-b border-edge bg-surface-1">
             <span className="text-[9px] font-semibold text-ink-faint">Refine</span>
           </div>
@@ -262,16 +243,8 @@ const USE_CASES = [
 
 /* ── Landing page ── */
 export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const fn = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', fn, { passive: true });
-    return () => window.removeEventListener('scroll', fn);
-  }, []);
+  const mounted = useMounted();
 
   const isDark = mounted ? resolvedTheme !== 'light' : true;
   const dotColor = isDark ? 'oklch(22% 0.010 252)' : 'oklch(84% 0.012 252)';
@@ -279,36 +252,7 @@ export default function LandingPage() {
   return (
     <div className={`${bricolage.className} bg-surface-0 text-ink overflow-x-hidden`}>
 
-      {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 transition-all duration-300" style={{ height: 52, background: scrolled ? 'var(--color-surface-0)' : 'transparent', backdropFilter: scrolled ? 'blur(14px)' : 'none', borderBottom: `1px solid ${scrolled ? 'var(--color-edge)' : 'transparent'}` }}>
-        <div className="mx-auto px-6 h-full flex items-center justify-between" style={{ maxWidth: 1120 }}>
-          <Link href="/" className="flex items-center gap-2.5">
-            <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden>
-              <rect x="1"  y="1"  width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.9" />
-              <rect x="12" y="1"  width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.4" />
-              <rect x="1"  y="12" width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.4" />
-              <rect x="12" y="12" width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.7" />
-            </svg>
-            <span className="text-sm font-bold tracking-tight text-ink">VisualMe</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            {[['#how-it-works', 'How it works'], ['#features', 'Features'], ['#pricing', 'Pricing']].map(([href, label]) => (
-              <a key={href} href={href} className="text-sm text-ink-faint hover:text-ink transition-colors">{label}</a>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <SignedOut>
-              <Link href="/sign-in" className="text-sm text-ink-faint hover:text-ink transition-colors px-2">Sign in</Link>
-              <Link href="/sign-up" className="px-4 py-2 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors">Start free</Link>
-            </SignedOut>
-            <SignedIn>
-              <Link href="/dashboard" className="px-4 py-2 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors flex items-center gap-1.5">Dashboard <ArrowRight size={13} /></Link>
-              <UserButton />
-            </SignedIn>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       {/* ── Hero ── */}
       <section className="relative" style={{ paddingTop: 80, paddingBottom: 96, backgroundImage: `radial-gradient(circle, ${dotColor} 1px, transparent 1px)`, backgroundSize: '24px 24px' }}>
@@ -322,7 +266,7 @@ export default function LandingPage() {
                 Describe it.<br />Refine it.<br />Done.
               </h1>
               <p className="mb-4 leading-relaxed text-ink-muted" style={{ fontSize: '1.0625rem', maxWidth: '44ch' }}>
-                Write what you want to see. VisualMe picks the right chart, generates it in seconds, and refines it with you in plain English until it's exactly right.
+                Write what you want to see. VisualMe picks the right chart, generates it in seconds, and refines it with you in plain English until it&apos;s exactly right.
               </p>
               <p className="mb-10 text-sm text-ink-faint" style={{ maxWidth: '44ch' }}>
                 Upload your own data. Run statistical tests. Export as PNG, SVG, or JSON. Share a link.

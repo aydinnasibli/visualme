@@ -4,7 +4,7 @@ import { parseFile } from '@/lib/services/file-parser';
 import { detectColumns } from '@/lib/services/statistics-service';
 import type { DatasetColumn } from '@/lib/types/statistics';
 
-export type AttachmentExtension = 'csv' | 'json' | 'txt';
+type AttachmentExtension = 'csv' | 'json' | 'txt';
 
 export interface FileAttachment {
   id: string;

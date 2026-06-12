@@ -1,7 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { getRedis } from '@/lib/utils/redis';
 
-export type RateLimitOperation = 'generate' | 'edit';
+export type RateLimitOperation = 'generate' | 'edit' | 'live-data';
 
 /**
  * Sliding-window limits per operation type.
@@ -9,8 +9,9 @@ export type RateLimitOperation = 'generate' | 'edit';
  * Token balance (monthly cap) is a separate, orthogonal concern.
  */
 const WINDOW_CONFIG: Record<RateLimitOperation, { requests: number; window: `${number} ${'s' | 'm' | 'h' | 'd'}` }> = {
-  generate: { requests: 10, window: '10 m' },  // 10 generations per 10 minutes
-  edit:     { requests: 15, window: '10 m' },  // 15 edits per 10 minutes
+  generate:   { requests: 10, window: '10 m' }, // 10 generations per 10 minutes
+  edit:       { requests: 15, window: '10 m' }, // 15 edits per 10 minutes
+  'live-data': { requests: 30, window: '1 m' }, // 30 live-data refreshes per minute, per IP
 };
 
 const _limiters = new Map<RateLimitOperation, Ratelimit>();

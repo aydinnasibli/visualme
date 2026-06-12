@@ -65,16 +65,8 @@ export const TOKEN_COSTS = {
   GET_VISUALIZATION: 0,
 };
 
-/**
- * Token refresh schedule
- */
-export const TOKEN_REFRESH = {
-  INTERVAL: 'monthly' as const,
-  DAY_OF_MONTH: 1, // Refresh on 1st of each month
-};
-
 // gpt-5.4-mini pricing constants used to convert real OpenAI token usage → internal tokens
-export const MODEL_PRICING = {
+const MODEL_PRICING = {
   INPUT_PER_TOKEN:  0.75  / 1_000_000,  // $0.00000075 per input token
   OUTPUT_PER_TOKEN: 4.50  / 1_000_000,  // $0.0000045  per output token
   UNIT_TOKEN_PRICE: 0.000917,            // internal token unit (anchored to edit cost ÷ 18)
@@ -155,7 +147,7 @@ export function validateInputLength(
  * Validate data size (for saved visualizations)
  */
 export function validateDataSize(
-  data: any,
+  data: unknown,
   maxSize: number = VALIDATION_LIMITS.MAX_DATA_SIZE
 ): { valid: boolean; error?: string; size?: number } {
   if (!data) {
@@ -172,30 +164,9 @@ export function validateDataSize(
       };
     }
     return { valid: true, size };
-  } catch (error) {
+  } catch {
     return { valid: false, error: 'Invalid data format' };
   }
-}
-
-/**
- * Validate array size
- */
-export function validateArraySize(
-  arr: any[],
-  maxSize: number
-): { valid: boolean; error?: string } {
-  if (!Array.isArray(arr)) {
-    return { valid: false, error: 'Must be an array' };
-  }
-
-  if (arr.length > maxSize) {
-    return {
-      valid: false,
-      error: `Array too large. Maximum ${maxSize} items allowed.`
-    };
-  }
-
-  return { valid: true };
 }
 
 /**
@@ -220,38 +191,6 @@ export function sanitizeError(error: unknown, fallbackMessage: string = 'An erro
   }
 
   return fallbackMessage;
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-export function escapeHtml(str: string): string {
-  const htmlEscapes: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  };
-
-  return str.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
-}
-
-/**
- * Escape CSV values to prevent formula injection
- */
-export function escapeCSV(value: string): string {
-  // Prevent formula injection
-  if (/^[=+\-@]/.test(value)) {
-    return `'${value}`;
-  }
-
-  // Escape quotes and wrap in quotes if contains comma
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-
-  return value;
 }
 
 /**

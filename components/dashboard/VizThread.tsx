@@ -2,17 +2,20 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Sparkles, ArrowUp, CheckCircle2, BarChart3, Paperclip, Loader2, LayoutGrid, Sigma } from 'lucide-react';
+import { Plus, Sparkles, ArrowUp, CheckCircle2, BarChart3, Paperclip, Loader2, LayoutGrid, Sigma, Trash2 } from 'lucide-react';
 import type { VisualizationSpec } from '@/lib/types/echarts-spec';
 import type { FileAttachment } from '@/lib/utils/file-attachment';
 import { ATTACHMENT_ACCEPT } from '@/lib/utils/file-attachment';
 import type { ChartSelection } from '@/lib/utils/chart-types';
 import type { StatTestResult, StatTestSelection } from '@/lib/types/statistics';
+import type { LiveSheetData } from '@/lib/utils/live-sheet';
 import AttachmentChip from '@/components/dashboard/AttachmentChip';
 import ChartTypeChip from '@/components/dashboard/ChartTypeChip';
 import ChartTypeGalleryModal from '@/components/dashboard/ChartTypeGalleryModal';
 import StatTestChip from '@/components/dashboard/StatTestChip';
 import StatTestPickerModal from '@/components/dashboard/StatTestPickerModal';
+import LiveSheetChip from '@/components/dashboard/LiveSheetChip';
+import LiveSheetButton from '@/components/dashboard/LiveSheetButton';
 
 export interface StatRun {
   selection: StatTestSelection;
@@ -43,17 +46,26 @@ export interface ThreadEntry {
 }
 
 /* ── Thread card ── */
-function ThreadCard({ entry, active, onClick }: { entry: ThreadEntry; active: boolean; onClick: () => void }) {
+function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; active: boolean; onClick: () => void; onDelete: (id: string) => void }) {
   const editCount = entry.chatHistory.filter(m => m.role === 'user').length;
+  const isLive = Boolean(entry.liveData?.url);
 
   return (
-    <motion.button
+    <motion.div
       layout
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18 }}
       onClick={onClick}
-      className="w-full text-left rounded-xl p-3 transition-colors relative group overflow-hidden"
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="w-full text-left rounded-xl p-3 transition-colors relative group overflow-hidden cursor-pointer"
       style={{
         background: active ? 'oklch(72% 0.13 55 / 0.08)' : 'transparent',
         border: `1px solid ${active ? 'oklch(72% 0.13 55 / 0.3)' : 'var(--color-edge)'}`,
@@ -68,6 +80,15 @@ function ThreadCard({ entry, active, onClick }: { entry: ThreadEntry; active: bo
         }}
       />
 
+      <button
+        type="button"
+        title="Delete session"
+        onClick={e => { e.stopPropagation(); onDelete(entry.id); }}
+        className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center text-ink-faint hover:text-danger hover:bg-surface-3 transition-colors opacity-0 group-hover:opacity-100"
+      >
+        <Trash2 size={12} />
+      </button>
+
       <div className="flex items-start gap-2.5 pl-1">
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -76,10 +97,19 @@ function ThreadCard({ entry, active, onClick }: { entry: ThreadEntry; active: bo
           <BarChart3 size={14} className="text-accent" />
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-5">
           <div className="flex items-center gap-1.5 mb-0.5">
             {entry.isSaved && (
               <CheckCircle2 className="w-3 h-3 shrink-0 text-success/60" />
+            )}
+            {isLive && (
+              <span className="flex items-center gap-1 text-[10px] font-medium text-success">
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0"
+                  style={{ boxShadow: '0 0 4px var(--color-success)' }}
+                />
+                Live
+              </span>
             )}
           </div>
           <p className="text-[12px] text-ink-muted font-medium leading-snug line-clamp-2">
@@ -92,7 +122,7 @@ function ThreadCard({ entry, active, onClick }: { entry: ThreadEntry; active: bo
           )}
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
@@ -135,6 +165,9 @@ interface ThreadInputProps {
   statRun: StatRun | null;
   onRunStat: (run: StatRun) => void;
   onClearStat: () => void;
+  liveSheet: LiveSheetData | null;
+  onConnectLiveSheet: (data: LiveSheetData) => void;
+  onDisconnectLiveSheet: () => void;
 }
 
 function ThreadInput({
@@ -142,6 +175,7 @@ function ThreadInput({
   attachment, attaching, onAttach, onRemoveAttachment,
   chartType, onChooseChartType, onClearChartType,
   statRun, onRunStat, onClearStat,
+  liveSheet, onConnectLiveSheet, onDisconnectLiveSheet,
 }: ThreadInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -169,7 +203,8 @@ function ThreadInput({
     e.target.value = '';
   };
 
-  const canAttach = !loading && !attaching && !attachment;
+  const canAttach = !loading && !attaching && !attachment && !liveSheet;
+  const canConnectLiveSheet = !loading && !attachment;
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -187,9 +222,10 @@ function ThreadInput({
       onDrop={handleDrop}
       className={`rounded-xl overflow-hidden transition-all surface-control ${dragActive ? 'border-accent/50 bg-accent/5' : ''}`}
     >
-      {(attachment || chartType || statRun) && (
+      {(attachment || chartType || statRun || liveSheet) && (
         <div className="px-3 pt-3 flex flex-wrap gap-1.5">
           {attachment && <AttachmentChip attachment={attachment} onRemove={onRemoveAttachment} />}
+          {liveSheet && <LiveSheetChip sheet={liveSheet} onRemove={onDisconnectLiveSheet} />}
           {chartType && <ChartTypeChip selection={chartType} onRemove={onClearChartType} />}
           {statRun && (
             <StatTestChip
@@ -206,7 +242,12 @@ function ThreadInput({
         value={input}
         onChange={e => setInput(e.target.value)}
         onKeyDown={handleKey}
-        placeholder={attachment ? 'Add instructions for this data (optional)…' : dragActive ? 'Drop your file to attach it…' : 'Describe what to visualize, or attach a data file…'}
+        placeholder={
+          liveSheet ? 'Add instructions for this data (optional)…'
+          : attachment ? 'Add instructions for this data (optional)…'
+          : dragActive ? 'Drop your file to attach it…'
+          : 'Describe what to visualize, or attach a data file…'
+        }
         disabled={loading}
         rows={1}
         className="w-full bg-transparent border-none focus:ring-0 text-ink placeholder:text-ink-faint resize-none text-sm leading-relaxed px-3 pt-3 pb-1 max-h-32 outline-none"
@@ -225,6 +266,12 @@ function ThreadInput({
             : <Paperclip size={13} />
           }
         </button>
+        <LiveSheetButton
+          liveSheet={liveSheet}
+          onConnect={onConnectLiveSheet}
+          onDisconnect={onDisconnectLiveSheet}
+          disabled={!canConnectLiveSheet}
+        />
         <button
           type="button"
           title="Choose a chart type to force the AI to build that exact visualization"
@@ -254,9 +301,9 @@ function ThreadInput({
         <div className="flex-1" />
         <button
           type="submit"
-          disabled={(!input.trim() && !attachment && !chartType) || loading}
+          disabled={(!input.trim() && !attachment && !chartType && !liveSheet) || loading}
           className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${
-            (input.trim() || attachment || chartType) && !loading
+            (input.trim() || attachment || chartType || liveSheet) && !loading
               ? 'bg-accent text-surface-0 hover:bg-accent-hover'
               : 'bg-surface-2 text-ink-faint'
           }`}
@@ -307,6 +354,10 @@ export interface VizThreadProps {
   statRun: StatRun | null;
   onRunStat: (run: StatRun) => void;
   onClearStat: () => void;
+  liveSheet: LiveSheetData | null;
+  onConnectLiveSheet: (data: LiveSheetData) => void;
+  onDisconnectLiveSheet: () => void;
+  onDelete: (id: string) => void;
 }
 
 export default function VizThread({
@@ -315,6 +366,8 @@ export default function VizThread({
   attachment, attaching, onAttach, onRemoveAttachment,
   chartType, onChooseChartType, onClearChartType,
   statRun, onRunStat, onClearStat,
+  liveSheet, onConnectLiveSheet, onDisconnectLiveSheet,
+  onDelete,
 }: VizThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -382,6 +435,7 @@ export default function VizThread({
               entry={entry}
               active={entry.id === activeId}
               onClick={() => onSelect(entry.id)}
+              onDelete={onDelete}
             />
           ))}
           {loading && <LoadingCard key="__loading" prompt={loadingPrompt} />}
@@ -406,6 +460,9 @@ export default function VizThread({
           statRun={statRun}
           onRunStat={onRunStat}
           onClearStat={onClearStat}
+          liveSheet={liveSheet}
+          onConnectLiveSheet={onConnectLiveSheet}
+          onDisconnectLiveSheet={onDisconnectLiveSheet}
         />
       </div>
     </div>

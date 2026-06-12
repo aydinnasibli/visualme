@@ -78,7 +78,7 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     emphasis: { focus: 'adjacency', itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.25)' } },
     lineStyle: { curveness: 0.5, opacity: 0.35 },
     itemStyle: { borderRadius: 3 },
-    label: { overflow: 'truncate', width: 110 },
+    label: { overflow: 'truncate', width: 160 },
     nodeGap: 12,
     nodeWidth: 16,
   },

@@ -5,24 +5,57 @@ import { nanoid } from 'nanoid';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { DashboardModel, VisualizationModel } from '@/lib/database/models';
 import { validateObjectId, sanitizeError } from '@/lib/utils/validation';
+import { sanitizeVisualization } from '@/lib/utils/helpers';
 import type { Dashboard, DashboardLayoutItem, DashboardVizSlot, DashboardWithVizzes } from '@/lib/types/dashboard';
-import type { SavedVisualization } from '@/lib/types/visualization';
 
 const MAX_SLOTS = 12;
 
-function sanitizeDashboard(doc: any): Dashboard {
-  const obj = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+interface RawDashboardDoc {
+  toObject?: () => Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface RawSlot {
+  vizId?: unknown;
+  titleSnapshot?: unknown;
+}
+
+interface RawLayoutItem {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  maxW?: number;
+  minH?: number;
+  maxH?: number;
+}
+
+const toIsoString = (value: unknown): string | undefined =>
+  value ? new Date(value as string | number | Date).toISOString() : undefined;
+
+function sanitizeDashboard(doc: unknown): Dashboard {
+  const raw = doc as RawDashboardDoc;
+  const obj = typeof raw.toObject === 'function' ? raw.toObject() : raw;
+
+  const slots = obj.slots as RawSlot[] | undefined;
+  const layout = obj.layout as RawLayoutItem[] | undefined;
+
   return {
     ...obj,
-    _id: obj._id?.toString(),
-    userId: obj.userId?.toString(),
-    createdAt: obj.createdAt ? new Date(obj.createdAt).toISOString() : new Date().toISOString(),
-    updatedAt: obj.updatedAt ? new Date(obj.updatedAt).toISOString() : new Date().toISOString(),
-    slots: Array.isArray(obj.slots)
-      ? obj.slots.map((s: any) => ({ vizId: s.vizId?.toString(), titleSnapshot: s.titleSnapshot }))
+    _id: (obj._id as { toString(): string } | undefined)?.toString(),
+    userId: (obj.userId as { toString(): string } | undefined)?.toString(),
+    createdAt: toIsoString(obj.createdAt) ?? new Date().toISOString(),
+    updatedAt: toIsoString(obj.updatedAt) ?? new Date().toISOString(),
+    slots: Array.isArray(slots)
+      ? slots.map((s) => ({
+          vizId: s.vizId != null ? String(s.vizId) : '',
+          titleSnapshot: typeof s.titleSnapshot === 'string' ? s.titleSnapshot : '',
+        }))
       : [],
-    layout: Array.isArray(obj.layout)
-      ? obj.layout.map((l: any) => ({
+    layout: Array.isArray(layout)
+      ? layout.map((l) => ({
           i: l.i,
           x: l.x,
           y: l.y,
@@ -34,16 +67,7 @@ function sanitizeDashboard(doc: any): Dashboard {
           ...(l.maxH != null ? { maxH: l.maxH } : {}),
         }))
       : [],
-  };
-}
-
-function sanitizeViz(v: any): SavedVisualization {
-  return {
-    ...v,
-    _id: v._id?.toString(),
-    createdAt: v.createdAt ? new Date(v.createdAt).toISOString() : new Date().toISOString(),
-    updatedAt: v.updatedAt ? new Date(v.updatedAt).toISOString() : new Date().toISOString(),
-  };
+  } as unknown as Dashboard;
 }
 
 /** Create a new dashboard. */
@@ -104,8 +128,8 @@ export async function updateDashboard(
     if (!doc) return { success: false, error: 'Dashboard not found or unauthorized' };
 
     if (updates.title !== undefined) doc.title = updates.title.trim();
-    if (updates.slots !== undefined) doc.slots = updates.slots as any;
-    if (updates.layout !== undefined) doc.layout = updates.layout as any;
+    if (updates.slots !== undefined) doc.slots = updates.slots as unknown as typeof doc.slots;
+    if (updates.layout !== undefined) doc.layout = updates.layout as unknown as typeof doc.layout;
 
     await doc.save();
 
@@ -164,33 +188,6 @@ export async function getUserDashboards() {
   }
 }
 
-/** Get a single dashboard by MongoDB _id (owner only). Includes resolved viz specs. */
-export async function getDashboardById(id: string): Promise<{ success: boolean; data?: DashboardWithVizzes; error?: string }> {
-  try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, error: 'Authentication required' };
-
-    const idValidation = validateObjectId(id);
-    if (!idValidation.valid) return { success: false, error: idValidation.error };
-
-    await connectToDatabase();
-
-    const doc = await DashboardModel.findOne({ _id: id, userId }).lean();
-    if (!doc) return { success: false, error: 'Dashboard not found or unauthorized' };
-
-    const dashboard = sanitizeDashboard(doc);
-    const vizIds = dashboard.slots.map(s => s.vizId);
-    const vizDocs = await VisualizationModel.find({ _id: { $in: vizIds }, userId }).lean();
-    const vizMap = new Map(vizDocs.map(v => [v._id.toString(), sanitizeViz(v)]));
-    const vizzes = vizIds.map(id => vizMap.get(id) ?? null);
-
-    return { success: true, data: { ...dashboard, vizzes } };
-  } catch (error) {
-    console.error('getDashboardById error:', error);
-    return { success: false, error: sanitizeError(error, 'Failed to fetch dashboard') };
-  }
-}
-
 /** Public access — fetch a shared dashboard with all its viz specs. */
 export async function getSharedDashboard(dashboardId: string): Promise<{ success: boolean; data?: DashboardWithVizzes; error?: string }> {
   try {
@@ -209,7 +206,7 @@ export async function getSharedDashboard(dashboardId: string): Promise<{ success
       userId: dashboard.userId,
     }).lean();
 
-    const vizMap = new Map(vizDocs.map(v => [v._id.toString(), sanitizeViz(v)]));
+    const vizMap = new Map(vizDocs.map(v => [v._id.toString(), sanitizeVisualization(v)]));
     const vizzes = vizIds.map(id => vizMap.get(id) ?? null);
 
     return { success: true, data: { ...dashboard, vizzes } };

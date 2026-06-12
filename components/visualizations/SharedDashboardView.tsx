@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { GridLayout, useContainerWidth } from 'react-grid-layout';
 import Link from 'next/link';
 import { BarChart3, LayoutDashboard } from 'lucide-react';
@@ -74,7 +73,7 @@ export default function SharedDashboardView({ dashboard }: Props) {
                   <div className="h-full w-full rounded-xl overflow-hidden border border-white/8 bg-slate-900 relative group">
                     {viz ? (
                       <>
-                        <EChartsRenderer spec={viz.spec} className="w-full h-full" />
+                        <EChartsRenderer spec={viz.spec} className="w-full h-full" forceMode="dark" />
                         <div
                           className="absolute bottom-0 left-0 right-0 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
                           style={{ background: 'linear-gradient(to top, rgba(15,23,42,0.9) 60%, transparent)' }}

@@ -31,7 +31,7 @@ export default function SharedVisualizationView({ visualization }: { visualizati
 
       {/* Viz — flex-1 min-h-0 so the absolute child can resolve its height */}
       <div className="flex-1 min-h-0 relative">
-        <EChartsRenderer spec={visualization.spec} className="absolute inset-0 p-8" />
+        <EChartsRenderer spec={visualization.spec} className="absolute inset-0 p-8" forceMode="dark" />
       </div>
 
       {/* Footer */}

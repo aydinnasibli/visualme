@@ -67,9 +67,9 @@ export default async function AdminUserDetailPage({
                   <User className="w-5 h-5 text-indigo-400" />
                 </div>
               )}
-              <div>
-                <p className="text-sm font-medium text-white">{displayName}</p>
-                <p className="text-xs text-white/30">{user.email}</p>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white truncate">{displayName}</p>
+                <p className="text-xs text-white/30 truncate">{user.email}</p>
               </div>
             </div>
 

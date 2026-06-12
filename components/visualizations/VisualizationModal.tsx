@@ -10,6 +10,7 @@ import type { SavedVisualization } from "@/lib/types/visualization";
 import { toast } from "sonner";
 import { VisualizationErrorBoundary } from "@/components/VisualizationErrorBoundary";
 import EChartsRenderer from "@/components/visualizations/EChartsRenderer";
+import { exportCanvasAsPNG } from "@/lib/utils/export-png";
 
 interface VisualizationModalProps {
   visualization: SavedVisualization | null;
@@ -33,11 +34,13 @@ export default function VisualizationModal({
   const [shareId, setShareId] = useState(visualization?.shareId ?? null);
 
   /* Sync all derived state when prop changes */
-  useEffect(() => {
+  const [prevVisualization, setPrevVisualization] = useState(visualization);
+  if (visualization !== prevVisualization) {
+    setPrevVisualization(visualization);
     setCurrentVisualization(visualization);
     setIsPublic(visualization?.isPublic ?? false);
     setShareId(visualization?.shareId ?? null);
-  }, [visualization]);
+  }
 
   /* Escape key closes modal */
   useEffect(() => {
@@ -80,15 +83,9 @@ export default function VisualizationModal({
     const area = document.querySelector('[data-viz-area]') as HTMLElement;
     if (!area) { toast.error('Could not capture visualization'); return; }
     try {
-      const canvas = area.querySelector('canvas') as HTMLCanvasElement | null;
-      if (!canvas) { toast.error('No chart canvas found'); return; }
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `${currentVisualization?.title?.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'visualization'}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const filename = `${currentVisualization?.title?.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'visualization'}.png`;
+      const ok = exportCanvasAsPNG(area, filename);
+      if (!ok) { toast.error('No chart canvas found'); return; }
       toast.success('Exported as PNG');
     } catch { toast.error('PNG export failed'); }
   };
@@ -276,7 +273,7 @@ export default function VisualizationModal({
               {/* Visualization Content */}
               <div className="flex-1 overflow-hidden min-h-0 relative bg-zinc-950/50" data-viz-area>
                 <VisualizationErrorBoundary>
-                  <EChartsRenderer spec={currentVisualization.spec} className="w-full h-full p-6" />
+                  <EChartsRenderer spec={currentVisualization.spec} className="w-full h-full p-6" forceMode="dark" />
                 </VisualizationErrorBoundary>
               </div>
             </div>

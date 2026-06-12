@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
             username: username ?? undefined,
           },
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
       );
     }
 

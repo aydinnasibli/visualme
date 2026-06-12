@@ -79,9 +79,14 @@ export default function ChartTypeGalleryModal({ open, onClose, onSelect }: Chart
   const [query, setQuery] = useState('');
   const [pendingType, setPendingType] = useState<ChartTypeOption | null>(null);
 
-  useEffect(() => {
-    if (!open) { setQuery(''); setPendingType(null); }
-  }, [open]);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) {
+      setQuery('');
+      setPendingType(null);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;

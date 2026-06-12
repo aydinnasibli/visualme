@@ -33,6 +33,60 @@ const LEGEND_BY_POSITION: Record<BrandTheme['legendPosition'], Record<string, un
   none:   null,
 };
 
+/** Chart types where each series is its own legend entry, keyed by `series.name`. */
+const SERIES_NAME_LEGEND_TYPES = new Set(['line', 'bar', 'scatter', 'boxplot']);
+
+/** Chart types where a single series compares multiple entities, each its own legend entry keyed by `data[].name`. */
+const DATA_NAME_LEGEND_TYPES = new Set(['radar', 'pie']);
+
+function isNonEmptyName(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Safety net for AI-authored specs that compare multiple named series or
+ * entities but forgot the `legend` the few-shot examples ask for (e.g. a
+ * 3-entity radar comparison with no way to tell which polygon is which
+ * product). Only fires when a legend is unambiguously useful — multiple
+ * distinctly-named series (line/bar/scatter) or a single radar/pie series
+ * with multiple distinctly-named data entries — so it never adds one where
+ * the AI deliberately omitted it for a single-entity chart.
+ */
+function seriesNeedsLegend(series: EChartsOption['series']): boolean {
+  if (!Array.isArray(series) || series.length === 0) return false;
+
+  if (series.length >= 2) {
+    return series.every((s) => {
+      const entry = s as Record<string, unknown>;
+      return typeof entry.type === 'string'
+        && SERIES_NAME_LEGEND_TYPES.has(entry.type)
+        && isNonEmptyName(entry.name);
+    });
+  }
+
+  const entry = series[0] as Record<string, unknown>;
+  const data = entry.data;
+  if (typeof entry.type !== 'string' || !DATA_NAME_LEGEND_TYPES.has(entry.type)) return false;
+  if (!Array.isArray(data) || data.length < 2) return false;
+  return data.every((d) => isNonEmptyName((d as Record<string, unknown> | null)?.name));
+}
+
+/** Number of entries a themed legend would show — one per series, or per data entry for radar/pie. */
+function countLegendEntries(series: EChartsOption['series']): number {
+  if (!Array.isArray(series) || series.length === 0) return 0;
+  if (series.length >= 2) return series.length;
+  const data = (series[0] as Record<string, unknown>).data;
+  return Array.isArray(data) ? data.length : 0;
+}
+
+/**
+ * Past this many entries, a non-scrolling legend wraps onto several lines —
+ * the fixed `legendTopOffset`/grid-top guard below only reserves space for
+ * one line, so a wrapped legend spills into and overlaps the chart body.
+ * `type: 'scroll'` keeps it to a single paginated line instead.
+ */
+const LEGEND_SCROLL_THRESHOLD = 8;
+
 function baseTextStyle(theme: BrandTheme, size: number, color = theme.textColor) {
   return {
     fontFamily: theme.fontFamily,
@@ -41,27 +95,44 @@ function baseTextStyle(theme: BrandTheme, size: number, color = theme.textColor)
   };
 }
 
-/** Merges theme styling into a single axis config without disturbing AI-authored structure (type/data/name). */
-function themeAxis(axis: AxisOption | undefined, theme: BrandTheme): AxisOption {
+/**
+ * Merges theme styling into a single axis config without disturbing AI-authored
+ * structure (type/data/name). For a named y-axis, ECharts' default
+ * `nameLocation: 'end'` renders the name just above the grid's top edge — the
+ * same zone reserved for the title and a top-positioned legend, so on
+ * multi-series charts (legend wraps to 2+ rows) the axis name collides with
+ * the legend text. Defaulting named y-axes to a vertical title along the side
+ * (`middle` + rotated) avoids that zone entirely and matches the standard
+ * dual-axis chart convention. Only backfilled when the AI didn't already
+ * specify a placement.
+ */
+function themeAxis(axis: AxisOption | undefined, theme: BrandTheme, axisType: 'x' | 'y'): AxisOption {
   const a = (axis ?? {}) as Record<string, unknown>;
+  const needsNamePlacement = axisType === 'y' && a.name && a.nameLocation === undefined;
   return {
     ...a,
     axisLabel: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...(a.axisLabel as object) },
     axisLine: { lineStyle: { color: theme.borderColor }, ...(a.axisLine as object) },
     splitLine: { lineStyle: { color: theme.borderColor, type: 'dashed' }, ...(a.splitLine as object) },
     nameTextStyle: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...(a.nameTextStyle as object) },
+    ...(needsNamePlacement ? {
+      nameLocation: 'middle',
+      nameGap: 48,
+      nameRotate: a.position === 'right' ? -90 : 90,
+    } : {}),
   } as AxisOption;
 }
 
 function themeAxes(
   axis: EChartsOption['xAxis'] | EChartsOption['yAxis'],
-  theme: BrandTheme
+  theme: BrandTheme,
+  axisType: 'x' | 'y'
 ): EChartsOption['xAxis'] | EChartsOption['yAxis'] {
   if (axis === undefined) return undefined;
   if (Array.isArray(axis)) {
-    return axis.map((a) => themeAxis(a as AxisOption, theme)) as unknown as EChartsOption['xAxis'];
+    return axis.map((a) => themeAxis(a as AxisOption, theme, axisType)) as unknown as EChartsOption['xAxis'];
   }
-  return themeAxis(axis as AxisOption, theme) as unknown as EChartsOption['xAxis'];
+  return themeAxis(axis as AxisOption, theme, axisType) as unknown as EChartsOption['xAxis'];
 }
 
 /**
@@ -302,18 +373,36 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
       }
     : undefined;
 
-  // Only style a legend if the structural spec already declared one — the
-  // theme restyles/repositions it but never decides whether one belongs.
-  if (original.legend !== undefined) {
+  // Style a legend if the structural spec declared one, or backfill a default
+  // when the spec omitted it but multiple distinctly-named series make one
+  // unambiguously useful (see seriesNeedsLegend) — the theme restyles/repositions
+  // a legend but otherwise never decides whether one belongs.
+  const effectiveLegend = original.legend !== undefined
+    ? original.legend
+    : (seriesNeedsLegend(original.series as EChartsOption['series']) ? {} : undefined);
+
+  if (effectiveLegend !== undefined) {
     if (legendOverride) {
+      // A non-scrolling legend wraps onto multiple lines once it has many entries,
+      // but the grid-top guard below only reserves space for one line — switch to
+      // a paginated single-line legend instead of letting it spill into the chart.
+      const scrollDefaults = countLegendEntries(original.series as EChartsOption['series']) > LEGEND_SCROLL_THRESHOLD
+        ? {
+            type: 'scroll' as const,
+            pageIconColor: theme.textColor,
+            pageIconInactiveColor: theme.borderColor,
+            pageTextStyle: baseTextStyle(theme, theme.fontSize.legend, theme.mutedTextColor),
+          }
+        : {};
       themed.legend = {
         ...legendOverride,
         ...(isTopLegend ? { top: legendTopOffset } : {}),
         textStyle: baseTextStyle(theme, theme.fontSize.legend, theme.mutedTextColor),
-        ...(original.legend as object),
+        ...scrollDefaults,
+        ...(effectiveLegend as object),
       };
     } else {
-      themed.legend = { ...(original.legend as object), show: false };
+      themed.legend = { ...(effectiveLegend as object), show: false };
     }
   }
 
@@ -334,7 +423,7 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
     // Guard: ensure the cartesian plot area starts below the title and any top-positioned
     // legend. ECharts doesn't factor these non-grid elements into its layout pass, so
     // without this the chart body can overlap the title row or legend row.
-    const topLegendHasContent = isTopLegend && original.legend !== undefined;
+    const topLegendHasContent = isTopLegend && effectiveLegend !== undefined;
     const minTop = (() => {
       if (topLegendHasContent) return legendTopOffset + 28;   // legend bottom edge + gap
       if (hasTitle)            return hasSubtext ? 72 : 52;   // title bottom edge + gap
@@ -346,21 +435,39 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
 
   // Radar axis-name overflow — indicator names are often long phrases; truncate
   // them at the axis label level so they don't overrun adjacent spokes.
+  //
+  // ECharts' default `splitArea` alternates light/dark gray bands designed for
+  // a white canvas — on the app's dark surfaces those bands render as a harsh
+  // gray "target" pattern. Match the cartesian axes' look instead: themed
+  // axis/split lines, no area fill.
   if (original.radar !== undefined) {
     const radarArr = Array.isArray(original.radar) ? original.radar : [original.radar];
-    themed.radar = radarArr.map((r) => ({
-      ...(r as object),
-      axisName: {
-        overflow: 'truncate',
-        width: 80,
-        ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor),
-        ...((r as Record<string, unknown>).axisName as object),
-      },
-    }));
+    // A top-positioned legend (plus title) overlaps the radar's default
+    // center/radius — unlike `grid`, radar has no `top` inset to push it down,
+    // so shrink and re-center it to clear the legend/title band instead.
+    const topLegendHasContent = isTopLegend && effectiveLegend !== undefined;
+    themed.radar = radarArr.map((r) => {
+      const rec = r as Record<string, unknown>;
+      return {
+        ...rec,
+        ...(topLegendHasContent && rec.center === undefined && rec.radius === undefined
+          ? { center: ['50%', '61%'], radius: '55%' }
+          : {}),
+        axisLine: { lineStyle: { color: theme.borderColor }, ...(rec.axisLine as object) },
+        splitLine: { lineStyle: { color: theme.borderColor }, ...(rec.splitLine as object) },
+        splitArea: { show: false, ...(rec.splitArea as object) },
+        axisName: {
+          overflow: 'truncate',
+          width: 80,
+          ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor),
+          ...(rec.axisName as object),
+        },
+      };
+    });
   }
 
-  themed.xAxis = themeAxes(original.xAxis as EChartsOption['xAxis'], theme);
-  themed.yAxis = themeAxes(original.yAxis as EChartsOption['yAxis'], theme);
+  themed.xAxis = themeAxes(original.xAxis as EChartsOption['xAxis'], theme, 'x');
+  themed.yAxis = themeAxes(original.yAxis as EChartsOption['yAxis'], theme, 'y');
   themed.series = themeSeries(original.series as EChartsOption['series'], theme, styleEffect);
 
   // ── Polar coordinate axes (used by polar bar, line, scatter, heatmap variants) ──

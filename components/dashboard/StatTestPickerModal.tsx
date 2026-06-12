@@ -92,8 +92,12 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
   const [result, setResult] = useState<StatTestResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevInitialRun, setPrevInitialRun] = useState(initialRun);
+
+  if (open && (open !== prevOpen || initialRun !== prevInitialRun)) {
+    setPrevOpen(open);
+    setPrevInitialRun(initialRun);
     if (initialRun) {
       setSelectedTest(initialRun.selection.test);
       setSelectedColumns(initialRun.selection.columns);
@@ -108,7 +112,9 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
       setResult(null);
     }
     setRunError(null);
-  }, [open, initialRun]);
+  } else if (open !== prevOpen) {
+    setPrevOpen(open);
+  }
 
   useEffect(() => {
     if (!open) return;

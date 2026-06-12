@@ -21,5 +21,5 @@ export default async function DashboardBuilderPage() {
   const vizzes = (vizRes.success && vizRes.data) ? vizRes.data : [];
   const dashboards = (dashRes.success && dashRes.data) ? dashRes.data : [];
 
-  return <DashboardBuilder initialVizzes={vizzes as any} initialDashboards={dashboards as any} />;
+  return <DashboardBuilder initialVizzes={vizzes} initialDashboards={dashboards} />;
 }

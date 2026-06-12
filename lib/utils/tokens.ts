@@ -35,7 +35,7 @@ async function refreshTokensIfNeeded(usage: HydratedDocument<UserUsage>): Promis
   }
 }
 
-export async function getUserUsage(userId: string): Promise<HydratedDocument<UserUsage>> {
+async function getUserUsage(userId: string): Promise<HydratedDocument<UserUsage>> {
   await connectToDatabase();
 
   let usage = await UserUsageModel.findOne({ userId });
@@ -119,7 +119,7 @@ export async function deductTokens(
       $expr: { $lte: [{ $add: ['$tokensUsed', tokenCost] }, '$tokensLimit'] },
     },
     { $inc: { tokensUsed: tokenCost } },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!result) {

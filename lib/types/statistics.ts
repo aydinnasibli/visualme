@@ -62,10 +62,6 @@ export interface StatTestResult {
   warnings: string[];
 }
 
-export interface StatisticsAnalysisError {
-  error: string;
-}
-
 /**
  * A finalized "run this test on these columns" choice — the statistics analog
  * of `ChartSelection`. Stores column names (not `DatasetColumn` objects) so it

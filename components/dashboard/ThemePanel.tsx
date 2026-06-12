@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from 'react';
 import { Check, Palette, Type, LayoutGrid } from 'lucide-react';
 import type { BrandTheme, ChartSpacing, LegendPosition } from '@/lib/types/echarts-spec';
 
@@ -77,14 +76,13 @@ interface ThemePanelProps {
 }
 
 export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
-  const [customColor, setCustomColor] = useState(theme.palette[0] ?? '#6366f1');
+  const primaryColor = theme.palette[0] ?? '#6366f1';
 
   const update = (patch: Partial<BrandTheme>) => onChange({ ...theme, ...patch });
 
   const setPalette = (colors: string[]) => update({ palette: colors });
 
   const setPrimaryColor = (hex: string) => {
-    setCustomColor(hex);
     update({ palette: [hex, ...theme.palette.slice(1)] });
   };
 
@@ -119,14 +117,14 @@ export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-2 border border-edge">
           <input
             type="color"
-            value={customColor}
+            value={primaryColor}
             onChange={e => setPrimaryColor(e.target.value)}
             className="w-7 h-7 rounded-md border border-edge cursor-pointer bg-transparent shrink-0"
             title="Primary brand color"
           />
           <div className="min-w-0">
             <p className="text-[11px] font-medium text-ink-muted">Primary color</p>
-            <p className="text-[10px] text-ink-faint font-mono truncate">{customColor}</p>
+            <p className="text-[10px] text-ink-faint font-mono truncate">{primaryColor}</p>
           </div>
         </div>
       </Section>

@@ -1,6 +1,6 @@
 import mongoose, { Schema, Model, Document } from 'mongoose';
 
-export interface IUser extends Document {
+interface IUser extends Document {
   clerkId: string;
   email?: string;
   username?: string;
@@ -88,7 +88,7 @@ UserSchema.statics.findOrCreate = async function(clerkId: string, userData?: Par
   const user = await this.findOneAndUpdate(
     { clerkId },
     update,
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
   );
 
   return user;

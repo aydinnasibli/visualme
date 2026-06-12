@@ -18,7 +18,6 @@ import {
   updateDashboard,
   publishDashboard,
   deleteDashboard,
-  getUserDashboards,
 } from '@/lib/actions/dashboard';
 import type { Dashboard, DashboardLayoutItem, DashboardVizSlot } from '@/lib/types/dashboard';
 import type { SavedVisualization } from '@/lib/types/visualization';
@@ -386,9 +385,13 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
   }, []);
 
   const handleLayoutChange = useCallback((newLayout: Layout) => {
+    const changed = newLayout.length !== layout.length || newLayout.some(item => {
+      const prev = layout.find(l => l.i === item.i);
+      return !prev || prev.x !== item.x || prev.y !== item.y || prev.w !== item.w || prev.h !== item.h;
+    });
     setLayout(newLayout as DashboardLayoutItem[]);
-    setIsDirty(true);
-  }, []);
+    if (changed) setIsDirty(true);
+  }, [layout]);
 
   const handleTitleChange = (v: string) => { setTitle(v); setIsDirty(true); };
 
@@ -414,8 +417,8 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
         setIsDirty(false);
         toast.success('Dashboard created');
       }
-    } catch (err: any) {
-      toast.error(err.message ?? 'Save failed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -433,8 +436,8 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
       setDashboards(prev => prev.map(d => d._id === updated._id ? updated : d));
       // Reflect new isPublic/dashboardId in the view
       setActiveDashboardId(updated._id!);
-    } catch (err: any) {
-      toast.error(err.message ?? 'Failed to update share settings');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update share settings');
     } finally {
       setPublishing(false);
     }
@@ -499,7 +502,7 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
           {/* Preview */}
           {currentSavedDashboard?.isPublic && currentSavedDashboard.dashboardId && (
             <a
-              href={buildShareUrl(currentSavedDashboard.dashboardId)}
+              href={`/share/dashboard/${currentSavedDashboard.dashboardId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border text-ink-muted hover:text-ink hover:bg-surface-2"

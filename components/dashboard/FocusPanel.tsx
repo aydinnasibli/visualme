@@ -9,7 +9,7 @@ import {
   LayoutGrid, CircleDot, Workflow,
   Pencil, Sparkles, X, Download, ImageIcon,
   Globe, FileJson, FileSpreadsheet, FileCode, Zap,
-  Rss, RefreshCw, Clock, Link, Unlink,
+  Rss, RefreshCw, Clock, Unlink,
 } from 'lucide-react';
 import type { ElementType } from 'react';
 import { toast } from 'sonner';
@@ -33,6 +33,8 @@ import type { ThreadEntry } from '@/components/dashboard/VizThread';
 import { VisualizationErrorBoundary } from '@/components/VisualizationErrorBoundary';
 import EditPanel from '@/components/dashboard/EditPanel';
 import EChartsRenderer from '@/components/visualizations/EChartsRenderer';
+import { exportCanvasAsPNG } from '@/lib/utils/export-png';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
 
@@ -56,7 +58,7 @@ function ActionBtn({
     <button
       title={title}
       onClick={onClick}
-      className="h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-all duration-150"
+      className="h-7 px-2 sm:px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-all duration-150"
       style={{ color: active ? colors.hover : colors.base, background: active ? colors.bgActive : colors.bg }}
       onMouseEnter={e => {
         e.currentTarget.style.color = colors.hover;
@@ -142,10 +144,12 @@ export default function FocusPanel({
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [exporting, setExporting] = useState(false);
-  const [liveUrlInput, setLiveUrlInput] = useState('');
   const [liveInterval, setLiveInterval] = useState(0);
   const exportRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef<HTMLDivElement>(null);
+
+  /* Below `sm`, the Refine panel becomes a full-screen overlay */
+  const isMobile = useMediaQuery('(max-width: 639px)');
 
   /* Close export dropdown only when clicking outside it */
   useEffect(() => {
@@ -167,18 +171,15 @@ export default function FocusPanel({
     return () => document.removeEventListener('mousedown', close);
   }, [liveOpen]);
 
-  /* Sync URL input when thread changes */
-  useEffect(() => {
-    setLiveUrlInput(thread?.liveData?.url ?? '');
+  /* Sync URL input and reset inline title editor whenever the active thread changes */
+  const [prevThreadId, setPrevThreadId] = useState(thread?.id);
+  if (thread?.id !== prevThreadId) {
+    setPrevThreadId(thread?.id);
     setLiveInterval(thread?.liveData?.interval ?? 0);
     setLiveOpen(false);
-  }, [thread?.id]);
-
-  /* Reset inline title editor whenever the active thread changes */
-  useEffect(() => {
     setEditingTitle(false);
     setEditTitleValue('');
-  }, [thread?.id]);
+  }
 
   const vizAreaRef = useRef<HTMLDivElement | null>(null);
 
@@ -190,15 +191,8 @@ export default function FocusPanel({
     setExporting(true);
     setExportOpen(false);
     try {
-      const canvas = vizAreaRef.current.querySelector('canvas') as HTMLCanvasElement | null;
-      if (!canvas) { toast.error('No chart canvas found'); return; }
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `${safeTitle(thread)}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const ok = exportCanvasAsPNG(vizAreaRef.current, `${safeTitle(thread)}.png`);
+      if (!ok) { toast.error('No chart canvas found'); return; }
       toast.success('Exported as PNG');
     } catch {
       toast.error('PNG export failed');
@@ -244,7 +238,7 @@ export default function FocusPanel({
             style={{ background: 'oklch(72% 0.13 55 / 0.08)', border: '1px solid oklch(72% 0.13 55 / 0.18)' }}
           >
             <BadgeIcon size={12} className="text-accent" />
-            <span className="text-[11px] font-semibold text-accent">{badgeLabel}</span>
+            <span className="hidden sm:inline text-[11px] font-semibold text-accent">{badgeLabel}</span>
           </div>
 
           {/* Title — click to rename */}
@@ -283,7 +277,7 @@ export default function FocusPanel({
           {/* Metadata chip */}
           {thread.metadata?.aiModel && (
             <div
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0"
+              className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0"
               style={{
                 background: thread.metadata.fromCache ? 'oklch(73% 0.12 200 / 0.08)' : 'oklch(72% 0.13 55 / 0.08)',
                 border: `1px solid ${thread.metadata.fromCache ? 'oklch(73% 0.12 200 / 0.2)' : 'oklch(72% 0.13 55 / 0.2)'}`,
@@ -299,7 +293,7 @@ export default function FocusPanel({
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <ActionBtn
               title={thread.isSaved ? 'Saved' : 'Save visualization'}
               onClick={saving ? () => {} : onSave}
@@ -310,7 +304,7 @@ export default function FocusPanel({
                 ? <div className="w-3 h-3 border-2 border-success/30 border-t-success rounded-full animate-spin" />
                 : <CheckCircle size={13} />
               }
-              <span>{thread.isSaved ? 'Saved' : 'Save'}</span>
+              <span className="hidden sm:inline">{thread.isSaved ? 'Saved' : 'Save'}</span>
             </ActionBtn>
 
             <ActionBtn
@@ -320,7 +314,7 @@ export default function FocusPanel({
               active={thread.isPublic}
             >
               {thread.isPublic ? <Globe size={13} /> : <Share2 size={13} />}
-              <span>{thread.isPublic ? 'Public' : 'Share'}</span>
+              <span className="hidden sm:inline">{thread.isPublic ? 'Public' : 'Share'}</span>
             </ActionBtn>
 
             {/* Export dropdown — ref scoped so outside clicks close it but inside clicks don't */}
@@ -330,7 +324,7 @@ export default function FocusPanel({
                   ? <div className="w-3 h-3 border-2 border-ink-faint/30 border-t-ink-muted rounded-full animate-spin" />
                   : <Download size={13} />
                 }
-                <span>Export</span>
+                <span className="hidden sm:inline">Export</span>
               </ActionBtn>
               <AnimatePresence>
                 {exportOpen && (
@@ -362,92 +356,83 @@ export default function FocusPanel({
               </AnimatePresence>
             </div>
 
-            {/* Live Data dropdown */}
-            <div className="relative" ref={liveRef}>
-              <ActionBtn
-                title={thread.liveData?.url ? 'Live data connected' : 'Connect live data source'}
-                onClick={() => setLiveOpen(p => !p)}
-                active={liveOpen || !!thread.liveData?.url}
-                variant={thread.liveData?.url ? 'success' : 'default'}
-              >
-                <Rss size={12} />
-                <span>Live</span>
-                {thread.liveData?.url && (
+            {/* Live Data dropdown — only shown once a sheet is connected (via the chat composer) */}
+            {thread.liveData?.url && (
+              <div className="relative" ref={liveRef}>
+                <ActionBtn
+                  title="Live data connected"
+                  onClick={() => setLiveOpen(p => !p)}
+                  active={liveOpen}
+                  variant="success"
+                >
+                  <Rss size={12} />
+                  <span className="hidden sm:inline">Live</span>
                   <span
                     className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0"
                     style={{ boxShadow: '0 0 4px var(--color-success)' }}
                   />
-                )}
-              </ActionBtn>
+                </ActionBtn>
 
-              <AnimatePresence>
-                {liveOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                    transition={{ duration: 0.13 }}
-                    className="absolute right-0 top-full mt-1.5 w-72 rounded-xl z-50 bg-surface-2 border border-edge shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
-                  >
-                    <div className="p-3 flex flex-col gap-2.5">
-                      {/* Header */}
-                      <div className="flex items-center gap-2">
-                        <Rss size={12} className="text-accent" />
-                        <span className="text-xs font-semibold text-ink">Live Data</span>
-                        {thread.liveData?.url && (
+                <AnimatePresence>
+                  {liveOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                      transition={{ duration: 0.13 }}
+                      className="absolute right-0 top-full mt-1.5 w-72 rounded-xl z-50 bg-surface-2 border border-edge shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+                    >
+                      <div className="p-3 flex flex-col gap-2.5">
+                        {/* Header */}
+                        <div className="flex items-center gap-2">
+                          <Rss size={12} className="text-accent" />
+                          <span className="text-xs font-semibold text-ink">Live Data</span>
                           <span className="ml-auto text-[10px] font-medium text-success flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                             Connected
                           </span>
-                        )}
-                      </div>
-
-                      {/* URL input */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-medium text-ink-faint flex items-center gap-1">
-                          <Link size={9} /> Google Sheets or CSV URL
-                        </label>
-                        <input
-                          value={liveUrlInput}
-                          onChange={e => setLiveUrlInput(e.target.value)}
-                          placeholder="https://docs.google.com/spreadsheets/…"
-                          className="w-full text-[11px] px-2.5 py-1.5 rounded-lg bg-surface-3 border border-edge text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent/50 transition-colors"
-                        />
-                      </div>
-
-                      {/* Refresh interval */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-medium text-ink-faint flex items-center gap-1">
-                          <Clock size={9} /> Auto-refresh
-                        </label>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {INTERVAL_OPTIONS.map(opt => (
-                            <button
-                              key={opt.value}
-                              onClick={() => setLiveInterval(opt.value)}
-                              className="text-[10px] font-medium px-2 py-0.5 rounded-md border transition-colors"
-                              style={{
-                                background: liveInterval === opt.value ? 'oklch(72% 0.13 55 / 0.12)' : 'transparent',
-                                borderColor: liveInterval === opt.value ? 'oklch(72% 0.13 55 / 0.4)' : 'var(--color-edge)',
-                                color: liveInterval === opt.value ? 'var(--color-accent)' : 'var(--color-ink-faint)',
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
                         </div>
-                      </div>
 
-                      {/* Last refreshed */}
-                      {thread.liveData?.lastRefreshed && (
-                        <p className="text-[10px] text-ink-faint">
-                          Last refreshed: {new Date(thread.liveData.lastRefreshed).toLocaleString()}
+                        {/* Source */}
+                        <p className="text-[10px] text-ink-faint truncate" title={thread.liveData.url}>
+                          {thread.liveData.url}
                         </p>
-                      )}
 
-                      {/* Actions */}
-                      <div className="flex gap-1.5 pt-0.5">
-                        {thread.liveData?.url && (
+                        {/* Refresh interval */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] font-medium text-ink-faint flex items-center gap-1">
+                            <Clock size={9} /> Auto-refresh
+                          </label>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {INTERVAL_OPTIONS.map(opt => (
+                              <button
+                                key={opt.value}
+                                onClick={() => {
+                                  setLiveInterval(opt.value);
+                                  onLiveDataChange?.({ url: thread.liveData!.url, interval: opt.value });
+                                }}
+                                className="text-[10px] font-medium px-2 py-0.5 rounded-md border transition-colors"
+                                style={{
+                                  background: liveInterval === opt.value ? 'oklch(72% 0.13 55 / 0.12)' : 'transparent',
+                                  borderColor: liveInterval === opt.value ? 'oklch(72% 0.13 55 / 0.4)' : 'var(--color-edge)',
+                                  color: liveInterval === opt.value ? 'var(--color-accent)' : 'var(--color-ink-faint)',
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Last refreshed */}
+                        {thread.liveData?.lastRefreshed && (
+                          <p className="text-[10px] text-ink-faint">
+                            Last refreshed: {new Date(thread.liveData.lastRefreshed).toLocaleString()}
+                          </p>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-1.5 pt-0.5">
                           <button
                             onClick={() => { onRefreshLiveData?.(); setLiveOpen(false); }}
                             disabled={isRefreshing}
@@ -456,43 +441,27 @@ export default function FocusPanel({
                             <RefreshCw size={11} className={isRefreshing ? 'animate-spin' : ''} />
                             {isRefreshing ? 'Refreshing…' : 'Refresh now'}
                           </button>
-                        )}
 
-                        {liveUrlInput.trim() && (
-                          <button
-                            onClick={() => {
-                              onLiveDataChange?.({ url: liveUrlInput.trim(), interval: liveInterval });
-                              setLiveOpen(false);
-                            }}
-                            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg text-white transition-colors ml-auto"
-                            style={{ background: 'var(--color-accent)' }}
-                          >
-                            <Link size={11} />
-                            {thread.liveData?.url ? 'Update' : 'Connect'}
-                          </button>
-                        )}
-
-                        {thread.liveData?.url && (
                           <button
                             onClick={() => { onLiveDataChange?.(null); setLiveOpen(false); }}
-                            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-edge text-danger hover:bg-surface-3 transition-colors"
+                            className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-edge text-danger hover:bg-surface-3 transition-colors ml-auto"
                           >
                             <Unlink size={11} />
                             Disconnect
                           </button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
-            <div className="w-px h-4 bg-edge mx-0.5" />
+            <div className="hidden sm:block w-px h-4 bg-edge mx-0.5" />
 
             <ActionBtn title="Refine with AI" onClick={() => setEditOpen(p => !p)} active={editOpen}>
               <Pencil size={12} />
-              <span>Refine</span>
+              <span className="hidden sm:inline">Refine</span>
             </ActionBtn>
           </div>
         </div>
@@ -505,18 +474,36 @@ export default function FocusPanel({
         </div>
       </div>
 
-      {/* ── Edit panel (slide in from right) ── */}
+      {/* ── Edit panel (slide in from right; full-screen overlay on mobile) ── */}
       <AnimatePresence>
         {editOpen && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 380, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="shrink-0 overflow-hidden relative border-l border-edge"
-          >
-            <div className="w-[380px] h-full flex flex-col bg-surface-1">
-              {/* Edit panel header */}
+          <>
+            {isMobile && (
+              <motion.div
+                key="edit-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="fixed inset-0 z-30 bg-black/50"
+                onClick={() => setEditOpen(false)}
+                aria-hidden="true"
+              />
+            )}
+            <motion.div
+              key="edit-panel"
+              initial={isMobile ? { x: '100%' } : { width: 0, opacity: 0 }}
+              animate={isMobile ? { x: 0 } : { width: 380, opacity: 1 }}
+              exit={isMobile ? { x: '100%' } : { width: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className={
+                isMobile
+                  ? 'fixed top-16 inset-x-0 bottom-0 z-40 overflow-hidden'
+                  : 'shrink-0 overflow-hidden relative border-l border-edge'
+              }
+            >
+              <div className={isMobile ? 'w-full h-full flex flex-col bg-surface-1' : 'w-[380px] h-full flex flex-col bg-surface-1'}>
+                {/* Edit panel header */}
               <div className="flex items-center justify-between px-4 h-12 shrink-0 border-b border-edge">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-accent/70" />
@@ -544,7 +531,8 @@ export default function FocusPanel({
                 />
               </div>
             </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

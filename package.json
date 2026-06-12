@@ -9,64 +9,40 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.943.0",
-    "@clerk/nextjs": "^6.39.5",
-    "@dagrejs/dagre": "^1.1.8",
+    "@clerk/nextjs": "^7.5.2",
     "@sentry/nextjs": "^10.56.0",
-    "@tanstack/react-table": "^8.21.3",
-    "@types/d3-cloud": "^1.2.9",
-    "@types/mongoose": "^5.11.96",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
-    "@xyflow/react": "^12.10.0",
-    "bcryptjs": "^3.0.3",
-    "d3": "^7.9.0",
-    "d3-cloud": "^1.2.8",
-    "d3-sankey": "^0.12.3",
-    "dotenv": "^17.2.3",
     "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.6",
-    "file-saver": "^2.0.5",
     "framer-motion": "^12.23.25",
-    "html-to-image": "^1.11.11",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
     "jstat": "^1.9.6",
-    "lucide-react": "^0.561.0",
-    "markmap-lib": "^0.18.12",
-    "markmap-view": "^0.18.12",
-    "mermaid": "^11.15.0",
+    "lucide-react": "^1.17.0",
     "mongoose": "^9.1.6",
     "nanoid": "^5.1.6",
     "next": "^16.1.0",
     "next-themes": "^0.4.6",
     "openai": "^6.9.1",
     "papaparse": "^5.5.3",
-    "pdf-parse": "^2.4.5",
-    "react": "19.2.3",
-    "react-d3-tree": "^3.6.6",
-    "react-dom": "19.2.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-grid-layout": "^2.2.3",
+    "react-resizable": "^4.0.1",
     "recharts": "^3.5.1",
     "sonner": "^2.0.7",
-    "vis-timeline": "^8.4.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@clerk/shared": "^4.17.1",
     "@tailwindcss/postcss": "^4",
-    "@types/cytoscape-fcose": "^2.2.5",
-    "@types/d3-sankey": "^0.12.5",
-    "@types/file-saver": "^2.0.7",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/papaparse": "^5.5.1",
     "@types/react": "^19",
-    "@types/react-cytoscapejs": "^1.2.6",
     "@types/react-dom": "^19",
-    "baseline-browser-mapping": "^2.8.32",
     "eslint": "^9",
-    "eslint-config-next": "16.0.5",
+    "eslint-config-next": "^16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^6.0.3"
   },
   "overrides": {
     "fast-xml-parser": "^5.8.0",
@@ -77,6 +53,15 @@
     "ajv": "^8.20.0",
     "brace-expansion": "^5.0.6",
     "undici": "^7.27.2",
-    "uuid": "^13.0.2"
+    "uuid": "^13.0.2",
+    "@eslint/eslintrc": {
+      "ajv": "^6.12.4"
+    },
+    "eslint": {
+      "ajv": "^6.12.4",
+      "minimatch": {
+        "brace-expansion": "^1.1.12"
+      }
+    }
   }
 }
