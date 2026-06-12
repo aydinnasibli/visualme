@@ -97,29 +97,29 @@ function baseTextStyle(theme: BrandTheme, size: number, color = theme.textColor)
 
 /**
  * Merges theme styling into a single axis config without disturbing AI-authored
- * structure (type/data/name). For a named y-axis, ECharts' default
- * `nameLocation: 'end'` renders the name just above the grid's top edge — the
- * same zone reserved for the title and a top-positioned legend, so on
- * multi-series charts (legend wraps to 2+ rows) the axis name collides with
- * the legend text. Defaulting named y-axes to a vertical title along the side
- * (`middle` + rotated) avoids that zone entirely and matches the standard
- * dual-axis chart convention. Only backfilled when the AI didn't already
- * specify a placement.
+ * structure (type/data/name). ECharts' default `nameLocation: 'end'` renders
+ * the name just past the last tick — for a y-axis that's above the grid's top
+ * edge (colliding with the title/legend on multi-series charts), and for an
+ * x-axis that's to the right of the last tick, which often runs past the
+ * canvas edge and gets clipped (e.g. "Months" rendering as "Month").
+ * Defaulting named axes to a centered title (`middle`, rotated on the y-axis
+ * to sit along the side per the standard dual-axis convention) avoids both.
+ * Only backfilled when the AI didn't already specify a placement.
  */
 function themeAxis(axis: AxisOption | undefined, theme: BrandTheme, axisType: 'x' | 'y'): AxisOption {
   const a = (axis ?? {}) as Record<string, unknown>;
-  const needsNamePlacement = axisType === 'y' && a.name && a.nameLocation === undefined;
+  const needsNamePlacement = Boolean(a.name) && a.nameLocation === undefined;
   return {
     ...a,
     axisLabel: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...(a.axisLabel as object) },
     axisLine: { lineStyle: { color: theme.borderColor }, ...(a.axisLine as object) },
     splitLine: { lineStyle: { color: theme.borderColor, type: 'dashed' }, ...(a.splitLine as object) },
     nameTextStyle: { ...baseTextStyle(theme, theme.fontSize.axisLabel, theme.mutedTextColor), ...(a.nameTextStyle as object) },
-    ...(needsNamePlacement ? {
-      nameLocation: 'middle',
-      nameGap: 48,
-      nameRotate: a.position === 'right' ? -90 : 90,
-    } : {}),
+    ...(needsNamePlacement ? (
+      axisType === 'y'
+        ? { nameLocation: 'middle', nameGap: 48, nameRotate: a.position === 'right' ? -90 : 90 }
+        : { nameLocation: 'middle', nameGap: 28 }
+    ) : {}),
   } as AxisOption;
 }
 
