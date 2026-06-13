@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Edit3, Send, ArrowRight, Download, FileJson, FileSpreadsheet, FileCode, Globe, Share2, ImageIcon, BarChart3 } from "lucide-react";
+import { X, Edit3, Send, ArrowRight, Download, FileJson, FileSpreadsheet, FileCode, FileText, Globe, Share2, ImageIcon, BarChart3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { saveVisualization } from "@/lib/actions/visualize";
 import { exportVisualization, createShareLink } from "@/lib/actions/export";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { VisualizationErrorBoundary } from "@/components/VisualizationErrorBoundary";
 import EChartsRenderer from "@/components/visualizations/EChartsRenderer";
 import { exportCanvasAsPNG } from "@/lib/utils/export-png";
+import { exportChartAsPDF } from "@/lib/utils/export-dashboard";
 
 interface VisualizationModalProps {
   visualization: SavedVisualization | null;
@@ -88,6 +89,16 @@ export default function VisualizationModal({
       if (!ok) { toast.error('No chart canvas found'); return; }
       toast.success('Exported as PNG');
     } catch { toast.error('PNG export failed'); }
+  };
+
+  const handleExportPDF = () => {
+    const area = document.querySelector('[data-viz-area]') as HTMLElement;
+    if (!area) { toast.error('Could not capture visualization'); return; }
+    try {
+      const ok = exportChartAsPDF(area, currentVisualization?.title || 'visualization');
+      if (!ok) { toast.error('No chart canvas found'); return; }
+      toast.success('Exported as PDF');
+    } catch { toast.error('PDF export failed'); }
   };
 
   const handleShare = async () => {
@@ -209,6 +220,9 @@ export default function VisualizationModal({
                     >
                       <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
                         <ImageIcon size={13} className="text-blue-400" /> Export as PNG
+                      </button>
+                      <button onClick={() => { setExportOpen(false); handleExportPDF(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                        <FileText size={13} className="text-rose-400" /> Export as PDF
                       </button>
                       <div className="h-px bg-white/[0.06] mx-3 my-1" />
                       <button onClick={() => { setExportOpen(false); handleExportData('json'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">

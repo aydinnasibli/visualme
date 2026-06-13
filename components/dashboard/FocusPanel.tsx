@@ -8,7 +8,7 @@ import {
   Radar, AlignVerticalSpaceAround, Gauge, Filter, Waves, GitBranch,
   LayoutGrid, CircleDot, Workflow,
   Pencil, Sparkles, X, Download, ImageIcon,
-  Globe, FileJson, FileSpreadsheet, FileCode, Zap,
+  Globe, FileJson, FileSpreadsheet, FileCode, FileText, Zap,
   Rss, RefreshCw, Clock, Unlink,
 } from 'lucide-react';
 import type { ElementType } from 'react';
@@ -34,6 +34,7 @@ import { VisualizationErrorBoundary } from '@/components/VisualizationErrorBound
 import EditPanel from '@/components/dashboard/EditPanel';
 import EChartsRenderer from '@/components/visualizations/EChartsRenderer';
 import { exportCanvasAsPNG } from '@/lib/utils/export-png';
+import { exportChartAsPDF } from '@/lib/utils/export-dashboard';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
@@ -201,6 +202,18 @@ export default function FocusPanel({
     }
   }, [thread]);
 
+  const handleExportPDF = useCallback(() => {
+    if (!vizAreaRef.current || !thread) return;
+    setExportOpen(false);
+    try {
+      const ok = exportChartAsPDF(vizAreaRef.current, thread.title);
+      if (!ok) { toast.error('No chart canvas found'); return; }
+      toast.success('Exported as PDF');
+    } catch {
+      toast.error('PDF export failed');
+    }
+  }, [thread]);
+
   /* ── Render viz ── */
   const renderViz = useCallback((t: ThreadEntry) => {
     return <EChartsRenderer spec={t.spec} className="w-full h-full p-6" />;
@@ -337,6 +350,9 @@ export default function FocusPanel({
                   >
                     <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
                       <ImageIcon size={13} className="text-ink-faint" /> Export as PNG
+                    </button>
+                    <button onClick={handleExportPDF} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
+                      <FileText size={13} className="text-ink-faint" /> Export as PDF
                     </button>
                     <div className="h-px bg-edge mx-3 my-1" />
                     <button onClick={() => { setExportOpen(false); onExportData('json'); }} disabled={!thread.vizId} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-ink-muted hover:enabled:bg-surface-3 hover:enabled:text-ink" title={!thread.vizId ? 'Save the visualization first' : undefined}>
