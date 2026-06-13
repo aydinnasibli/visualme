@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GridLayout, useContainerWidth } from 'react-grid-layout';
 import type { Layout } from 'react-grid-layout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import {
   LayoutDashboard, Plus, Trash2, Share2, Check, Copy,
   ChevronLeft, ChevronRight, Save, BarChart3, Pencil, X,
-  ExternalLink, Eye, Globe, Lock,
+  ExternalLink, Eye, Globe, Lock, Download, FileText, Images,
 } from 'lucide-react';
 import Link from 'next/link';
 import ThemeToggle from '@/components/dashboard/ThemeToggle';
@@ -19,6 +19,7 @@ import {
   publishDashboard,
   deleteDashboard,
 } from '@/lib/actions/dashboard';
+import { exportDashboardAsPDF, exportDashboardAsSlidePNGs } from '@/lib/utils/export-dashboard';
 import type { Dashboard, DashboardLayoutItem, DashboardVizSlot } from '@/lib/types/dashboard';
 import type { SavedVisualization } from '@/lib/types/visualization';
 
@@ -341,9 +342,23 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState<'pdf' | 'slides' | null>(null);
 
   // Grid width
   const { width: containerWidth, containerRef, mounted } = useContainerWidth();
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const exportRef = useRef<HTMLDivElement | null>(null);
+
+  /* Close export menu when clicking outside */
+  useEffect(() => {
+    if (!exportOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!exportRef.current?.contains(e.target as Node)) setExportOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [exportOpen]);
 
   // ── load dashboard into canvas ──────────────────────────────────────────
 
@@ -465,6 +480,39 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
     });
   };
 
+  // ── export ──────────────────────────────────────────────────────────────
+
+  const handleExportPDF = useCallback(() => {
+    if (!gridRef.current) return;
+    setExportOpen(false);
+    setExporting('pdf');
+    try {
+      const ok = exportDashboardAsPDF(gridRef.current, title);
+      if (!ok) { toast.error('No charts to export'); return; }
+      toast.success('Exported as PDF');
+    } catch {
+      toast.error('PDF export failed');
+    } finally {
+      setExporting(null);
+    }
+  }, [title]);
+
+  const handleExportSlides = useCallback(async () => {
+    if (!gridRef.current) return;
+    setExportOpen(false);
+    setExporting('slides');
+    try {
+      const titles = slots.map(s => vizzes.find(v => v._id === s.vizId)?.title ?? s.titleSnapshot);
+      const count = await exportDashboardAsSlidePNGs(gridRef.current, titles, title);
+      if (!count) { toast.error('No charts to export'); return; }
+      toast.success(`Exported ${count} slide${count !== 1 ? 's' : ''}`);
+    } catch {
+      toast.error('Slide export failed');
+    } finally {
+      setExporting(null);
+    }
+  }, [slots, vizzes, title]);
+
   // ── viz lookup for grid cells ───────────────────────────────────────────
 
   const vizMap = new Map(vizzes.map(v => [v._id!, v]));
@@ -512,6 +560,49 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
               Preview
             </a>
           )}
+
+          {/* Export dropdown */}
+          <div className="relative" ref={exportRef}>
+            <button
+              onClick={() => setExportOpen(p => !p)}
+              disabled={!slots.length}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border text-ink-muted hover:text-ink hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ borderColor: 'var(--color-edge)' }}
+            >
+              {exporting
+                ? <div className="w-3 h-3 border-2 border-ink-faint/30 border-t-ink-muted rounded-full animate-spin" />
+                : <Download size={13} />
+              }
+              Export
+            </button>
+            <AnimatePresence>
+              {exportOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                  transition={{ duration: 0.13 }}
+                  className="absolute right-0 top-full mt-1.5 w-56 rounded-xl overflow-hidden z-50 bg-surface-2 border border-edge shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+                >
+                  <button onClick={handleExportPDF} className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
+                    <FileText size={13} className="text-accent mt-0.5 shrink-0" />
+                    <div>
+                      <p>Export as PDF</p>
+                      <p className="text-[10px] text-ink-faint">One page, current layout</p>
+                    </div>
+                  </button>
+                  <div className="h-px bg-edge mx-3 my-1" />
+                  <button onClick={handleExportSlides} className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
+                    <Images size={13} className="text-accent mt-0.5 shrink-0" />
+                    <div>
+                      <p>Export as PNGs</p>
+                      <p className="text-[10px] text-ink-faint">One 16:9 slide per chart</p>
+                    </div>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Save */}
           <button
@@ -605,6 +696,7 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
           ) : (
             mounted && (
               <GridLayout
+                innerRef={gridRef}
                 width={containerWidth}
                 layout={layout}
                 gridConfig={{ cols: COLS, rowHeight: ROW_H, margin: [12, 12], containerPadding: [16, 16] }}
