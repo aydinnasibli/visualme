@@ -3,7 +3,7 @@
 import { connectToDatabase } from '@/lib/database/mongodb'
 import { UserModel, VisualizationModel, UserUsageModel } from '@/lib/database/models'
 import { checkRole } from '@/lib/utils/roles'
-import { sanitizeError, validateObjectId } from '@/lib/utils/validation'
+import { sanitizeError, validateObjectId, escapeRegex } from '@/lib/utils/validation'
 import { updateUserTier } from '@/lib/utils/tokens'
 
 async function requireAdmin() {
@@ -140,10 +140,11 @@ export async function getAdminUsers({
     const matchQuery: Record<string, unknown> = {}
     if (plan) matchQuery.plan = plan
     if (search) {
+      const safeSearch = escapeRegex(search)
       matchQuery.$or = [
-        { email: { $regex: search, $options: 'i' } },
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } },
+        { firstName: { $regex: safeSearch, $options: 'i' } },
+        { lastName: { $regex: safeSearch, $options: 'i' } },
       ]
     }
 
@@ -214,7 +215,6 @@ export async function getAdminUserById(clerkId: string): Promise<{
       createdAt: string
       updatedAt: string
       lastLoginAt: string | null
-      extendedNodesCount: number
       savedVisualizationsCount: number
     }
     usage: {
@@ -263,7 +263,6 @@ export async function getAdminUserById(clerkId: string): Promise<{
           createdAt: new Date(user.createdAt).toISOString(),
           updatedAt: new Date(user.updatedAt).toISOString(),
           lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt).toISOString() : null,
-          extendedNodesCount: user.extendedNodes?.length ?? 0,
           savedVisualizationsCount: user.savedVisualizations?.length ?? 0,
         },
         usage: usage
@@ -352,7 +351,7 @@ export async function getAdminVisualizations({
     await connectToDatabase()
 
     const matchQuery: Record<string, unknown> = {}
-    if (search) matchQuery.title = { $regex: search, $options: 'i' }
+    if (search) matchQuery.title = { $regex: escapeRegex(search), $options: 'i' }
 
     const [visualizations, total] = await Promise.all([
       VisualizationModel.find(matchQuery)

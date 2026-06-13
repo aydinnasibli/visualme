@@ -3,9 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Header from '@/components/dashboard/Header';
 import { useUser } from '@clerk/nextjs';
-import { User, Mail, CheckCircle, Check, Zap, RotateCcw, CalendarDays, Network, Trash2, Palette } from 'lucide-react';
-import { getUserProfile, getUserLimits, UserProfile } from '@/lib/actions/profile';
-import { clearExtendedNodes } from '@/lib/actions/extendedNodes';
+import { User, Mail, CheckCircle, Check, Zap, RotateCcw, CalendarDays, Bell } from 'lucide-react';
+import { getUserProfile, getUserLimits, updateNotificationPreferences, UserProfile } from '@/lib/actions/profile';
 import { toast } from 'sonner';
 
 type Limits = Awaited<ReturnType<typeof getUserLimits>>['data'];
@@ -15,7 +14,8 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [limits, setLimits] = useState<Limits | null>(null);
   const [loading, setLoading] = useState(true);
-  const [clearingNodes, setClearingNodes] = useState(false);
+  const [usageAlerts, setUsageAlerts] = useState(true);
+  const [savingPrefs, setSavingPrefs] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -27,6 +27,7 @@ export default function SettingsPage() {
 
         if (profileRes.success && profileRes.data) {
           setProfile(profileRes.data);
+          setUsageAlerts(profileRes.data.notificationPreferences.usageAlerts);
         } else {
           toast.error('Failed to load profile data');
         }
@@ -44,29 +45,22 @@ export default function SettingsPage() {
     load();
   }, []);
 
-  const doClearNodes = async () => {
-    setClearingNodes(true);
+  const handleToggleUsageAlerts = async () => {
+    const next = !usageAlerts;
+    setUsageAlerts(next);
+    setSavingPrefs(true);
     try {
-      const ok = await clearExtendedNodes();
-      if (ok) {
-        setProfile(p => p ? { ...p, extendedNodesCount: 0 } : p);
-        toast.success('Extended node history cleared');
-      } else {
-        toast.error('Failed to clear history');
+      const res = await updateNotificationPreferences({ usageAlerts: next });
+      if (!res.success) {
+        setUsageAlerts(!next);
+        toast.error(res.error || 'Failed to update preference');
       }
     } catch {
-      toast.error('Failed to clear history');
+      setUsageAlerts(!next);
+      toast.error('Failed to update preference');
     } finally {
-      setClearingNodes(false);
+      setSavingPrefs(false);
     }
-  };
-
-  const handleClearNodes = () => {
-    toast('Clear all expanded node history? This cannot be undone.', {
-      action: { label: 'Clear', onClick: doClearNodes },
-      cancel: { label: 'Cancel', onClick: () => {} },
-      duration: 5000,
-    });
   };
 
   const plan = profile?.plan === 'pro'
@@ -172,11 +166,10 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 mt-5">
+                <div className="grid grid-cols-2 gap-3 mt-5">
                   {[
                     { label: 'Visualizations', count: limits.estimatedOperations.visualizations, cost: limits.costs.generateVisualization },
                     { label: 'Edits', count: limits.estimatedOperations.edits, cost: limits.costs.editVisualization },
-                    { label: 'Expansions', count: limits.estimatedOperations.expansions, cost: limits.costs.expandNode },
                   ].map(({ label, count, cost }) => (
                     <div key={label} className="bg-surface-2 border border-edge rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-ink">{count}</p>
@@ -296,7 +289,7 @@ export default function SettingsPage() {
           {/* ── Account Info ── */}
           <section className="surface-panel rounded-xl p-6">
             <h2 className="text-xl font-semibold text-ink mb-4">Account</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-surface-2/60 border border-edge rounded-lg p-4 flex items-center gap-3">
                 <CalendarDays className="w-5 h-5 text-ink-faint shrink-0" />
                 <div>
@@ -318,52 +311,32 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
-
-              <div className="bg-surface-2/60 border border-edge rounded-lg p-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <Network className="w-5 h-5 text-ink-faint shrink-0" />
-                  <div>
-                    <p className="text-xs text-ink-faint">Expanded nodes</p>
-                    <p className="text-sm font-medium text-ink-muted mt-0.5">
-                      {loading ? '—' : (profile?.extendedNodesCount ?? 0).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                {(profile?.extendedNodesCount ?? 0) > 0 && (
-                  <button
-                    onClick={handleClearNodes}
-                    disabled={clearingNodes}
-                    className="p-1.5 rounded-lg text-ink-faint hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-40"
-                    title="Clear expanded node history"
-                  >
-                    {clearingNodes
-                      ? <div className="w-4 h-4 border-2 border-ink-faint border-t-transparent rounded-full animate-spin" />
-                      : <Trash2 className="w-4 h-4" />}
-                  </button>
-                )}
-              </div>
             </div>
           </section>
 
           {/* ── Preferences ── */}
           <section className="surface-panel rounded-xl p-6">
             <h2 className="text-xl font-semibold text-ink mb-4">Preferences</h2>
-            <div className="flex items-center justify-between py-3 border-b border-edge">
+            <div className="flex items-center justify-between py-3">
               <div className="flex items-center gap-3">
-                <Palette className="w-4 h-4 text-ink-faint shrink-0" />
+                <Bell className="w-4 h-4 text-ink-faint shrink-0" />
                 <div>
-                  <h3 className="text-sm font-medium text-ink">Theme</h3>
-                  <p className="text-xs text-ink-muted">Switch between light, dark, and system using the toggle in the header</p>
+                  <h3 className="text-sm font-medium text-ink">Usage limit alerts</h3>
+                  <p className="text-xs text-ink-muted">Get notified in-app when you&apos;re close to your monthly token limit</p>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <h3 className="text-sm font-medium text-ink">Email Notifications</h3>
-                <p className="text-xs text-ink-muted">Receive updates and tips</p>
-              </div>
-              <button className="w-10 h-6 bg-surface-3 rounded-full relative transition-colors hover:bg-surface-3/70" disabled title="Coming soon">
-                <div className="absolute left-1 top-1 w-4 h-4 bg-ink-faint/50 rounded-full shadow-sm" />
+              <button
+                onClick={handleToggleUsageAlerts}
+                disabled={loading || savingPrefs}
+                aria-pressed={usageAlerts}
+                className={`w-11 h-6 rounded-full relative transition-colors focus:outline-none disabled:opacity-50 ${
+                  usageAlerts ? 'bg-accent' : 'bg-surface-3'
+                }`}
+              >
+                <span
+                  className="block w-4 h-4 rounded-full bg-white shadow absolute top-1 transition-transform"
+                  style={{ left: usageAlerts ? 'calc(100% - 20px)' : '4px' }}
+                />
               </button>
             </div>
           </section>

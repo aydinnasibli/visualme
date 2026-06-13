@@ -15,7 +15,8 @@ import type { SavedVisualization } from '@/lib/types/visualization';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { readFileAttachment, composePromptWithAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
 import { composePromptWithChartType, getStyleEffect, type ChartSelection } from '@/lib/utils/chart-types';
-import { composePromptWithLiveSheet, type LiveSheetData } from '@/lib/utils/live-sheet';
+import { composePromptWithLiveSheet, formatLiveDataBlock, type LiveSheetData } from '@/lib/utils/live-sheet';
+import type { ColumnSchema } from '@/lib/utils/csv-schema';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { toast } from 'sonner';
 
@@ -24,6 +25,14 @@ import VizThread, { type ThreadEntry, type StatRun } from '@/components/dashboar
 import FocusPanel from '@/components/dashboard/FocusPanel';
 
 /* ── Helpers ── */
+interface LiveDataResponse {
+  rawCsv?: string;
+  headers?: string[];
+  rowCount?: number;
+  schema?: ColumnSchema[];
+  error?: string;
+}
+
 const Loading = () => (
   <div className="w-full h-full flex items-center justify-center">
     <div className="w-5 h-5 border-2 border-surface-3 border-t-accent rounded-full animate-spin" />
@@ -140,7 +149,6 @@ function DashboardContent() {
 
   /* ── Edit panel ── */
   const [isEditing, setIsEditing]   = useState(false);
-  const [manualEditJson, setManualEditJson] = useState(() => revHandoff ? JSON.stringify(revHandoff.entry.spec.option, null, 2) : '');
 
   /* ── URL / session load ── */
   const [seenId, setSeenId]         = useState<string | null>(null);
@@ -182,7 +190,6 @@ function DashboardContent() {
           };
           setThreads([entry]);
           setActiveId(entry.id);
-          setManualEditJson(JSON.stringify(viz.spec.option, null, 2));
           toast.success(`Loaded "${viz.title}"`);
         } else toast.error(res.error || 'Failed to load');
       } catch { toast.error('Failed to load visualization'); }
@@ -294,7 +301,6 @@ function DashboardContent() {
       };
       setThreads(p => [...p, entry]);
       setActiveId(entry.id);
-      setManualEditJson(JSON.stringify(data.spec.option, null, 2));
 
       // Auto-persist as a session — patch vizId once the doc is created
       createSession(
@@ -349,7 +355,6 @@ function DashboardContent() {
         spec: res.option ? { ...t.spec, option: res.option } : t.spec,
         chatHistory: finalHist,
       } : t));
-      if (res.option) setManualEditJson(JSON.stringify(res.option, null, 2));
       toast.success(res.option ? 'Updated!' : 'Response received');
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Edit failed';
@@ -425,33 +430,6 @@ function DashboardContent() {
       toast.success(`Exported as ${format.toUpperCase()}`);
     } catch { toast.error('Export failed'); }
   }, [activeThread]);
-
-  const handleManualEdit = useCallback(async () => {
-    if (!manualEditJson.trim() || !activeThread) { toast.error('Enter valid JSON'); return; }
-    try {
-      const parsedOption = JSON.parse(manualEditJson);
-      const id = activeThread.id;
-      const newSpec = { ...activeThread.spec, option: parsedOption };
-      // Optimistic local update
-      setThreads(p => p.map(t => t.id === id ? { ...t, spec: newSpec } : t));
-      // Persist to DB if already saved
-      if (activeThread.vizId) {
-        const res = await saveVisualization(
-          activeThread.title,
-          newSpec,
-          { generatedAt: new Date(), aiModel: activeThread.metadata?.aiModel || 'manual', originalInput: activeThread.prompt },
-          activeThread.isPublic ?? false,
-          activeThread.vizId,
-          activeThread.chatHistory as { role: 'user' | 'assistant'; content: string; timestamp: Date | string }[],
-        );
-        if (!res.success) { toast.error(res.error || 'Failed to save'); return; }
-      }
-      toast.success('Updated!');
-    } catch (e) {
-      if (e instanceof SyntaxError) toast.error('Invalid JSON');
-      else toast.error('Update failed');
-    }
-  }, [manualEditJson, activeThread]);
 
   /* ── Brand theme customization — live restyle + debounced persistence ── */
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -539,17 +517,16 @@ function DashboardContent() {
 
     try {
       const res = await fetch(`/api/live-data?url=${encodeURIComponent(activeThread.liveData.url)}`);
-      const data: { rawCsv?: string; headers?: string[]; rowCount?: number; error?: string } = await res.json();
+      const data: LiveDataResponse = await res.json();
 
       if (!res.ok || data.error || !data.rawCsv) {
         toast.error(data.error || `Failed to fetch live data (HTTP ${res.status})`);
         return;
       }
 
-      const preview = data.rawCsv.slice(0, 6000);
       const editPrompt =
-        `Update this chart with the latest data from the live source (${data.rowCount ?? '?'} rows, columns: ${(data.headers ?? []).join(', ')}).\n\n` +
-        `New CSV data:\n\`\`\`csv\n${preview}\n\`\`\`\n\n` +
+        `Update this chart with the latest data from the live source.\n\n` +
+        `${formatLiveDataBlock({ rawCsv: data.rawCsv, headers: data.headers ?? [], rowCount: data.rowCount ?? 0, schema: data.schema ?? [] })}\n\n` +
         `Keep the same chart type, structure, axis labels, and series names. Only replace the data values.`;
 
       const editRes = await editVisualizationAction(editPrompt, activeThread.spec.option, activeThread.vizId || undefined, []);
@@ -564,7 +541,6 @@ function DashboardContent() {
         spec: { ...t.spec, option: editRes.option! },
         liveData: t.liveData ? { ...t.liveData, lastRefreshed: now } : undefined,
       } : t));
-      setManualEditJson(JSON.stringify(editRes.option, null, 2));
 
       // Persist lastRefreshed to DB
       if (activeThread.vizId && activeThread.liveData) {
@@ -700,9 +676,6 @@ function DashboardContent() {
             chatHistory={activeThread?.chatHistory || []}
             handleChatMessage={handleChatMessage}
             isEditing={isEditing}
-            manualEditJson={manualEditJson}
-            setManualEditJson={setManualEditJson}
-            handleManualEdit={handleManualEdit}
             onThemeChange={handleThemeChange}
             onTitleChange={handleTitleChange}
             onLiveDataChange={handleLiveDataChange}

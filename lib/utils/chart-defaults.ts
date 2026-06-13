@@ -40,6 +40,10 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     draggable: true,
     // Labels outside the node symbol prevent text being clipped by the symbol border.
     label: { show: true, position: 'right', overflow: 'truncate', width: 80 },
+    // Right-positioned labels on nodes packed close together vertically would
+    // otherwise stack on top of each other — shift them apart instead of
+    // letting them collide.
+    labelLayout: { hideOverlap: false, moveOverlap: 'shiftY' },
     emphasis: { focus: 'adjacency', scale: 1.15, itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.3)' } },
     force: { repulsion: 140, edgeLength: [60, 120], gravity: 0.08 },
     lineStyle: { curveness: 0.2, opacity: 0.5 },
@@ -50,6 +54,8 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     initialTreeDepth: 3,
     // Labels adjacent to the node symbol rather than inside keep them readable at any zoom.
     label: { overflow: 'truncate', width: 120 },
+    // Densely nested branches place sibling labels close together vertically.
+    labelLayout: { hideOverlap: false, moveOverlap: 'shiftY' },
     leaves: { label: { overflow: 'truncate', width: 120 } },
     emphasis: { focus: 'descendant', itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.25)' } },
     lineStyle: { curveness: 0.5 },
@@ -79,6 +85,9 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     lineStyle: { curveness: 0.5, opacity: 0.35 },
     itemStyle: { borderRadius: 3 },
     label: { overflow: 'truncate', width: 160 },
+    // Nodes packed tightly within a column would otherwise render labels on
+    // top of each other — shift them apart instead of letting them collide.
+    labelLayout: { hideOverlap: false, moveOverlap: 'shiftY' },
     nodeGap: 12,
     nodeWidth: 16,
   },
@@ -153,7 +162,11 @@ const SERIES_DEFAULTS: Record<string, Record<string, unknown>> = {
     emphasis: { focus: 'series', lineStyle: { width: 2.5, opacity: 0.95 } },
   },
   themeRiver: {
-    label: { overflow: 'truncate', width: 90 },
+    // In-stream text labels get cramped wherever streams start thin — the
+    // legend (always shown for themeRiver, see seriesNeedsLegend) identifies
+    // each stream by color instead, keeping the chart itself clean.
+    label: { show: false },
+    labelLayout: { hideOverlap: false, moveOverlap: 'shiftY' },
     emphasis: { focus: 'series' },
     boundaryGap: ['10%', '10%'],
   },

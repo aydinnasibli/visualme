@@ -16,8 +16,10 @@ export interface UserProfile {
   plan: 'free' | 'pro' | 'enterprise';
   usageCount: number;
   totalSavedVisualizations: number;
-  extendedNodesCount: number;
   createdAt: string;
+  notificationPreferences: {
+    usageAlerts: boolean;
+  };
 }
 
 /**
@@ -63,8 +65,8 @@ export async function getUserProfile(): Promise<{ success: boolean; data?: UserP
       plan: user.plan || 'free',
       usageCount: user.usageCount || 0,
       totalSavedVisualizations: user.savedVisualizations.length,
-      extendedNodesCount: user.extendedNodes.length,
       createdAt: user.createdAt.toISOString(),
+      notificationPreferences: user.notificationPreferences ?? { usageAlerts: true },
     };
 
     return { success: true, data: profile };
@@ -91,7 +93,6 @@ export async function getUserLimits(): Promise<{
     costs: {
       generateVisualization: number;
       editVisualization: number;
-      expandNode: number;
       exportVisualization: number;
       saveVisualization: number;
       deleteVisualization: number;
@@ -99,7 +100,6 @@ export async function getUserLimits(): Promise<{
     estimatedOperations: {
       visualizations: number;
       edits: number;
-      expansions: number;
       exports: number;
     };
   };
@@ -119,7 +119,6 @@ export async function getUserLimits(): Promise<{
     const estimatedOperations = {
       visualizations: Math.floor(balance.tokensRemaining / costs.generateVisualization),
       edits: Math.floor(balance.tokensRemaining / costs.editVisualization),
-      expansions: Math.floor(balance.tokensRemaining / costs.expandNode),
       exports: Math.floor(balance.tokensRemaining / costs.exportVisualization),
     };
 
@@ -141,5 +140,82 @@ export async function getUserLimits(): Promise<{
   } catch (error) {
     console.error('Error fetching user limits:', error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch user limits') };
+  }
+}
+
+/**
+ * Update the current user's notification preferences
+ */
+export async function updateNotificationPreferences(
+  prefs: { usageAlerts: boolean }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    if (typeof prefs?.usageAlerts !== 'boolean') {
+      return { success: false, error: 'Invalid preferences' };
+    }
+
+    await connectToDatabase();
+
+    await UserModel.findOneAndUpdate(
+      { clerkId: userId },
+      { $set: { 'notificationPreferences.usageAlerts': prefs.usageAlerts } }
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating notification preferences:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to update preferences') };
+  }
+}
+
+const USAGE_ALERT_THRESHOLD = 80;
+
+/**
+ * Check whether the current user should see a usage-limit alert
+ */
+export async function getUsageAlertStatus(): Promise<{
+  success: boolean;
+  data?: {
+    shouldAlert: boolean;
+    percentageUsed: number;
+    tokensRemaining: number;
+    tokensLimit: number;
+    resetDate: string;
+  };
+  error?: string;
+}> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    await connectToDatabase();
+
+    const [user, balance] = await Promise.all([
+      UserModel.findOne({ clerkId: userId }).select('notificationPreferences').lean(),
+      getTokenBalance(userId),
+    ]);
+
+    const usageAlertsEnabled = user?.notificationPreferences?.usageAlerts ?? true;
+
+    return {
+      success: true,
+      data: {
+        shouldAlert: usageAlertsEnabled && balance.percentageUsed >= USAGE_ALERT_THRESHOLD,
+        percentageUsed: balance.percentageUsed,
+        tokensRemaining: balance.tokensRemaining,
+        tokensLimit: balance.tokensLimit,
+        resetDate: balance.resetDate.toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Error checking usage alert status:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to check usage alert status') };
   }
 }

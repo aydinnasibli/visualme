@@ -262,11 +262,6 @@ export async function editVisualizationAction(
       console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
     }
 
-    await Promise.all([
-      UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
-      UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
-    ]);
-
     let updatedVisualization: SavedVisualization | null = null;
 
     // If the option was modified and we have an ID, update the database
@@ -523,9 +518,10 @@ export async function getUserVisualizations(limit?: number) {
 }
 
 /**
- * Get all of the current user's visualization "sessions" — saved
- * visualizations, live-data-connected visualizations, and not-yet-expired
- * ephemeral sessions — for hydrating the sidebar on load.
+ * Get the current user's ephemeral, not-yet-expired "session" chats —
+ * i.e. auto-persisted but not explicitly saved (`isSaved: false`) — for
+ * hydrating the sidebar on load. Explicitly saved visualizations live only
+ * in "My Visualizations" and are never returned here.
  */
 export async function getUserSessions(limit: number = 50) {
   try {
@@ -537,7 +533,7 @@ export async function getUserSessions(limit: number = 50) {
 
     await connectToDatabase();
 
-    const visualizations = await VisualizationModel.find({ userId })
+    const visualizations = await VisualizationModel.find({ userId, isSaved: false })
       .select('_id title spec metadata isPublic shareId createdAt updatedAt history liveData isSaved')
       .sort({ updatedAt: -1 })
       .limit(limit)

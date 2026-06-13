@@ -66,26 +66,67 @@ function seriesNeedsLegend(series: EChartsOption['series']): boolean {
 
   const entry = series[0] as Record<string, unknown>;
   const data = entry.data;
+
+  // A themeRiver's distinct streams are otherwise indistinguishable by color alone.
+  if (entry.type === 'themeRiver') {
+    return Array.isArray(data) && themeRiverStreamNames(data).length >= 2;
+  }
+
   if (typeof entry.type !== 'string' || !DATA_NAME_LEGEND_TYPES.has(entry.type)) return false;
   if (!Array.isArray(data) || data.length < 2) return false;
   return data.every((d) => isNonEmptyName((d as Record<string, unknown> | null)?.name));
 }
 
-/** Number of entries a themed legend would show — one per series, or per data entry for radar/pie. */
+/** Distinct stream names for a themeRiver series' `[date, value, name]` data tuples, in order of first appearance. */
+function themeRiverStreamNames(data: unknown[]): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const d of data) {
+    const name = Array.isArray(d) ? d[2] : (d as Record<string, unknown> | null)?.name;
+    if (typeof name === 'string' && !seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return names;
+}
+
+/** Number of entries a themed legend would show — one per series, per data entry for radar/pie, or per distinct stream name for themeRiver. */
 function countLegendEntries(series: EChartsOption['series']): number {
   if (!Array.isArray(series) || series.length === 0) return 0;
   if (series.length >= 2) return series.length;
-  const data = (series[0] as Record<string, unknown>).data;
-  return Array.isArray(data) ? data.length : 0;
+
+  const entry = series[0] as Record<string, unknown>;
+  const data = entry.data;
+  if (!Array.isArray(data)) return 0;
+
+  // themeRiver's `data` is one row per (date, value, name) point, not one
+  // per legend entry — the legend instead shows one entry per distinct name.
+  if (entry.type === 'themeRiver') return themeRiverStreamNames(data).length;
+
+  return data.length;
 }
 
 /**
- * Past this many entries, a non-scrolling legend wraps onto several lines —
- * the fixed `legendTopOffset`/grid-top guard below only reserves space for
- * one line, so a wrapped legend spills into and overlaps the chart body.
- * `type: 'scroll'` keeps it to a single paginated line instead.
+ * Rough estimate of how many legend entries fit on one line before a
+ * horizontal legend wraps — used only to reserve extra `grid.top` space for
+ * the wrapped lines, never to switch to a paginated `type: 'scroll'` legend
+ * (the prev/next arrows that produces read as broken UI rather than a normal
+ * multi-row legend).
  */
-const LEGEND_SCROLL_THRESHOLD = 8;
+const LEGEND_ITEMS_PER_LINE = 8;
+
+/** Vertical space reserved per wrapped legend line beyond the first. */
+const LEGEND_LINE_HEIGHT = 24;
+
+/**
+ * Pie/sunburst have no `grid.top`-equivalent reservation — a top legend that
+ * wraps onto extra lines (see LEGEND_ITEMS_PER_LINE) sits directly above the
+ * chart's default 50%-centered radius, crowding its outer labels against the
+ * legend. Shrinking the radius by this fraction per wrapped line opens up
+ * that band without needing to know the container's actual pixel size.
+ */
+const PIE_RADIUS_SHRINK_PER_WRAPPED_LINE = 0.15;
 
 function baseTextStyle(theme: BrandTheme, size: number, color = theme.textColor) {
   return {
@@ -222,6 +263,21 @@ function applyStyleEffect(
   }
 }
 
+/** Scales a pie/sunburst `radius` (number, percent string, or `[inner, outer]` pair of either) by `factor`, defaulting to ECharts' own `'75%'` when unset. */
+function scaleRadius(radius: unknown, factor: number): unknown {
+  const scaleOne = (r: unknown): unknown => {
+    if (typeof r === 'number') return r * factor;
+    if (typeof r === 'string') {
+      const m = /^(-?[\d.]+)(%?)$/.exec(r.trim());
+      if (!m) return r;
+      return `${parseFloat(m[1]) * factor}${m[2]}`;
+    }
+    return r;
+  };
+  const base = radius ?? '75%';
+  return Array.isArray(base) ? base.map(scaleOne) : scaleOne(base);
+}
+
 /** Adds brand-consistent rounding/borders to series that support itemStyle, without overriding AI-authored colors per data point. */
 function themeSeries(series: EChartsOption['series'], theme: BrandTheme, styleEffect?: ChartStyleEffect): EChartsOption['series'] {
   if (!series) return series;
@@ -255,7 +311,7 @@ function themeSeries(series: EChartsOption['series'], theme: BrandTheme, styleEf
       };
     }
 
-    if (type === 'graph' || type === 'tree' || type === 'treemap' || type === 'sankey') {
+    if (type === 'graph' || type === 'tree' || type === 'treemap' || type === 'sankey' || type === 'themeRiver') {
       themed.label = {
         ...baseTextStyle(theme, theme.fontSize.axisLabel),
         ...(seriesEntry.label as object),
@@ -352,6 +408,12 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   const hasSubtext  = hasTitle && Boolean((original.title as Record<string, unknown>)?.subtext);
   const legendTopOffset = isTopLegend && hasTitle ? (hasSubtext ? 68 : 48) : 8;
 
+  // A top legend with many entries wraps onto extra lines (see LEGEND_ITEMS_PER_LINE) —
+  // reserve grid-top space for those lines so the wrapped legend doesn't overlap the chart body.
+  const legendEntryCount = countLegendEntries(original.series as EChartsOption['series']);
+  const legendWrappedLines = Math.max(0, Math.ceil(legendEntryCount / LEGEND_ITEMS_PER_LINE) - 1);
+  const legendExtraHeight = legendWrappedLines * LEGEND_LINE_HEIGHT;
+
   const themed: Record<string, unknown> = JSON.parse(JSON.stringify(original));
 
   themed.color = theme.palette;
@@ -383,28 +445,34 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
 
   if (effectiveLegend !== undefined) {
     if (legendOverride) {
-      // A non-scrolling legend wraps onto multiple lines once it has many entries,
-      // but the grid-top guard below only reserves space for one line — switch to
-      // a paginated single-line legend instead of letting it spill into the chart.
-      const scrollDefaults = countLegendEntries(original.series as EChartsOption['series']) > LEGEND_SCROLL_THRESHOLD
-        ? {
-            type: 'scroll' as const,
-            pageIconColor: theme.textColor,
-            pageIconInactiveColor: theme.borderColor,
-            pageTextStyle: baseTextStyle(theme, theme.fontSize.legend, theme.mutedTextColor),
-          }
+      // themeRiver's legend entries can't be auto-collected by ECharts — each
+      // data item is a [date, value, name] tuple, not a {name: ...} object —
+      // so supply the distinct stream names explicitly.
+      const singleSeries = Array.isArray(original.series) ? original.series[0] : original.series;
+      const riverEntry = singleSeries as Record<string, unknown> | undefined;
+      const riverLegendData = riverEntry?.type === 'themeRiver' && Array.isArray(riverEntry.data)
+        ? { data: themeRiverStreamNames(riverEntry.data) }
         : {};
+
       themed.legend = {
         ...legendOverride,
         ...(isTopLegend ? { top: legendTopOffset } : {}),
         textStyle: baseTextStyle(theme, theme.fontSize.legend, theme.mutedTextColor),
-        ...scrollDefaults,
+        ...riverLegendData,
         ...(effectiveLegend as object),
+        // AI-authored specs sometimes set `type: 'scroll'` for many-entry legends
+        // (a common ECharts pattern in training data) — force `plain` so legends
+        // always wrap onto extra lines instead of showing pagination arrows.
+        type: 'plain',
       };
     } else {
       themed.legend = { ...(effectiveLegend as object), show: false };
     }
   }
+
+  // Reused below to reserve space for a visible top legend across cartesian
+  // grids, radar charts, and pie/sunburst radius.
+  const topLegendHasContent = isTopLegend && effectiveLegend !== undefined;
 
   // Let ECharts automatically hide overlapping labels instead of stacking them —
   // most critical for dense pie charts and scatter plots.
@@ -423,9 +491,8 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
     // Guard: ensure the cartesian plot area starts below the title and any top-positioned
     // legend. ECharts doesn't factor these non-grid elements into its layout pass, so
     // without this the chart body can overlap the title row or legend row.
-    const topLegendHasContent = isTopLegend && effectiveLegend !== undefined;
     const minTop = (() => {
-      if (topLegendHasContent) return legendTopOffset + 28;   // legend bottom edge + gap
+      if (topLegendHasContent) return legendTopOffset + 28 + legendExtraHeight;   // legend bottom edge + gap
       if (hasTitle)            return hasSubtext ? 72 : 52;   // title bottom edge + gap
       return 0;
     })();
@@ -444,14 +511,18 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
     const radarArr = Array.isArray(original.radar) ? original.radar : [original.radar];
     // A top-positioned legend (plus title) overlaps the radar's default
     // center/radius — unlike `grid`, radar has no `top` inset to push it down,
-    // so shrink and re-center it to clear the legend/title band instead.
-    const topLegendHasContent = isTopLegend && effectiveLegend !== undefined;
+    // so shrink and re-center it to clear the legend/title band instead. A
+    // wrapped legend (many compared entities, see legendWrappedLines) eats
+    // further into that band, so push down / shrink proportionally more.
     themed.radar = radarArr.map((r) => {
       const rec = r as Record<string, unknown>;
       return {
         ...rec,
         ...(topLegendHasContent && rec.center === undefined && rec.radius === undefined
-          ? { center: ['50%', '61%'], radius: '55%' }
+          ? {
+              center: ['50%', `${61 + legendWrappedLines * 4}%`],
+              radius: `${Math.max(35, 55 - legendWrappedLines * 8)}%`,
+            }
           : {}),
         axisLine: { lineStyle: { color: theme.borderColor }, ...(rec.axisLine as object) },
         splitLine: { lineStyle: { color: theme.borderColor }, ...(rec.splitLine as object) },
@@ -469,6 +540,27 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   themed.xAxis = themeAxes(original.xAxis as EChartsOption['xAxis'], theme, 'x');
   themed.yAxis = themeAxes(original.yAxis as EChartsOption['yAxis'], theme, 'y');
   themed.series = themeSeries(original.series as EChartsOption['series'], theme, styleEffect);
+
+  // A wrapped top legend (multi-line, see legendExtraHeight) crowds chart
+  // types with no `grid.top`-equivalent reservation: shrink pie/sunburst's
+  // radius, and push themeRiver's plot area (which reuses single-axis
+  // left/top/right/bottom, see series.themeRiver docs) down, per extra line.
+  // Single-line legends (the common case) leave both untouched.
+  if (topLegendHasContent && legendExtraHeight > 0) {
+    const seriesList = Array.isArray(themed.series) ? themed.series : [themed.series];
+    const radiusScale = Math.max(0.5, 1 - legendWrappedLines * PIE_RADIUS_SHRINK_PER_WRAPPED_LINE);
+    const riverTop = legendTopOffset + 28 + legendExtraHeight;
+    themed.series = seriesList.map((s) => {
+      const entry = s as Record<string, unknown>;
+      if (entry.type === 'pie' || entry.type === 'sunburst') {
+        return { ...entry, radius: scaleRadius(entry.radius, radiusScale) };
+      }
+      if (entry.type === 'themeRiver' && entry.top === undefined) {
+        return { ...entry, top: riverTop };
+      }
+      return entry;
+    });
+  }
 
   // ── Polar coordinate axes (used by polar bar, line, scatter, heatmap variants) ──
   // Without explicit theming these stay at ECharts defaults and look inconsistent.

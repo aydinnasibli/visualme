@@ -8,7 +8,6 @@ export const VALIDATION_LIMITS = {
   MAX_TITLE_LENGTH: 200,
   MAX_DATA_SIZE: 1024 * 1024,       // 1MB max for DB storage
   MAX_EDIT_DATA_SIZE: 100 * 1024,   // 100KB max data sent to AI for edits (~25K tokens input cap)
-  MAX_EXTENDED_NODES: 100,
   MAX_SAVED_VISUALIZATIONS_FREE: 50,
   MAX_SAVED_VISUALIZATIONS_PRO: 1000,
   MAX_EXISTING_NODES_ARRAY: 1000,
@@ -23,7 +22,6 @@ export const VALIDATION_LIMITS = {
  * Real cost per call:
  *   Generate: ~700 in  + 2000 out = $0.009525
  *   Edit:    ~4000 in  + 3000 out = $0.016500  ← most expensive
- *   Expand:   ~500 in  + 1000 out = $0.004875
  *
  * Unit token price anchored to the most expensive op (edit):
  *   $0.016500 ÷ 18 = $0.000917 / token
@@ -31,14 +29,12 @@ export const VALIDATION_LIMITS = {
  * Token costs (rounded UP to protect budget):
  *   Generate: $0.009525 ÷ $0.000917 = 10.39 → 11 tokens
  *   Edit:     $0.016500 ÷ $0.000917 = 18.00 → 18 tokens
- *   Expand:   $0.004875 ÷ $0.000917 =  5.32 →  6 tokens
  *
  * Pro monthly limit = $5.00 ÷ $0.000917 = 5,453 → floored to 5,400.
  *
  * PROOF no combination can exceed $5:
  *   All edits:    5,400÷18 = 300  × $0.016500 = $4.95 < $5 ✓
  *   All generates: 5,400÷11 = 490 × $0.009525 = $4.67 < $5 ✓
- *   All expands:   5,400÷6  = 900 × $0.004875 = $4.39 < $5 ✓
  *   Any mix: max = 5,400 × $0.000917            = $4.95 < $5 ✓
  */
 
@@ -52,7 +48,6 @@ export const TOKEN_COSTS = {
   // Derived from $0.000917/token (anchored to edit, the most expensive op)
   GENERATE_VISUALIZATION: 11,   // $0.009525 actual → 10.39 → 11
   EDIT_VISUALIZATION: 18,       // $0.016500 actual → 18.00 → 18
-  EXPAND_NODE: 6,               // $0.004875 actual →  5.32 →  6
 
   // Database operations (no AI call)
   SAVE_VISUALIZATION: 0,
@@ -89,7 +84,6 @@ export function calcInternalTokens(promptTokens: number, completionTokens: numbe
 export function getTokenCosts(): {
   generateVisualization: number;
   editVisualization: number;
-  expandNode: number;
   exportVisualization: number;
   saveVisualization: number;
   deleteVisualization: number;
@@ -97,11 +91,18 @@ export function getTokenCosts(): {
   return {
     generateVisualization: TOKEN_COSTS.GENERATE_VISUALIZATION,
     editVisualization: TOKEN_COSTS.EDIT_VISUALIZATION,
-    expandNode: TOKEN_COSTS.EXPAND_NODE,
     exportVisualization: TOKEN_COSTS.EXPORT_VISUALIZATION,
     saveVisualization: TOKEN_COSTS.SAVE_VISUALIZATION,
     deleteVisualization: TOKEN_COSTS.DELETE_VISUALIZATION,
   };
+}
+
+/**
+ * Escape special regex characters so user input can be safely used inside a
+ * MongoDB $regex query (prevents ReDoS via crafted patterns).
+ */
+export function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

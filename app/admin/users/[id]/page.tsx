@@ -90,10 +90,6 @@ export default async function AdminUserDetailPage({
                 <dt className="text-white/30">Total vizs</dt>
                 <dd className="text-white/70 tabular-nums">{totalVisualizations}</dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-white/30">Extended nodes</dt>
-                <dd className="text-white/70 tabular-nums">{user.extendedNodesCount}</dd>
-              </div>
               {user.lastLoginAt && (
                 <div className="flex justify-between">
                   <dt className="text-white/30">Last login</dt>

@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import Papa from 'papaparse';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
+import { inferSchema } from '@/lib/utils/csv-schema';
 
 const MAX_RESPONSE_BYTES = 512 * 1024; // 512 KB
 const FETCH_TIMEOUT_MS = 12_000;
@@ -25,8 +27,11 @@ function normalizeUrl(raw: string): string {
   if (sheetsMatch) {
     const id = sheetsMatch[1];
     const gidMatch = raw.match(/[?&#]gid=(\d+)/);
-    const gid = gidMatch ? gidMatch[1] : '0';
-    return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+    // Omit gid when absent so Google falls back to the spreadsheet's default
+    // sheet — defaulting to gid=0 breaks when that gid no longer exists.
+    return gidMatch
+      ? `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gidMatch[1]}`
+      : `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
   }
   return raw;
 }
@@ -51,34 +56,44 @@ function isBlockedUrl(urlString: string): boolean {
   return false;
 }
 
-/* ── Minimal CSV parser (handles quoted fields + CRLF) ── */
-function parseCSV(text: string): { headers: string[]; rowCount: number } {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length === 0) return { headers: [], rowCount: 0 };
+/* ── CSV parsing (Papa Parse handles quoting, escapes, CRLF, and type coercion) ── */
+function parseCsv(text: string, truncated: boolean): {
+  rawCsv: string;
+  headers: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+} {
+  // A response truncated at MAX_RESPONSE_BYTES may end mid-row — drop that
+  // incomplete trailing line so it doesn't corrupt the last parsed row.
+  let cleaned = text.trim();
+  if (truncated) {
+    const lastNewline = cleaned.lastIndexOf('\n');
+    if (lastNewline !== -1) cleaned = cleaned.slice(0, lastNewline).trimEnd();
+  }
 
-  const parseRow = (line: string): string[] => {
-    const cols: string[] = [];
-    let cur = '';
-    let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') {
-        if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
-        else inQ = !inQ;
-      } else if (c === ',' && !inQ) {
-        cols.push(cur.trim());
-        cur = '';
-      } else {
-        cur += c;
-      }
-    }
-    cols.push(cur.trim());
-    return cols;
+  // Google Sheets exports commonly start with blank spacer/title rows above
+  // the real header — drop fully-empty leading lines (all commas/whitespace)
+  // so `header: true` picks up the actual column names.
+  const lines = cleaned.split(/\r?\n/);
+  let firstContentLine = 0;
+  while (firstContentLine < lines.length - 1 && /^[,\s]*$/.test(lines[firstContentLine])) {
+    firstContentLine++;
+  }
+  if (firstContentLine > 0) cleaned = lines.slice(firstContentLine).join('\n');
+
+  const result = Papa.parse<Record<string, unknown>>(cleaned, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    transformHeader: h => h.trim(),
+  });
+
+  return {
+    rawCsv: cleaned,
+    headers: result.meta.fields ?? [],
+    rows: result.data,
+    rowCount: result.data.length,
   };
-
-  const headers = parseRow(lines[0]);
-  const rowCount = lines.slice(1).filter(l => l.trim()).length;
-  return { headers, rowCount };
 }
 
 export async function GET(request: NextRequest) {
@@ -181,12 +196,14 @@ export async function GET(request: NextRequest) {
       }, new Uint8Array())
     );
 
-    const { headers, rowCount } = parseCSV(rawCsv);
+    const parsed = parseCsv(rawCsv, truncated);
+    const schema = inferSchema(parsed.rows);
 
     return NextResponse.json({
-      rawCsv,
-      headers,
-      rowCount,
+      rawCsv: parsed.rawCsv,
+      headers: parsed.headers,
+      rowCount: parsed.rowCount,
+      schema,
       truncated,
       fetchedAt: new Date().toISOString(),
     });

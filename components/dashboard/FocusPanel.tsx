@@ -115,9 +115,6 @@ export interface FocusPanelProps {
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date | string }>;
   handleChatMessage: (message: string) => Promise<void>;
   isEditing: boolean;
-  manualEditJson: string;
-  setManualEditJson: (json: string) => void;
-  handleManualEdit: () => void;
   onThemeChange: (theme: BrandTheme) => void;
   onTitleChange?: (title: string) => void;
   onLiveDataChange?: (config: { url: string; interval: number } | null) => void;
@@ -135,7 +132,6 @@ const INTERVAL_OPTIONS = [
 export default function FocusPanel({
   thread, saving, onSave, onShare, onExportData,
   chatHistory, handleChatMessage, isEditing,
-  manualEditJson, setManualEditJson, handleManualEdit,
   onThemeChange, onTitleChange,
   onLiveDataChange, onRefreshLiveData, isRefreshing,
 }: FocusPanelProps) {
@@ -539,9 +535,6 @@ export default function FocusPanel({
                   chatHistory={chatHistory}
                   handleChatMessage={handleChatMessage}
                   isEditing={isEditing}
-                  manualEditJson={manualEditJson}
-                  setManualEditJson={setManualEditJson}
-                  handleManualEdit={handleManualEdit}
                   theme={resolvedTheme}
                   onThemeChange={onThemeChange}
                 />

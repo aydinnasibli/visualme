@@ -8,12 +8,15 @@ interface IUser extends Document {
   lastName?: string;
   imageUrl?: string;
 
-  extendedNodes: string[];
   savedVisualizations: mongoose.Types.ObjectId[];
 
   plan: 'free' | 'pro' | 'enterprise';
   usageCount: number;
   lastResetDate: Date;
+
+  notificationPreferences: {
+    usageAlerts: boolean;
+  };
 
   createdAt: Date;
   updatedAt: Date;
@@ -45,10 +48,6 @@ const UserSchema = new Schema<IUser>(
     lastName: String,
     imageUrl: String,
 
-    extendedNodes: {
-      type: [String],
-      default: [],
-    },
     savedVisualizations: [{
       type: Schema.Types.ObjectId,
       ref: 'Visualization',
@@ -67,6 +66,12 @@ const UserSchema = new Schema<IUser>(
     lastResetDate: {
       type: Date,
       default: Date.now,
+    },
+    notificationPreferences: {
+      usageAlerts: {
+        type: Boolean,
+        default: true,
+      },
     },
     lastLoginAt: Date,
   },
@@ -92,30 +97,6 @@ UserSchema.statics.findOrCreate = async function(clerkId: string, userData?: Par
   );
 
   return user;
-};
-
-UserSchema.methods.hasExtendedNode = function(nodeId: string): boolean {
-  return this.extendedNodes.includes(nodeId);
-};
-
-UserSchema.methods.addExtendedNode = async function(nodeId: string) {
-  if (!this.extendedNodes.includes(nodeId)) {
-    this.extendedNodes.push(nodeId);
-    await this.save();
-  }
-  return this;
-};
-
-UserSchema.methods.removeExtendedNode = async function(nodeId: string) {
-  this.extendedNodes = this.extendedNodes.filter((id: string) => id !== nodeId);
-  await this.save();
-  return this;
-};
-
-UserSchema.methods.clearExtendedNodes = async function() {
-  this.extendedNodes = [];
-  await this.save();
-  return this;
 };
 
 const UserModel = (mongoose.models.User || mongoose.model<IUser>('User', UserSchema)) as Model<IUser> & {

@@ -66,7 +66,7 @@ export default function LiveSheetButton({ liveSheet, onConnect, onDisconnect, di
         setError(data.error || 'Failed to fetch data source');
         return;
       }
-      onConnect({ url, rawCsv: data.rawCsv, headers: data.headers, rowCount: data.rowCount });
+      onConnect({ url, rawCsv: data.rawCsv, headers: data.headers, rowCount: data.rowCount, schema: data.schema ?? [] });
       setUrlInput('');
       setOpen(false);
     } catch {
