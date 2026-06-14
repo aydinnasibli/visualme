@@ -499,21 +499,22 @@ export default function FocusPanel({
           </VisualizationErrorBoundary>
         </div>
 
-        {/* AI narrative — short takeaway generated alongside the chart */}
+        {/* Key takeaway — short insight generated alongside the chart */}
         <AnimatePresence mode="wait">
           {thread.spec.narrative && (
             <motion.div
               key={thread.spec.narrative}
-              initial={{ opacity: 0, y: 4 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="shrink-0 border-t border-edge bg-surface-1 px-6 py-3"
+              className="shrink-0 border-t border-edge bg-surface-1 px-6 py-4"
             >
-              <div className="flex items-start gap-2.5 max-w-[68ch]">
-                <Sparkles size={13} className="shrink-0 mt-0.5" style={{ color: 'oklch(72% 0.13 55)' }} />
-                <p className="text-[13px] text-ink-muted leading-relaxed">{thread.spec.narrative}</p>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Sparkles size={13} className="text-accent" />
+                <span className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">Key takeaway</span>
               </div>
+              <p className="text-[13px] text-ink-muted leading-relaxed">{thread.spec.narrative}</p>
             </motion.div>
           )}
         </AnimatePresence>
