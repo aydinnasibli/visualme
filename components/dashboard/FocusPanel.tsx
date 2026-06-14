@@ -478,6 +478,35 @@ export default function FocusPanel({
           </div>
         </div>
 
+        {/* AI narrative — short takeaway generated alongside the chart */}
+        <AnimatePresence mode="wait">
+          {thread.spec.narrative && (
+            <motion.div
+              key={thread.spec.narrative}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-start gap-2.5 px-4 py-3 shrink-0"
+              style={{
+                background: 'oklch(72% 0.13 55 / 0.05)',
+                borderBottom: '1px solid oklch(72% 0.13 55 / 0.15)',
+              }}
+            >
+              <Sparkles size={13} className="shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />
+              <div className="min-w-0">
+                <span
+                  className="block text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  Key takeaway
+                </span>
+                <p className="text-[13px] text-ink-muted leading-relaxed">{thread.spec.narrative}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Viz — wrapped in ErrorBoundary so a broken viz can't crash the panel */}
         <div ref={vizAreaRef} className="flex-1 relative overflow-hidden min-h-0" key={thread.id}>
           <VisualizationErrorBoundary>

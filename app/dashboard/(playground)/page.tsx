@@ -352,7 +352,7 @@ function DashboardContent() {
       ];
       setThreads(p => p.map(t => t.id === id ? {
         ...t,
-        spec: res.option ? { ...t.spec, option: res.option } : t.spec,
+        spec: res.option ? { ...t.spec, option: res.option, narrative: res.narrative ?? t.spec.narrative } : t.spec,
         chatHistory: finalHist,
       } : t));
       toast.success(res.option ? 'Updated!' : 'Response received');

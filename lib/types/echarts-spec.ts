@@ -83,6 +83,8 @@ export interface VisualizationSpec {
   title?: string;
   /** Deterministic visual effect requested via the chart-type gallery (e.g. gradient area fill) — applied by `applyBrandTheme`, not authored by the AI. */
   styleEffect?: ChartStyleEffect;
+  /** Short AI-written takeaway about the chart's data — shown alongside the chart. */
+  narrative?: string;
 }
 
 // ============================================================================

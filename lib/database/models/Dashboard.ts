@@ -49,12 +49,20 @@ const DashboardSchema = new Schema<Dashboard>(
       ],
       default: [],
     },
+    // Weekly email digest: re-fetches connected sheets for this dashboard's
+    // charts and emails a summary on `dayOfWeek` (UTC).
+    schedule: {
+      enabled: { type: Boolean, default: false },
+      dayOfWeek: { type: Number, min: 0, max: 6, default: 1 }, // Monday
+      lastSentAt: Date,
+    },
   },
   { timestamps: true }
 );
 
 DashboardSchema.index({ userId: 1, createdAt: -1 });
 DashboardSchema.index({ dashboardId: 1 }, { unique: true, sparse: true });
+DashboardSchema.index({ 'schedule.enabled': 1, 'schedule.dayOfWeek': 1 });
 
 const DashboardModel: Model<Dashboard> =
   mongoose.models.Dashboard || mongoose.model<Dashboard>('Dashboard', DashboardSchema);

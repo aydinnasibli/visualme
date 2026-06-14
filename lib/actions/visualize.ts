@@ -6,6 +6,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
 import { generateChartSpec } from '@/lib/services/spec-generator';
+import { generateNarrative } from '@/lib/services/narrative-generator';
 import { editChartSpec } from '@/lib/services/spec-editor';
 import { calculateCost, sanitizeVisualization } from '@/lib/utils/helpers';
 import { resolveVariant } from '@/lib/utils/chart-types';
@@ -31,6 +32,13 @@ import type {
   LiveDataConfig,
   SavedVisualization,
 } from '@/lib/types/visualization';
+
+/** Pulls the display title out of an ECharts option's `title` component, if any. */
+function getOptionTitleText(option: EChartsOption): string {
+  const title = option.title;
+  const t = Array.isArray(title) ? title[0] : title;
+  return typeof t?.text === 'string' ? t.text : '';
+}
 
 /**
  * Generate a new visualization from user input
@@ -81,6 +89,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
         theme: defaultTheme,
         title: cached.title,
         styleEffect,
+        narrative: cached.narrative,
       };
 
       return {
@@ -114,12 +123,28 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
     const resolvedStyleEffect: ChartStyleEffect | undefined =
       styleEffect ?? detectedSelection?.variant?.styleEffect;
 
+    // ── Narrative summary — separate AI call grounded in the actual generated
+    // data (not the raw prompt), so the spec-composition prompt above stays
+    // focused purely on chart structure/quality. Best-effort: a failure here
+    // shouldn't block the chart itself.
+    let narrative: string | undefined;
+    let narrativePromptTokens = 0;
+    let narrativeCompletionTokens = 0;
+    try {
+      const narrativeResult = await generateNarrative(data.option, data.title);
+      narrative = narrativeResult.data.narrative;
+      narrativePromptTokens = narrativeResult.promptTokens;
+      narrativeCompletionTokens = narrativeResult.completionTokens;
+    } catch (error) {
+      console.error('Error generating narrative:', error);
+    }
+
     // ── Store in cache after the response — `after()` keeps the Vercel function
     // alive past the response boundary so the write is guaranteed to complete.
-    after(() => setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason }).catch(() => {}));
+    after(() => setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason, narrative }).catch(() => {}));
 
     // ── Deduct actual token cost based on real OpenAI usage ───────────────────
-    const actualCost = calcInternalTokens(promptTokens, completionTokens);
+    const actualCost = calcInternalTokens(promptTokens + narrativePromptTokens, completionTokens + narrativeCompletionTokens);
     const deduction = await deductTokens(userId, actualCost);
     if (!deduction.success) {
       console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
@@ -136,6 +161,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       theme: defaultTheme,
       title: data.title,
       styleEffect: resolvedStyleEffect,
+      narrative,
     };
 
     return {
@@ -260,8 +286,26 @@ export async function editVisualizationAction(
 
     const result = await editChartSpec(existingOption, editPrompt, contextHistory);
 
+    // ── Narrative summary — regenerate only when the chart's data actually
+    // changed (a question response leaves `option` undefined, so the old
+    // narrative is still accurate). Best-effort: a failure here shouldn't
+    // block the edit itself.
+    let narrative: string | undefined;
+    let narrativePromptTokens = 0;
+    let narrativeCompletionTokens = 0;
+    if (result.option) {
+      try {
+        const narrativeResult = await generateNarrative(result.option, getOptionTitleText(result.option));
+        narrative = narrativeResult.data.narrative;
+        narrativePromptTokens = narrativeResult.promptTokens;
+        narrativeCompletionTokens = narrativeResult.completionTokens;
+      } catch (error) {
+        console.error('Error generating narrative on edit:', error);
+      }
+    }
+
     // Deduct actual token cost based on real OpenAI usage
-    const actualCost = calcInternalTokens(result.promptTokens, result.completionTokens);
+    const actualCost = calcInternalTokens(result.promptTokens + narrativePromptTokens, result.completionTokens + narrativeCompletionTokens);
     const deduction = await deductTokens(userId, actualCost);
     if (!deduction.success) {
       console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
@@ -274,7 +318,7 @@ export async function editVisualizationAction(
        const visualization = await VisualizationModel.findOne({ _id: visualizationId, userId });
 
        if (visualization) {
-         visualization.spec = { ...visualization.spec, option: result.option };
+         visualization.spec = { ...visualization.spec, option: result.option, narrative: narrative ?? visualization.spec.narrative };
          visualization.updatedAt = new Date();
 
          // Keep an active, non-saved, non-live session alive while in use
@@ -306,6 +350,7 @@ export async function editVisualizationAction(
       success: true,
       message: result.message,
       option: result.option, // Updated option payload (or undefined if just a question)
+      narrative, // Updated narrative (only set when `option` changed)
       visualization: updatedVisualization
     };
 

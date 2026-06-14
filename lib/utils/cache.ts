@@ -8,6 +8,7 @@ export interface CachedChartSpec {
   title: string;
   option: EChartsOption;
   reason: string;
+  narrative?: string;
 }
 
 /**

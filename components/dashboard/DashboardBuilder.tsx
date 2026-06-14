@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Plus, Trash2, Share2, Check, Copy,
   ChevronLeft, ChevronRight, Save, BarChart3, Pencil, X,
   ExternalLink, Eye, Globe, Lock, Download, FileText, Images,
+  Mail, AlertCircle, Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import ThemeToggle from '@/components/dashboard/ThemeToggle';
@@ -17,6 +18,7 @@ import {
   createDashboard,
   updateDashboard,
   publishDashboard,
+  updateDashboardSchedule,
   deleteDashboard,
 } from '@/lib/actions/dashboard';
 import { exportDashboardAsPDF, exportDashboardAsSlidePNGs } from '@/lib/utils/export-dashboard';
@@ -274,6 +276,115 @@ function ShareModal({
   );
 }
 
+// ─── schedule modal ───────────────────────────────────────────────────────────
+
+const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function ScheduleModal({
+  dashboard,
+  hasLiveData,
+  onClose,
+  onSave,
+  saving,
+}: {
+  dashboard: Dashboard;
+  hasLiveData: boolean;
+  onClose: () => void;
+  onSave: (schedule: { enabled: boolean; dayOfWeek: number }) => Promise<void>;
+  saving: boolean;
+}) {
+  const [enabled, setEnabled] = useState(dashboard.schedule?.enabled ?? false);
+  const [dayOfWeek, setDayOfWeek] = useState(dashboard.schedule?.dayOfWeek ?? 1);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-surface-0/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.15 }}
+        className="relative w-full max-w-md rounded-2xl border border-edge bg-surface-1 p-6 shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-lg font-semibold text-ink">Weekly Email Digest</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors">
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Enabled toggle */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-surface-2 border border-edge mb-4">
+          <div className="flex items-center gap-3">
+            <Mail size={16} className={enabled ? 'text-accent' : 'text-ink-faint'} />
+            <div>
+              <p className="text-[13px] font-medium text-ink">
+                {enabled ? 'Enabled' : 'Disabled'}
+              </p>
+              <p className="text-[11px] text-ink-faint">
+                Refresh connected charts and email a summary
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setEnabled(p => !p)}
+            disabled={saving}
+            className={`w-11 h-6 rounded-full relative transition-colors focus:outline-none disabled:opacity-50 ${enabled ? 'bg-accent' : 'bg-surface-3'}`}
+          >
+            <span
+              className="block w-4 h-4 rounded-full bg-white shadow absolute top-1 transition-transform"
+              style={{ left: enabled ? 'calc(100% - 20px)' : '4px' }}
+            />
+          </button>
+        </div>
+
+        {/* Day of week */}
+        {enabled && (
+          <div className="mb-4">
+            <label className="text-[11px] font-medium text-ink-faint block mb-1.5">Send on</label>
+            <select
+              value={dayOfWeek}
+              onChange={e => setDayOfWeek(Number(e.target.value))}
+              disabled={saving}
+              className="w-full px-3 py-2.5 rounded-xl bg-surface-2 border border-edge text-[12px] text-ink focus:outline-none focus:border-accent/40 disabled:opacity-50"
+            >
+              {DAY_LABELS.map((label, i) => (
+                <option key={i} value={i}>{label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Hint if nothing to refresh */}
+        {!hasLiveData && (
+          <p className="flex items-start gap-1.5 text-[11px] text-ink-faint mb-4">
+            <AlertCircle size={12} className="shrink-0 mt-0.5" />
+            Connect a live Google Sheet to a chart to enable refresh.
+          </p>
+        )}
+
+        {/* Last sent */}
+        {dashboard.schedule?.lastSentAt && (
+          <p className="text-[11px] text-ink-faint mb-4">
+            Last sent: {new Date(dashboard.schedule.lastSentAt).toLocaleString()}
+          </p>
+        )}
+
+        <button
+          onClick={() => onSave({ enabled, dayOfWeek })}
+          disabled={saving}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[12px] font-medium text-white transition-colors disabled:opacity-50"
+          style={{ background: 'var(--color-accent)' }}
+        >
+          {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+          Save
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 // ─── title editor ─────────────────────────────────────────────────────────────
 
 function TitleEditor({
@@ -339,8 +450,10 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState<'pdf' | 'slides' | null>(null);
@@ -458,6 +571,25 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
     }
   };
 
+  // ── schedule ─────────────────────────────────────────────────────────────
+
+  const updateSchedule = async (schedule: { enabled: boolean; dayOfWeek: number }) => {
+    if (!activeDashboardId) { toast.error('Save the dashboard first'); return; }
+    setSavingSchedule(true);
+    try {
+      const res = await updateDashboardSchedule(activeDashboardId, schedule);
+      if (!res.success) throw new Error(res.error);
+      const updated = res.data!;
+      setDashboards(prev => prev.map(d => d._id === updated._id ? updated : d));
+      toast.success(schedule.enabled ? 'Weekly digest enabled' : 'Weekly digest disabled');
+      setScheduleModalOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update schedule');
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
   // ── delete ──────────────────────────────────────────────────────────────
 
   const doDelete = async (id: string) => {
@@ -520,6 +652,9 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
   // ── current published dashboard (for share modal) ───────────────────────
   const currentSavedDashboard = dashboards.find(d => d._id === activeDashboardId) ?? null;
 
+  // ── any connected live sheet? (for schedule modal hint) ─────────────────
+  const hasLiveData = (currentSavedDashboard?.slots ?? []).some(s => !!vizMap.get(s.vizId)?.liveData?.url);
+
   return (
     <div className="h-screen flex flex-col bg-surface-0 overflow-hidden">
 
@@ -544,6 +679,19 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
               <Share2 size={13} />
               Share
               {currentSavedDashboard.isPublic && <span className="w-1.5 h-1.5 rounded-full bg-success" />}
+            </button>
+          )}
+
+          {/* Schedule digest */}
+          {currentSavedDashboard && (
+            <button
+              onClick={() => setScheduleModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border text-ink-muted hover:text-ink hover:bg-surface-2"
+              style={{ borderColor: 'var(--color-edge)' }}
+            >
+              <Mail size={13} />
+              Digest
+              {currentSavedDashboard.schedule?.enabled && <span className="w-1.5 h-1.5 rounded-full bg-success" />}
             </button>
           )}
 
@@ -758,6 +906,19 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
             onClose={() => setShareModalOpen(false)}
             onTogglePublic={togglePublic}
             publishing={publishing}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Schedule digest modal ── */}
+      <AnimatePresence>
+        {scheduleModalOpen && currentSavedDashboard && (
+          <ScheduleModal
+            dashboard={currentSavedDashboard}
+            hasLiveData={hasLiveData}
+            onClose={() => setScheduleModalOpen(false)}
+            onSave={updateSchedule}
+            saving={savingSchedule}
           />
         )}
       </AnimatePresence>

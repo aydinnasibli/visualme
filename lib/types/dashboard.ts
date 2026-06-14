@@ -11,6 +11,15 @@ export interface DashboardVizSlot {
   titleSnapshot: string;
 }
 
+/** Weekly email digest schedule — re-fetches connected sheets and emails a summary. */
+export interface DashboardSchedule {
+  enabled: boolean;
+  /** 0 = Sunday .. 6 = Saturday, evaluated in UTC. */
+  dayOfWeek: number;
+  /** ISO timestamp of the last digest send/check, for cron idempotency. */
+  lastSentAt?: string;
+}
+
 export interface Dashboard {
   _id?: string;
   userId: string;
@@ -20,6 +29,7 @@ export interface Dashboard {
   isPublic: boolean;
   slots: DashboardVizSlot[];
   layout: DashboardLayoutItem[];
+  schedule?: DashboardSchedule;
   createdAt: string;
   updatedAt: string;
 }

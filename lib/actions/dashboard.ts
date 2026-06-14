@@ -6,7 +6,7 @@ import { connectToDatabase } from '@/lib/database/mongodb';
 import { DashboardModel, VisualizationModel } from '@/lib/database/models';
 import { validateObjectId, sanitizeError } from '@/lib/utils/validation';
 import { sanitizeVisualization } from '@/lib/utils/helpers';
-import type { Dashboard, DashboardLayoutItem, DashboardVizSlot, DashboardWithVizzes } from '@/lib/types/dashboard';
+import type { Dashboard, DashboardLayoutItem, DashboardSchedule, DashboardVizSlot, DashboardWithVizzes } from '@/lib/types/dashboard';
 
 const MAX_SLOTS = 12;
 
@@ -32,8 +32,25 @@ interface RawLayoutItem {
   maxH?: number;
 }
 
+interface RawSchedule {
+  enabled?: unknown;
+  dayOfWeek?: unknown;
+  lastSentAt?: unknown;
+}
+
 const toIsoString = (value: unknown): string | undefined =>
   value ? new Date(value as string | number | Date).toISOString() : undefined;
+
+function sanitizeSchedule(raw: unknown): DashboardSchedule | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const s = raw as RawSchedule;
+  if (typeof s.enabled !== 'boolean') return undefined;
+  return {
+    enabled: s.enabled,
+    dayOfWeek: typeof s.dayOfWeek === 'number' ? s.dayOfWeek : 1,
+    ...(s.lastSentAt ? { lastSentAt: toIsoString(s.lastSentAt) } : {}),
+  };
+}
 
 function sanitizeDashboard(doc: unknown): Dashboard {
   const raw = doc as RawDashboardDoc;
@@ -67,6 +84,7 @@ function sanitizeDashboard(doc: unknown): Dashboard {
           ...(l.maxH != null ? { maxH: l.maxH } : {}),
         }))
       : [],
+    schedule: sanitizeSchedule(obj.schedule),
   } as unknown as Dashboard;
 }
 
@@ -168,6 +186,35 @@ export async function publishDashboard(id: string, isPublic: boolean) {
   }
 }
 
+/** Enable/disable and configure the weekly email digest for a dashboard. */
+export async function updateDashboardSchedule(id: string, schedule: { enabled: boolean; dayOfWeek: number }) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    const idValidation = validateObjectId(id);
+    if (!idValidation.valid) return { success: false, error: idValidation.error };
+
+    if (!Number.isInteger(schedule.dayOfWeek) || schedule.dayOfWeek < 0 || schedule.dayOfWeek > 6) {
+      return { success: false, error: 'dayOfWeek must be between 0 and 6' };
+    }
+
+    await connectToDatabase();
+
+    const doc = await DashboardModel.findOneAndUpdate(
+      { _id: id, userId },
+      { $set: { 'schedule.enabled': schedule.enabled, 'schedule.dayOfWeek': schedule.dayOfWeek } },
+      { new: true }
+    );
+    if (!doc) return { success: false, error: 'Dashboard not found or unauthorized' };
+
+    return { success: true, data: sanitizeDashboard(doc) };
+  } catch (error) {
+    console.error('updateDashboardSchedule error:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to update dashboard schedule') };
+  }
+}
+
 /** Get all dashboards belonging to the current user. */
 export async function getUserDashboards() {
   try {
@@ -177,7 +224,7 @@ export async function getUserDashboards() {
     await connectToDatabase();
 
     const docs = await DashboardModel.find({ userId })
-      .select('_id userId title dashboardId isPublic slots layout createdAt updatedAt')
+      .select('_id userId title dashboardId isPublic slots layout schedule createdAt updatedAt')
       .sort({ updatedAt: -1 })
       .lean();
 
