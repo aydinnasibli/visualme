@@ -190,7 +190,7 @@ function ThreadInput({
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [statPickerOpen, setStatPickerOpen] = useState(false);
 
-  const datasetColumns = attachment?.datasetColumns;
+  const datasetColumns = attachment?.datasetColumns ?? liveSheet?.datasetColumns;
   const canRunStats = !loading && Boolean(datasetColumns?.length);
 
   useEffect(() => {
@@ -331,7 +331,7 @@ function ThreadInput({
           open={statPickerOpen}
           onClose={() => setStatPickerOpen(false)}
           columns={datasetColumns}
-          rowCount={attachment?.rowCount ?? datasetColumns[0]?.values.length ?? 0}
+          rowCount={attachment?.rowCount ?? liveSheet?.rowCount ?? datasetColumns[0]?.values.length ?? 0}
           initialRun={statRun}
           onRun={onRunStat}
         />

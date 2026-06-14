@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rss, Link as LinkIcon, Loader2, Unlink, AlertCircle } from 'lucide-react';
-import type { LiveSheetData } from '@/lib/utils/live-sheet';
+import { detectLiveSheetColumns, type LiveSheetData } from '@/lib/utils/live-sheet';
 import { useMounted } from '@/lib/hooks/useMounted';
 
 interface LiveSheetButtonProps {
@@ -66,7 +66,14 @@ export default function LiveSheetButton({ liveSheet, onConnect, onDisconnect, di
         setError(data.error || 'Failed to fetch data source');
         return;
       }
-      onConnect({ url, rawCsv: data.rawCsv, headers: data.headers, rowCount: data.rowCount, schema: data.schema ?? [] });
+      onConnect({
+        url,
+        rawCsv: data.rawCsv,
+        headers: data.headers,
+        rowCount: data.rowCount,
+        schema: data.schema ?? [],
+        datasetColumns: detectLiveSheetColumns(data.rawCsv),
+      });
       setUrlInput('');
       setOpen(false);
     } catch {

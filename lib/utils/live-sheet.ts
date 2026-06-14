@@ -1,6 +1,9 @@
 'use client';
 
+import Papa from 'papaparse';
 import { type ColumnSchema, formatSchemaForPrompt } from '@/lib/utils/csv-schema';
+import { detectColumns } from '@/lib/services/statistics-service';
+import type { DatasetColumn } from '@/lib/types/statistics';
 
 export interface LiveSheetData {
   url: string;
@@ -8,6 +11,22 @@ export interface LiveSheetData {
   headers: string[];
   rowCount: number;
   schema: ColumnSchema[];
+  /**
+   * Typed columns detected from `rawCsv` — the live-sheet equivalent of
+   * `FileAttachment.datasetColumns`, so the stat test picker works the same
+   * way regardless of whether the data came from an upload or a live sheet.
+   */
+  datasetColumns?: DatasetColumn[];
+}
+
+/** Re-parses `rawCsv` into typed columns for the stat test picker (mirrors the server's `header: true, dynamicTyping: true` parse). */
+export function detectLiveSheetColumns(rawCsv: string): DatasetColumn[] {
+  const result = Papa.parse<Record<string, unknown>>(rawCsv, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+  });
+  return detectColumns(result.data);
 }
 
 /** Keep embedded data well within VALIDATION_LIMITS.MAX_INPUT_LENGTH (10K chars). */

@@ -127,7 +127,10 @@ function DashboardContent() {
     setAttachment(null);
     setStatRun(null);
   }, [setStatRun]);
-  const handleDisconnectLiveSheet = useCallback(() => setLiveSheet(null), []);
+  const handleDisconnectLiveSheet = useCallback(() => {
+    setLiveSheet(null);
+    setStatRun(null);
+  }, [setStatRun]);
 
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
