@@ -62,6 +62,16 @@ export interface BrandTheme {
 }
 
 /**
+ * A user's persisted personal `BrandTheme` — one per user. Saved from the
+ * `ThemePanel`'s current styling and applied automatically as the default
+ * theme for every newly generated chart.
+ */
+export interface BrandKit {
+  theme: BrandTheme;
+  updatedAt?: string;
+}
+
+/**
  * What the AI generates and what the renderer consumes: a structural
  * `option` (chart type, series, encodings, raw data) plus the brand theme
  * that personalizes its appearance.

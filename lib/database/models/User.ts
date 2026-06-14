@@ -1,4 +1,10 @@
 import mongoose, { Schema, Model, Document } from 'mongoose';
+import type { BrandTheme } from '@/lib/types/echarts-spec';
+
+export interface IBrandKit {
+  theme: BrandTheme;
+  updatedAt: Date;
+}
 
 interface IUser extends Document {
   clerkId: string;
@@ -9,6 +15,7 @@ interface IUser extends Document {
   imageUrl?: string;
 
   savedVisualizations: mongoose.Types.ObjectId[];
+  brandKit?: IBrandKit;
 
   plan: 'free' | 'pro' | 'enterprise';
   usageCount: number;
@@ -52,6 +59,13 @@ const UserSchema = new Schema<IUser>(
       type: Schema.Types.ObjectId,
       ref: 'Visualization',
     }],
+
+    // Single personal brand kit (palette/font/spacing), applied as the
+    // default theme for every newly generated chart. Mixed so it's stored
+    // as-is and absent (`undefined`) for users who haven't saved one.
+    brandKit: {
+      type: Schema.Types.Mixed,
+    },
 
     plan: {
       type: String,

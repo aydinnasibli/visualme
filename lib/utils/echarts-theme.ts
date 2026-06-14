@@ -108,6 +108,52 @@ function countLegendEntries(series: EChartsOption['series']): number {
 }
 
 /**
+ * Label strings a themed legend will display — mirrors the sources
+ * `seriesNeedsLegend`/`countLegendEntries` read from (per-series names,
+ * per-data names, or themeRiver stream names), plus an explicit
+ * `legend.data` if the AI supplied one. Used only to estimate a vertical
+ * legend's width (see `verticalLegendWidth`); never to decide whether a
+ * legend is shown.
+ */
+function legendEntryLabels(original: Record<string, unknown>): string[] {
+  const legendData = (original.legend as Record<string, unknown> | undefined)?.data;
+  if (Array.isArray(legendData)) {
+    return legendData
+      .map((d) => (typeof d === 'string' ? d : (d as Record<string, unknown> | null)?.name))
+      .filter(isNonEmptyName);
+  }
+
+  const series = original.series as EChartsOption['series'];
+  if (!Array.isArray(series) || series.length === 0) return [];
+
+  if (series.length >= 2) {
+    return series.map((s) => (s as Record<string, unknown>).name).filter(isNonEmptyName);
+  }
+
+  const entry = series[0] as Record<string, unknown>;
+  const data = entry.data;
+  if (entry.type === 'themeRiver' && Array.isArray(data)) return themeRiverStreamNames(data);
+  if (Array.isArray(data)) {
+    return data.map((d) => (d as Record<string, unknown> | null)?.name).filter(isNonEmptyName);
+  }
+  return [];
+}
+
+/**
+ * Estimated width (px) a left/right legend needs for its widest entry,
+ * without measuring text — added to `grid.left`/`grid.right` so the plot
+ * area (and its own axis labels) don't render underneath the legend.
+ */
+function verticalLegendWidth(labels: string[], theme: BrandTheme): number {
+  const maxLen = labels.reduce((max, l) => Math.max(max, l.length), 0);
+  if (maxLen === 0) return 0;
+
+  return VERTICAL_LEGEND_ICON_WIDTH
+    + Math.ceil(maxLen * theme.fontSize.legend * VERTICAL_LEGEND_CHAR_WIDTH)
+    + VERTICAL_LEGEND_PADDING_AND_GAP;
+}
+
+/**
  * Rough estimate of how many legend entries fit on one line before a
  * horizontal legend wraps — used only to reserve extra `grid.top` space for
  * the wrapped lines, never to switch to a paginated `type: 'scroll'` legend
@@ -127,6 +173,15 @@ const LEGEND_LINE_HEIGHT = 24;
  * that band without needing to know the container's actual pixel size.
  */
 const PIE_RADIUS_SHRINK_PER_WRAPPED_LINE = 0.15;
+
+/** Width (px) of a vertical legend's color icon, per ECharts' default `itemWidth`. */
+const VERTICAL_LEGEND_ICON_WIDTH = 25;
+
+/** Rough average glyph width as a fraction of font size — estimates a vertical legend's label column without measuring text. */
+const VERTICAL_LEGEND_CHAR_WIDTH = 0.62;
+
+/** Icon-to-label gap plus the legend's own padding plus the gap left between the legend box and the plot area. */
+const VERTICAL_LEGEND_PADDING_AND_GAP = 18;
 
 function baseTextStyle(theme: BrandTheme, size: number, color = theme.textColor) {
   return {
@@ -497,7 +552,19 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
       return 0;
     })();
     const effectiveGridTop = Math.max(grid.top, minTop);
-    themed.grid = { ...grid, top: effectiveGridTop, containLabel: true, ...(original.grid as object) };
+
+    // A left/right legend renders inside the grid's left/right inset by default —
+    // widen that inset by the legend's estimated width so the plot area (and its
+    // own axis labels, reserved via containLabel) don't render underneath it.
+    const verticalLegendHasContent = effectiveLegend !== undefined
+      && (theme.legendPosition === 'left' || theme.legendPosition === 'right');
+    const verticalLegendW = verticalLegendHasContent
+      ? verticalLegendWidth(legendEntryLabels(original), theme)
+      : 0;
+    const effectiveGridLeft  = grid.left  + (theme.legendPosition === 'left'  ? verticalLegendW : 0);
+    const effectiveGridRight = grid.right + (theme.legendPosition === 'right' ? verticalLegendW : 0);
+
+    themed.grid = { ...grid, top: effectiveGridTop, left: effectiveGridLeft, right: effectiveGridRight, containLabel: true, ...(original.grid as object) };
   }
 
   // Radar axis-name overflow — indicator names are often long phrases; truncate

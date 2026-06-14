@@ -10,6 +10,7 @@ import { editChartSpec } from '@/lib/services/spec-editor';
 import { calculateCost, sanitizeVisualization } from '@/lib/utils/helpers';
 import { resolveVariant } from '@/lib/utils/chart-types';
 import { DEFAULT_SUNSET_THEME, type VisualizationSpec, type ChartStyleEffect } from '@/lib/types/echarts-spec';
+import { getDefaultBrandTheme } from '@/lib/actions/brand-kits';
 import type { EChartsOption } from 'echarts';
 import {
   validateInputLength,
@@ -62,6 +63,10 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
     const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
     if (!tokenCheck.allowed) return fail(tokenCheck.error || 'Insufficient tokens');
 
+    // ── Default theme — the user's default brand kit, if they've set one,
+    // otherwise the built-in sunset theme. Applies to every newly generated chart.
+    const defaultTheme = (await getDefaultBrandTheme(userId)) ?? DEFAULT_SUNSET_THEME;
+
     // ── Cache lookup (instant result, tokens still charged) ───────────────────
     const cached = await getCachedVisualization(input);
     if (cached) {
@@ -73,7 +78,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
 
       const spec: VisualizationSpec = {
         option: cached.option,
-        theme: DEFAULT_SUNSET_THEME,
+        theme: defaultTheme,
         title: cached.title,
         styleEffect,
       };
@@ -128,7 +133,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
 
     const spec: VisualizationSpec = {
       option: data.option,
-      theme: DEFAULT_SUNSET_THEME,
+      theme: defaultTheme,
       title: data.title,
       styleEffect: resolvedStyleEffect,
     };

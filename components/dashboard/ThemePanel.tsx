@@ -1,7 +1,11 @@
 "use client";
 
-import { Check, Palette, Type, LayoutGrid } from 'lucide-react';
-import type { BrandTheme, ChartSpacing, LegendPosition } from '@/lib/types/echarts-spec';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { toast } from 'sonner';
+import { Check, Palette, Type, LayoutGrid, Bookmark, Trash2, Loader2 } from 'lucide-react';
+import type { BrandTheme, BrandKit, ChartSpacing, LegendPosition } from '@/lib/types/echarts-spec';
+import { getBrandKit, saveBrandKit, deleteBrandKit } from '@/lib/actions/brand-kits';
 
 /* ── Curated brand palette presets — the "beautiful + on-brand" personalization layer ── */
 const PALETTE_PRESETS: { name: string; colors: string[] }[] = [
@@ -76,18 +80,136 @@ interface ThemePanelProps {
 }
 
 export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
-  const primaryColor = theme.palette[0] ?? '#6366f1';
-
   const update = (patch: Partial<BrandTheme>) => onChange({ ...theme, ...patch });
 
   const setPalette = (colors: string[]) => update({ palette: colors });
 
-  const setPrimaryColor = (hex: string) => {
-    update({ palette: [hex, ...theme.palette.slice(1)] });
+  const setPaletteColor = (index: number, hex: string) => {
+    const next = [...theme.palette];
+    next[index] = hex;
+    setPalette(next);
+  };
+
+  /* ── Personal brand kit — one saved palette/font/spacing preset, applied to every new chart ── */
+  const { isLoaded, isSignedIn } = useAuth();
+  const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
+  const [loadingKit, setLoadingKit] = useState(true);
+  const [savingKit, setSavingKit] = useState(false);
+  const [removingKit, setRemovingKit] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
+    let active = true;
+    getBrandKit().then(res => {
+      if (!active) return;
+      if (res.success) setBrandKit(res.data ?? null);
+      setLoadingKit(false);
+    });
+    return () => { active = false; };
+  }, [isLoaded, isSignedIn]);
+
+  const handleSaveKit = async () => {
+    setSavingKit(true);
+    try {
+      const res = await saveBrandKit(theme);
+      if (res.success && res.data) {
+        setBrandKit(res.data);
+        toast.success('Saved as your brand kit');
+      } else {
+        toast.error(res.error || 'Failed to save brand kit');
+      }
+    } finally {
+      setSavingKit(false);
+    }
+  };
+
+  const handleApplyKit = () => {
+    if (brandKit) onChange(brandKit.theme);
+  };
+
+  const handleRemoveKit = async () => {
+    setRemovingKit(true);
+    try {
+      const res = await deleteBrandKit();
+      if (res.success) {
+        setBrandKit(null);
+        toast.success('Removed your brand kit');
+      } else {
+        toast.error(res.error || 'Failed to remove brand kit');
+      }
+    } finally {
+      setRemovingKit(false);
+    }
   };
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-6 custom-scrollbar">
+      {/* Personal Brand Kit */}
+      <Section icon={Bookmark} title="My Brand Kit">
+        {!isLoaded || (isSignedIn && loadingKit) ? (
+          <div className="flex items-center justify-center py-3">
+            <Loader2 size={14} className="animate-spin text-ink-faint" />
+          </div>
+        ) : !isSignedIn ? (
+          <p className="text-[11px] text-ink-faint leading-relaxed">
+            Sign in to save this styling as your personal brand kit and apply it to every future chart by default.
+          </p>
+        ) : brandKit ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 p-2 rounded-lg border border-edge bg-surface-2">
+              <div className="flex -space-x-1 shrink-0">
+                {brandKit.theme.palette.slice(0, 4).map((c, i) => (
+                  <span key={i} className="w-3 h-3 rounded-full ring-1 ring-surface-1" style={{ background: c }} />
+                ))}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium text-ink-muted">Personal brand kit</p>
+                <p className="text-[10px] text-ink-faint">Applied to every new chart by default</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleApplyKit}
+                className="flex-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium bg-accent/15 text-accent transition-colors"
+              >
+                Apply to this chart
+              </button>
+              <button
+                onClick={handleSaveKit}
+                disabled={savingKit}
+                title="Update with this chart's styling"
+                className="px-2.5 py-1.5 rounded-md text-[11px] font-medium border border-edge text-ink-faint hover:text-ink-muted transition-colors disabled:opacity-50"
+              >
+                {savingKit ? <Loader2 size={12} className="animate-spin" /> : 'Update'}
+              </button>
+              <button
+                onClick={handleRemoveKit}
+                disabled={removingKit}
+                title="Remove brand kit"
+                className="px-2.5 py-1.5 rounded-md text-ink-faint hover:text-danger transition-colors disabled:opacity-50"
+              >
+                {removingKit ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={handleSaveKit}
+              disabled={savingKit}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-medium border border-dashed border-edge text-ink-faint hover:text-ink-muted hover:border-ink-faint/30 transition-colors disabled:opacity-50"
+            >
+              {savingKit ? <Loader2 size={12} className="animate-spin" /> : <Bookmark size={12} />}
+              Save current styling as my brand kit
+            </button>
+            <p className="text-[10px] text-ink-faint/70 leading-relaxed">
+              Your palette, fonts, and spacing will be applied to every new chart by default.
+            </p>
+          </>
+        )}
+      </Section>
+
       {/* Palette */}
       <Section icon={Palette} title="Brand Palette">
         <div className="grid grid-cols-2 gap-2">
@@ -113,18 +235,29 @@ export default function ThemePanel({ theme, onChange }: ThemePanelProps) {
           })}
         </div>
 
-        {/* Primary color fine-tune */}
-        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-2 border border-edge">
-          <input
-            type="color"
-            value={primaryColor}
-            onChange={e => setPrimaryColor(e.target.value)}
-            className="w-7 h-7 rounded-md border border-edge cursor-pointer bg-transparent shrink-0"
-            title="Primary brand color"
-          />
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-ink-muted">Primary color</p>
-            <p className="text-[10px] text-ink-faint font-mono truncate">{primaryColor}</p>
+        {/* Individual series colors — fine-tune any color in the palette */}
+        <div className="space-y-1.5">
+          <span className="text-[11px] text-ink-faint">Series colors</span>
+          <div className="grid grid-cols-4 gap-2">
+            {theme.palette.map((color, i) => (
+              <label
+                key={i}
+                className="relative flex flex-col items-center gap-1 cursor-pointer"
+                title={`Series ${i + 1} color — ${color}`}
+              >
+                <span
+                  className="w-full aspect-square rounded-lg ring-1 ring-edge transition-shadow hover:ring-ink-faint/40"
+                  style={{ background: color }}
+                />
+                <input
+                  type="color"
+                  value={color}
+                  onChange={e => setPaletteColor(i, e.target.value)}
+                  className="absolute top-0 left-0 w-full aspect-square opacity-0 cursor-pointer"
+                />
+                <span className="text-[9px] font-mono text-ink-faint truncate w-full text-center">{color}</span>
+              </label>
+            ))}
           </div>
         </div>
       </Section>
