@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   generateVisualization, saveVisualization, editVisualizationAction,
   getVisualizationById, saveLiveDataConfig, createSession, getUserSessions,
-  updateVisualizationTitle, deleteVisualization,
+  updateVisualizationTitle, deleteVisualization, updateVisualizationSchedule,
 } from '@/lib/actions/visualize';
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type { SavedVisualization } from '@/lib/types/visualization';
@@ -187,6 +187,7 @@ function DashboardContent() {
               aiModel: viz.metadata.aiModel,
             } : undefined,
             liveData: viz.liveData,
+            schedule: viz.schedule,
           };
           setThreads([entry]);
           setActiveId(entry.id);
@@ -224,6 +225,7 @@ function DashboardContent() {
               aiModel: viz.metadata.aiModel,
             } : undefined,
             liveData: viz.liveData,
+            schedule: viz.schedule,
           }));
           setThreads(entries);
         }
@@ -510,6 +512,22 @@ function DashboardContent() {
     }
   }, [activeThread]);
 
+  /* ── Email digest schedule ── */
+  const handleScheduleChange = useCallback(async (schedule: { enabled: boolean; dayOfWeek: number }) => {
+    if (!activeThread?.vizId) return;
+    const id = activeThread.id;
+
+    // Optimistic update
+    setThreads(p => p.map(t => t.id === id
+      ? { ...t, schedule: { ...schedule, lastSentAt: t.schedule?.lastSentAt } }
+      : t
+    ));
+
+    const res = await updateVisualizationSchedule(activeThread.vizId, schedule);
+    if (!res.success) toast.error(res.error || 'Failed to update email digest');
+    else toast.success(schedule.enabled ? 'Email digest enabled' : 'Email digest disabled');
+  }, [activeThread]);
+
   const handleRefreshLiveData = useCallback(async () => {
     if (!activeThread?.liveData?.url || isRefreshing) return;
     const id = activeThread.id;
@@ -681,6 +699,7 @@ function DashboardContent() {
             onLiveDataChange={handleLiveDataChange}
             onRefreshLiveData={handleRefreshLiveData}
             isRefreshing={isRefreshing}
+            onScheduleChange={handleScheduleChange}
           />
         </div>
       </div>

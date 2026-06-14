@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Sparkles, ArrowUp, CheckCircle2, BarChart3, Paperclip, Loader2, LayoutGrid, Sigma, Trash2 } from 'lucide-react';
+import { Plus, Sparkles, ArrowUp, CheckCircle2, Paperclip, Loader2, LayoutGrid, Sigma, Trash2 } from 'lucide-react';
+import { getChartTypeInfo } from '@/lib/utils/series-icon';
 import type { VisualizationSpec } from '@/lib/types/echarts-spec';
 import type { FileAttachment } from '@/lib/utils/file-attachment';
 import { ATTACHMENT_ACCEPT } from '@/lib/utils/file-attachment';
@@ -43,12 +44,18 @@ export interface ThreadEntry {
     interval: number;
     lastRefreshed?: string;
   };
+  schedule?: {
+    enabled: boolean;
+    dayOfWeek: number;
+    lastSentAt?: string;
+  };
 }
 
 /* ── Thread card ── */
 function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; active: boolean; onClick: () => void; onDelete: (id: string) => void }) {
   const editCount = entry.chatHistory.filter(m => m.role === 'user').length;
   const isLive = Boolean(entry.liveData?.url);
+  const { Icon: ChartIcon } = getChartTypeInfo(entry.spec.option);
 
   return (
     <motion.div
@@ -94,7 +101,7 @@ function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; 
           className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
           style={{ background: 'oklch(72% 0.13 55 / 0.1)', border: '1px solid oklch(72% 0.13 55 / 0.2)' }}
         >
-          <BarChart3 size={14} className="text-accent" />
+          <ChartIcon size={14} className="text-accent" />
         </div>
 
         <div className="flex-1 min-w-0 pr-5">

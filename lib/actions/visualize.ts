@@ -552,7 +552,7 @@ export async function getUserVisualizations(limit?: number) {
     await connectToDatabase();
 
     const query = VisualizationModel.find({ userId, isSaved: { $ne: false } })
-      .select('_id userId title spec metadata isPublic createdAt updatedAt history liveData')
+      .select('_id userId title spec metadata isPublic createdAt updatedAt history liveData schedule')
       .sort({ updatedAt: -1 });
 
     const visualizations = await (limit ? query.limit(limit) : query).lean();
@@ -584,7 +584,7 @@ export async function getUserSessions(limit: number = 50) {
     await connectToDatabase();
 
     const visualizations = await VisualizationModel.find({ userId, isSaved: false })
-      .select('_id title spec metadata isPublic shareId createdAt updatedAt history liveData isSaved')
+      .select('_id title spec metadata isPublic shareId createdAt updatedAt history liveData schedule isSaved')
       .sort({ updatedAt: -1 })
       .limit(limit)
       .lean();
@@ -719,6 +719,43 @@ export async function saveLiveDataConfig(
   } catch (error) {
     console.error('Error saving live data config:', error);
     return { success: false, error: sanitizeError(error, 'Failed to save live data config') };
+  }
+}
+
+/**
+ * Enable/disable and configure the weekly email digest for a single
+ * visualization's live data (mirrors `updateDashboardSchedule`).
+ */
+export async function updateVisualizationSchedule(
+  visualizationId: string,
+  schedule: { enabled: boolean; dayOfWeek: number }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) return { success: false, error: idValidation.error };
+
+    if (!Number.isInteger(schedule.dayOfWeek) || schedule.dayOfWeek < 0 || schedule.dayOfWeek > 6) {
+      return { success: false, error: 'dayOfWeek must be between 0 and 6' };
+    }
+
+    await connectToDatabase();
+
+    const result = await VisualizationModel.updateOne(
+      { _id: visualizationId, userId },
+      { $set: { 'schedule.enabled': schedule.enabled, 'schedule.dayOfWeek': schedule.dayOfWeek } }
+    );
+
+    if (result.matchedCount === 0) {
+      return { success: false, error: 'Visualization not found or unauthorized' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating visualization schedule:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to update schedule') };
   }
 }
 

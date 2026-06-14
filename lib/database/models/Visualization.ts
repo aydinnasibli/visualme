@@ -56,6 +56,11 @@ const VisualizationSchema = new Schema<SavedVisualization>(
       interval: { type: Number, default: 0 },
       lastRefreshed: { type: String },
     },
+    schedule: {
+      enabled: { type: Boolean, default: false },
+      dayOfWeek: { type: Number },
+      lastSentAt: { type: String },
+    },
     // Auto-persisted "session" docs (created on every generation) are
     // ephemeral until the user explicitly saves — `isSaved: false` plus
     // `sessionExpiresAt` marks them for TTL cleanup. Pre-existing docs and

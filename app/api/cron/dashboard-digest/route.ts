@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/database/mongodb';
 import { DashboardModel, VisualizationModel, UserModel } from '@/lib/database/models';
 import { fetchAndParseSheet } from '@/lib/utils/sheet-fetch';
 import { refreshChartData } from '@/lib/utils/chart-data-refresh';
-import { sendDashboardDigest, type DigestChartSummary } from '@/lib/services/email-service';
+import { sendDashboardDigest, sendVisualizationDigest, type DigestChartSummary } from '@/lib/services/email-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -95,6 +95,63 @@ export async function GET(request: NextRequest) {
       await DashboardModel.updateOne({ _id: dashboard._id }, { $set: { 'schedule.lastSentAt': now } });
     } catch (err) {
       console.error(`[cron/dashboard-digest] Failed for dashboard ${dashboard._id}:`, err);
+    }
+  }
+
+  // ── Per-visualization digests (Playground/session charts) ──
+  const dueVisualizations = await VisualizationModel.find({
+    'schedule.enabled': true,
+    'schedule.dayOfWeek': todayUTC,
+    'liveData.url': { $exists: true, $ne: null },
+  });
+
+  for (const viz of dueVisualizations) {
+    const lastSentAt = viz.schedule?.lastSentAt;
+    if (lastSentAt && now.getTime() - new Date(lastSentAt as unknown as string).getTime() < LAST_SENT_COOLDOWN_MS) {
+      continue;
+    }
+
+    try {
+      processed++;
+
+      const url = viz.liveData!.url;
+      let summary: DigestChartSummary;
+
+      const sheet = await fetchAndParseSheet(url);
+      if (!sheet.ok) {
+        summary = { title: viz.title, refreshed: false, summary: `Couldn't fetch live data: ${sheet.error}` };
+      } else {
+        const result = refreshChartData(viz.spec.option, sheet);
+        summary = { title: viz.title, refreshed: result.refreshed, summary: result.summary };
+
+        if (result.refreshed) {
+          await VisualizationModel.updateOne(
+            { _id: viz._id },
+            { $set: { 'spec.option': result.option, 'liveData.lastRefreshed': now.toISOString() } }
+          );
+        }
+      }
+
+      const user = await UserModel.findOne({ clerkId: viz.userId }).select('email');
+      if (user?.email) {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const chartUrl =
+          viz.isPublic && viz.shareId
+            ? `${baseUrl}/share/${viz.shareId}`
+            : `${baseUrl}/my-visualizations`;
+
+        await sendVisualizationDigest({
+          to: user.email,
+          chartTitle: viz.title,
+          chartUrl,
+          summary,
+        });
+        sent++;
+      }
+
+      await VisualizationModel.updateOne({ _id: viz._id }, { $set: { 'schedule.lastSentAt': now } });
+    } catch (err) {
+      console.error(`[cron/dashboard-digest] Failed for visualization ${viz._id}:`, err);
     }
   }
 

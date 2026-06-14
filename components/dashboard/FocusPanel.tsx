@@ -3,32 +3,12 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Share2, CheckCircle, BarChart3, LineChart, PieChart, ScatterChart,
-  Sparkle, CandlestickChart, AlignEndHorizontal, BoxSelect, Grid3x3,
-  Radar, AlignVerticalSpaceAround, Gauge, Filter, Waves, GitBranch,
-  LayoutGrid, CircleDot, Workflow,
+  Share2, CheckCircle,
   Pencil, Sparkles, X, Download, ImageIcon,
-  Globe, FileJson, FileSpreadsheet, FileCode, FileText, Zap,
-  Rss, RefreshCw, Clock, Unlink,
+  Globe, FileJson, FileSpreadsheet, FileCode, FileText,
+  Rss, RefreshCw, Clock, Unlink, Mail,
 } from 'lucide-react';
-import type { ElementType } from 'react';
 import { toast } from 'sonner';
-
-/* ── Series type → icon + label ── */
-const SERIES_ICON: Record<string, ElementType> = {
-  bar: BarChart3, line: LineChart, pie: PieChart, scatter: ScatterChart,
-  effectScatter: Sparkle, candlestick: CandlestickChart, pictorialBar: AlignEndHorizontal,
-  boxplot: BoxSelect, heatmap: Grid3x3, radar: Radar, parallel: AlignVerticalSpaceAround,
-  gauge: Gauge, funnel: Filter, themeRiver: Waves, graph: Share2,
-  tree: GitBranch, treemap: LayoutGrid, sunburst: CircleDot, sankey: Workflow,
-};
-const SERIES_LABEL: Record<string, string> = {
-  bar: 'Bar Chart', line: 'Line Chart', pie: 'Pie Chart', scatter: 'Scatter Plot',
-  effectScatter: 'Effect Scatter', candlestick: 'Candlestick', pictorialBar: 'Pictorial Bar',
-  boxplot: 'Box Plot', heatmap: 'Heatmap', radar: 'Radar Chart', parallel: 'Parallel Coords',
-  gauge: 'Gauge', funnel: 'Funnel', themeRiver: 'Theme River', graph: 'Network Graph',
-  tree: 'Tree', treemap: 'Treemap', sunburst: 'Sunburst', sankey: 'Sankey',
-};
 import type { ThreadEntry } from '@/components/dashboard/VizThread';
 import { VisualizationErrorBoundary } from '@/components/VisualizationErrorBoundary';
 import EditPanel from '@/components/dashboard/EditPanel';
@@ -36,6 +16,7 @@ import EChartsRenderer from '@/components/visualizations/EChartsRenderer';
 import { exportCanvasAsPNG } from '@/lib/utils/export-png';
 import { exportChartAsPDF } from '@/lib/utils/export-dashboard';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { getChartTypeInfo } from '@/lib/utils/series-icon';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
 
@@ -120,6 +101,7 @@ export interface FocusPanelProps {
   onLiveDataChange?: (config: { url: string; interval: number } | null) => void;
   onRefreshLiveData?: () => Promise<void>;
   isRefreshing?: boolean;
+  onScheduleChange?: (schedule: { enabled: boolean; dayOfWeek: number }) => void;
 }
 
 const INTERVAL_OPTIONS = [
@@ -129,11 +111,13 @@ const INTERVAL_OPTIONS = [
   { label: 'Daily', value: 1440 },
 ] as const;
 
+const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export default function FocusPanel({
   thread, saving, onSave, onShare, onExportData,
   chatHistory, handleChatMessage, isEditing,
   onThemeChange, onTitleChange,
-  onLiveDataChange, onRefreshLiveData, isRefreshing,
+  onLiveDataChange, onRefreshLiveData, isRefreshing, onScheduleChange,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -142,6 +126,8 @@ export default function FocusPanel({
   const [editTitleValue, setEditTitleValue] = useState('');
   const [exporting, setExporting] = useState(false);
   const [liveInterval, setLiveInterval] = useState(0);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState(1);
   const exportRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef<HTMLDivElement>(null);
 
@@ -173,6 +159,8 @@ export default function FocusPanel({
   if (thread?.id !== prevThreadId) {
     setPrevThreadId(thread?.id);
     setLiveInterval(thread?.liveData?.interval ?? 0);
+    setScheduleEnabled(thread?.schedule?.enabled ?? false);
+    setScheduleDayOfWeek(thread?.schedule?.dayOfWeek ?? 1);
     setLiveOpen(false);
     setEditingTitle(false);
     setEditTitleValue('');
@@ -212,7 +200,8 @@ export default function FocusPanel({
 
   /* ── Render viz ── */
   const renderViz = useCallback((t: ThreadEntry) => {
-    return <EChartsRenderer spec={t.spec} className="w-full h-full p-6" />;
+    // The header above already shows the title — don't render it again inside the chart.
+    return <EChartsRenderer spec={t.spec} className="w-full h-full p-6" hideTitle />;
   }, []);
 
   if (!thread) {
@@ -224,13 +213,7 @@ export default function FocusPanel({
   }
 
   /* ── Series type badge — thread is guaranteed non-null beyond this point ── */
-  const s = thread.spec.option.series;
-  const seriesType = s
-    ? ((Array.isArray(s) ? s[0] : s) as Record<string, unknown>)?.type as string | undefined
-    : undefined;
-  const BadgeIcon: ElementType = (seriesType ? SERIES_ICON[seriesType] : undefined) ?? BarChart3;
-  const badgeLabel = (seriesType ? SERIES_LABEL[seriesType] : undefined)
-    ?? (seriesType ? seriesType.charAt(0).toUpperCase() + seriesType.slice(1) : 'Chart');
+  const { Icon: BadgeIcon, label: badgeLabel } = getChartTypeInfo(thread.spec.option);
 
   /* ── Resolved theme — fallback guards against old DB specs with no theme field ── */
   const resolvedTheme = thread.spec.theme ?? DEFAULT_SUNSET_THEME;
@@ -281,24 +264,6 @@ export default function FocusPanel({
             >
               {thread.title}
             </h2>
-          )}
-
-          {/* Metadata chip */}
-          {thread.metadata?.aiModel && (
-            <div
-              className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0"
-              style={{
-                background: thread.metadata.fromCache ? 'oklch(73% 0.12 200 / 0.08)' : 'oklch(72% 0.13 55 / 0.08)',
-                border: `1px solid ${thread.metadata.fromCache ? 'oklch(73% 0.12 200 / 0.2)' : 'oklch(72% 0.13 55 / 0.2)'}`,
-              }}
-              title={thread.metadata.processingTime ? `Generated in ${(thread.metadata.processingTime / 1000).toFixed(1)}s` : undefined}
-            >
-              <Zap className="w-2.5 h-2.5" style={{ color: thread.metadata.fromCache ? 'oklch(73% 0.12 200)' : 'var(--color-accent)' }} />
-              <span className="text-[10px] font-medium" style={{ color: thread.metadata.fromCache ? 'oklch(80% 0.09 200)' : 'var(--color-accent)' }}>
-                {thread.metadata.fromCache ? 'Cached' : thread.metadata.aiModel}
-                {thread.metadata.processingTime && !thread.metadata.fromCache ? ` · ${(thread.metadata.processingTime / 1000).toFixed(1)}s` : ''}
-              </span>
-            </div>
           )}
 
           {/* Actions */}
@@ -443,6 +408,55 @@ export default function FocusPanel({
                           </p>
                         )}
 
+                        {/* Email digest schedule */}
+                        <div className="flex flex-col gap-1.5 pt-2 border-t border-edge">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-medium text-ink-faint flex items-center gap-1">
+                              <Mail size={9} /> Email digest
+                            </label>
+                            <button
+                              onClick={() => {
+                                if (!thread.vizId) { toast.error('Save the visualization first to enable email digest'); return; }
+                                const next = !scheduleEnabled;
+                                setScheduleEnabled(next);
+                                onScheduleChange?.({ enabled: next, dayOfWeek: scheduleDayOfWeek });
+                              }}
+                              className={`w-7 h-4 rounded-full relative transition-colors focus:outline-none ${scheduleEnabled ? 'bg-accent' : 'bg-surface-3'}`}
+                            >
+                              <span
+                                className="block w-3 h-3 rounded-full bg-white shadow absolute top-0.5 transition-transform"
+                                style={{ left: scheduleEnabled ? 'calc(100% - 14px)' : '2px' }}
+                              />
+                            </button>
+                          </div>
+
+                          {scheduleEnabled && (
+                            <select
+                              value={scheduleDayOfWeek}
+                              onChange={e => {
+                                const day = Number(e.target.value);
+                                setScheduleDayOfWeek(day);
+                                onScheduleChange?.({ enabled: scheduleEnabled, dayOfWeek: day });
+                              }}
+                              className="w-full px-2 py-1 rounded-md bg-surface-1 border border-edge text-[10px] text-ink focus:outline-none focus:border-accent/40"
+                            >
+                              {DAY_LABELS.map((label, i) => (
+                                <option key={i} value={i}>Weekly on {label}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          {!thread.vizId && (
+                            <p className="text-[10px] text-ink-faint">Save this chart to enable email digest.</p>
+                          )}
+
+                          {thread.schedule?.lastSentAt && (
+                            <p className="text-[10px] text-ink-faint">
+                              Last sent: {new Date(thread.schedule.lastSentAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+
                         {/* Actions */}
                         <div className="flex gap-1.5 pt-0.5">
                           <button
@@ -478,41 +492,31 @@ export default function FocusPanel({
           </div>
         </div>
 
-        {/* AI narrative — short takeaway generated alongside the chart */}
-        <AnimatePresence mode="wait">
-          {thread.spec.narrative && (
-            <motion.div
-              key={thread.spec.narrative}
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="flex items-start gap-2.5 px-4 py-3 shrink-0"
-              style={{
-                background: 'oklch(72% 0.13 55 / 0.05)',
-                borderBottom: '1px solid oklch(72% 0.13 55 / 0.15)',
-              }}
-            >
-              <Sparkles size={13} className="shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />
-              <div className="min-w-0">
-                <span
-                  className="block text-[10px] font-semibold uppercase tracking-wider mb-0.5"
-                  style={{ color: 'var(--color-accent)' }}
-                >
-                  Key takeaway
-                </span>
-                <p className="text-[13px] text-ink-muted leading-relaxed">{thread.spec.narrative}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Viz — wrapped in ErrorBoundary so a broken viz can't crash the panel */}
         <div ref={vizAreaRef} className="flex-1 relative overflow-hidden min-h-0" key={thread.id}>
           <VisualizationErrorBoundary>
             {renderViz(thread)}
           </VisualizationErrorBoundary>
         </div>
+
+        {/* AI narrative — short takeaway generated alongside the chart */}
+        <AnimatePresence mode="wait">
+          {thread.spec.narrative && (
+            <motion.div
+              key={thread.spec.narrative}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="shrink-0 border-t border-edge bg-surface-1 px-6 py-3"
+            >
+              <div className="flex items-start gap-2.5 max-w-[68ch]">
+                <Sparkles size={13} className="shrink-0 mt-0.5" style={{ color: 'oklch(72% 0.13 55)' }} />
+                <p className="text-[13px] text-ink-muted leading-relaxed">{thread.spec.narrative}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Edit panel (slide in from right; full-screen overlay on mobile) ── */}

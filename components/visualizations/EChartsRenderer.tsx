@@ -21,6 +21,11 @@ interface EChartsRendererProps {
    * not whatever the global light/dark toggle is set to.
    */
   forceMode?: 'light' | 'dark';
+  /**
+   * Suppress the chart's own title/subtext — use when the surrounding UI
+   * already displays the visualization's title, so it isn't shown twice.
+   */
+  hideTitle?: boolean;
 }
 
 const EmptyState = () => (
@@ -34,7 +39,7 @@ const EmptyState = () => (
  * components. Structure (`spec.option`) and presentation (`spec.theme`) are
  * composed here so any chart shape can be restyled without regenerating data.
  */
-export default function EChartsRenderer({ spec, className, forceMode }: EChartsRendererProps) {
+export default function EChartsRenderer({ spec, className, forceMode, hideTitle }: EChartsRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<InstanceType<typeof ReactECharts>>(null);
 
@@ -49,8 +54,13 @@ export default function EChartsRenderer({ spec, className, forceMode }: EChartsR
     const theme = spec.theme ?? DEFAULT_SUNSET_THEME;
     const appMode = forceMode ?? (mounted && resolvedTheme === 'light' ? 'light' : mounted ? 'dark' : theme.mode);
     const syncedTheme = withAppMode(theme, appMode);
-    return applyBrandTheme(applyChartDefaults(spec.option), syncedTheme, spec.styleEffect);
-  }, [spec, mounted, resolvedTheme, forceMode]);
+    const structuralOption = applyChartDefaults(spec.option);
+    return applyBrandTheme(
+      hideTitle ? { ...structuralOption, title: undefined } : structuralOption,
+      syncedTheme,
+      spec.styleEffect
+    );
+  }, [spec, mounted, resolvedTheme, forceMode, hideTitle]);
 
   // `autoResize` only reacts to `window` resize events — it stays unaware of
   // layout-driven container resizes (sidebar collapse, panel splits, flex

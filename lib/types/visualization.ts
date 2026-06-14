@@ -41,6 +41,13 @@ export interface LiveDataConfig {
   lastRefreshed?: string;
 }
 
+export interface VisualizationSchedule {
+  enabled: boolean;
+  /** 0=Sunday..6=Saturday, UTC. */
+  dayOfWeek: number;
+  lastSentAt?: string;
+}
+
 export interface SavedVisualization {
   _id?: string;
   userId: string;
@@ -57,6 +64,8 @@ export interface SavedVisualization {
     timestamp: Date | string;
   }>;
   liveData?: LiveDataConfig;
+  /** Weekly email digest schedule for this chart's live data (requires `liveData`). */
+  schedule?: VisualizationSchedule;
   /** False = ephemeral session (auto-persisted, subject to TTL); true/missing = explicitly saved (permanent). */
   isSaved?: boolean;
   /** Server-only TTL marker for ephemeral sessions — never selected for client responses. */
