@@ -132,6 +132,10 @@ function DashboardContent() {
     setStatRun(null);
   }, [setStatRun]);
 
+  /* ── Dataset behind whichever attachment/live sheet is connected — lets the Focus panel run stat tests too ── */
+  const datasetColumns = attachment?.datasetColumns ?? liveSheet?.datasetColumns;
+  const datasetRowCount = attachment?.rowCount ?? liveSheet?.rowCount ?? datasetColumns?.[0]?.values.length ?? 0;
+
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -703,6 +707,10 @@ function DashboardContent() {
             onRefreshLiveData={handleRefreshLiveData}
             isRefreshing={isRefreshing}
             onScheduleChange={handleScheduleChange}
+            statRun={statRun}
+            datasetColumns={datasetColumns}
+            datasetRowCount={datasetRowCount}
+            onRunStat={handleRunStat}
           />
         </div>
       </div>

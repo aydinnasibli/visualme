@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Sigma, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertTriangle, RotateCcw,
+  X, Sigma, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Copy, Check,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { STAT_TESTS, runStatTest } from '@/lib/services/statistics-service';
+import { fmtStat, fmtDf, formatStatResultSummary } from '@/lib/utils/stat-test-format';
 import {
   DEFAULT_ALPHA,
   type ColumnType, type DatasetColumn, type StatTestOption, type StatTestResult, type StatTestSelection,
@@ -25,14 +27,6 @@ interface StatTestPickerModalProps {
   /** The last completed run for this dataset, if any — reopening the picker shows it directly instead of starting over. */
   initialRun?: StatRun | null;
   onRun: (run: StatRun) => void;
-}
-
-function fmtStat(value: number): string {
-  return Number.isFinite(value) ? value.toFixed(4) : '—';
-}
-
-function fmtDf(df: number | [number, number]): string {
-  return Array.isArray(df) ? `${df[0]}, ${df[1].toFixed(0)}` : Number.isInteger(df) ? `${df}` : df.toFixed(2);
 }
 
 /** Chip-style column picker — single-select (used for grouped tests' value/group pickers) or ordered multi-select (numbered, wide-format tests). Mirrors the chart-type gallery's card pattern. */
@@ -91,6 +85,7 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
   const [alpha, setAlpha] = useState(String(DEFAULT_ALPHA));
   const [result, setResult] = useState<StatTestResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [prevOpen, setPrevOpen] = useState(open);
   const [prevInitialRun, setPrevInitialRun] = useState(initialRun);
@@ -208,6 +203,15 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
 
   const handleReset = () => {
     setStep('pick-test'); setSelectedTest(null); setSelectedColumns([]); setResult(null); setRunError(null);
+  };
+
+  const handleCopyResult = () => {
+    if (!result) return;
+    navigator.clipboard.writeText(formatStatResultSummary(result)).then(() => {
+      setCopied(true);
+      toast.success('Result copied');
+      setTimeout(() => setCopied(false), 1500);
+    });
   };
 
   return (
@@ -443,12 +447,22 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
                       </div>
                     )}
 
-                    <button
-                      onClick={handleBack}
-                      className="px-4 py-2 rounded-lg text-[12px] font-medium bg-surface-1 border border-edge text-ink hover:border-accent/30 hover:bg-accent/5 transition-colors flex items-center gap-1.5"
-                    >
-                      <ChevronLeft size={13} /> Try a different test
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleBack}
+                        className="px-4 py-2 rounded-lg text-[12px] font-medium bg-surface-1 border border-edge text-ink hover:border-accent/30 hover:bg-accent/5 transition-colors flex items-center gap-1.5"
+                      >
+                        <ChevronLeft size={13} /> Try a different test
+                      </button>
+                      <button
+                        onClick={handleCopyResult}
+                        title="Copy a citation-ready summary of this result"
+                        className="px-4 py-2 rounded-lg text-[12px] font-medium bg-surface-1 border border-edge text-ink hover:border-accent/30 hover:bg-accent/5 transition-colors flex items-center gap-1.5"
+                      >
+                        {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                        {copied ? 'Copied' : 'Copy result'}
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

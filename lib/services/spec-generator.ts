@@ -47,6 +47,9 @@ CRITICAL — DATA QUALITY:
 - Numbers must reflect real-world proportions and ranges for the domain (revenue in plausible currency ranges, percentages summing sensibly, dates in correct chronological order, etc).
 - Names/labels must be specific and domain-accurate, not generic.
 
+CRITICAL — NO FABRICATED STATISTICS:
+Never invent p-values, confidence intervals, test statistics (t/F/chi-square/z/etc.), significance markers (e.g. "*", "p < 0.05" annotations), error bars, or significance-comparison series (e.g. a "p-value per group" line). These require a real statistical computation this step cannot perform and would mislead the user. If the input implies a comparison or hypothesis test, visualize only the underlying data (e.g. group means/distributions) and, in "reason", note that running the "Run a statistical test" tool (the Σ button) on the attached dataset will compute a verified result.
+
 CHART TYPE SELECTION GUIDE:
 - Trends/progressions over time → line
 - Categorical comparisons/rankings → bar

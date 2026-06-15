@@ -6,10 +6,10 @@ import {
   Share2, CheckCircle,
   Pencil, Sparkles, X, Download, ImageIcon,
   Globe, FileJson, FileSpreadsheet, FileCode, FileText,
-  Rss, RefreshCw, Clock, Unlink, Mail,
+  Rss, RefreshCw, Clock, Unlink, Mail, Sigma, Copy, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ThreadEntry } from '@/components/dashboard/VizThread';
+import type { ThreadEntry, StatRun } from '@/components/dashboard/VizThread';
 import { VisualizationErrorBoundary } from '@/components/VisualizationErrorBoundary';
 import EditPanel from '@/components/dashboard/EditPanel';
 import EChartsRenderer from '@/components/visualizations/EChartsRenderer';
@@ -17,6 +17,9 @@ import { exportCanvasAsPNG } from '@/lib/utils/export-png';
 import { exportChartAsPDF } from '@/lib/utils/export-dashboard';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { getChartTypeInfo } from '@/lib/utils/series-icon';
+import { formatStatResultSummary } from '@/lib/utils/stat-test-format';
+import StatTestPickerModal from '@/components/dashboard/StatTestPickerModal';
+import type { DatasetColumn } from '@/lib/types/statistics';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
 
@@ -102,6 +105,12 @@ export interface FocusPanelProps {
   onRefreshLiveData?: () => Promise<void>;
   isRefreshing?: boolean;
   onScheduleChange?: (schedule: { enabled: boolean; dayOfWeek: number }) => void;
+  /** Last verified jStat result from the composer's stat test picker — independent of this chart, shown as a "fact check" alongside it. */
+  statRun?: StatRun | null;
+  /** Columns detected from whichever dataset (file attachment or live sheet) is currently connected — enables running a stat test from this panel too. */
+  datasetColumns?: DatasetColumn[];
+  datasetRowCount?: number;
+  onRunStat?: (run: StatRun) => void;
 }
 
 const INTERVAL_OPTIONS = [
@@ -118,16 +127,19 @@ export default function FocusPanel({
   chatHistory, handleChatMessage, isEditing,
   onThemeChange, onTitleChange,
   onLiveDataChange, onRefreshLiveData, isRefreshing, onScheduleChange,
+  statRun, datasetColumns, datasetRowCount, onRunStat,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
+  const [statPickerOpen, setStatPickerOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const [exporting, setExporting] = useState(false);
   const [liveInterval, setLiveInterval] = useState(0);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState(1);
+  const [statCopied, setStatCopied] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef<HTMLDivElement>(null);
 
@@ -176,7 +188,8 @@ export default function FocusPanel({
     setExporting(true);
     setExportOpen(false);
     try {
-      const ok = exportCanvasAsPNG(vizAreaRef.current, `${safeTitle(thread)}.png`);
+      const caption = statRun?.result ? formatStatResultSummary(statRun.result) : undefined;
+      const ok = exportCanvasAsPNG(vizAreaRef.current, `${safeTitle(thread)}.png`, caption);
       if (!ok) { toast.error('No chart canvas found'); return; }
       toast.success('Exported as PNG');
     } catch {
@@ -184,19 +197,29 @@ export default function FocusPanel({
     } finally {
       setExporting(false);
     }
-  }, [thread]);
+  }, [thread, statRun]);
 
   const handleExportPDF = useCallback(() => {
     if (!vizAreaRef.current || !thread) return;
     setExportOpen(false);
     try {
-      const ok = exportChartAsPDF(vizAreaRef.current, thread.title);
+      const caption = statRun?.result ? formatStatResultSummary(statRun.result) : undefined;
+      const ok = exportChartAsPDF(vizAreaRef.current, thread.title, caption);
       if (!ok) { toast.error('No chart canvas found'); return; }
       toast.success('Exported as PDF');
     } catch {
       toast.error('PDF export failed');
     }
-  }, [thread]);
+  }, [thread, statRun]);
+
+  const handleCopyStatResult = useCallback(() => {
+    if (!statRun?.result) return;
+    navigator.clipboard.writeText(formatStatResultSummary(statRun.result)).then(() => {
+      setStatCopied(true);
+      toast.success('Result copied');
+      setTimeout(() => setStatCopied(false), 1500);
+    });
+  }, [statRun]);
 
   /* ── Render viz ── */
   const renderViz = useCallback((t: ThreadEntry) => {
@@ -290,6 +313,17 @@ export default function FocusPanel({
               {thread.isPublic ? <Globe size={13} /> : <Share2 size={13} />}
               <span className="hidden sm:inline">{thread.isPublic ? 'Public' : 'Share'}</span>
             </ActionBtn>
+
+            {datasetColumns && datasetColumns.length > 0 && (
+              <ActionBtn
+                title="Run a statistical test on the connected dataset"
+                onClick={() => setStatPickerOpen(true)}
+                active={Boolean(statRun)}
+              >
+                <Sigma size={13} />
+                <span className="hidden sm:inline">Test</span>
+              </ActionBtn>
+            )}
 
             {/* Export dropdown — ref scoped so outside clicks close it but inside clicks don't */}
             <div className="relative" ref={exportRef}>
@@ -499,6 +533,27 @@ export default function FocusPanel({
           </VisualizationErrorBoundary>
         </div>
 
+        {/* Verified result — real jStat output from the stat test picker, shown as a fact-check alongside the chart */}
+        {statRun?.result && (
+          <div className="shrink-0 border-t border-edge bg-accent/5 px-6 py-3 flex items-start gap-2.5">
+            <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-accent/15 border border-accent/25 mt-0.5">
+              <Sigma size={12} className="text-accent" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">Verified result</span>
+              <p className="text-[12px] text-ink-muted leading-relaxed mt-0.5">{formatStatResultSummary(statRun.result)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyStatResult}
+              title="Copy this result"
+              className="shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-3 transition-colors"
+            >
+              {statCopied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+            </button>
+          </div>
+        )}
+
         {/* Key takeaway — short insight generated alongside the chart */}
         <AnimatePresence mode="wait">
           {thread.spec.narrative && (
@@ -578,6 +633,17 @@ export default function FocusPanel({
           </>
         )}
       </AnimatePresence>
+
+      {datasetColumns && datasetColumns.length > 0 && (
+        <StatTestPickerModal
+          open={statPickerOpen}
+          onClose={() => setStatPickerOpen(false)}
+          columns={datasetColumns}
+          rowCount={datasetRowCount ?? datasetColumns[0]?.values.length ?? 0}
+          initialRun={statRun}
+          onRun={run => onRunStat?.(run)}
+        />
+      )}
     </div>
   );
 }
