@@ -16,9 +16,9 @@ interface EChartsRendererProps {
   /**
    * Override the app-mode used for theme-syncing instead of deriving it from
    * `resolvedTheme`. Use when the renderer sits in a container with a fixed
-   * (non-theme-aware) background — e.g. the always-dark visualization modal —
-   * so chart text colors are picked for the background that's actually there,
-   * not whatever the global light/dark toggle is set to.
+   * (non-theme-aware) background, so chart text colors are picked for the
+   * background that's actually there, not whatever the global light/dark
+   * toggle is set to.
    */
   forceMode?: 'light' | 'dark';
   /**

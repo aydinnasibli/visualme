@@ -30,7 +30,7 @@ export default function DeleteVizButton({ vizId }: { vizId: string }) {
   }
 
   if (isPending) {
-    return <span className="text-xs text-white/20 px-2 py-1">…</span>
+    return <span className="text-xs text-ink-faint px-2 py-1">…</span>
   }
 
   return (
@@ -39,8 +39,8 @@ export default function DeleteVizButton({ vizId }: { vizId: string }) {
       onClick={handleClick}
       className={`text-xs px-2 py-1 rounded transition-colors ${
         confirmed
-          ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-          : 'text-white/25 hover:text-red-400'
+          ? 'bg-danger/15 text-danger hover:bg-danger/25'
+          : 'text-ink-faint hover:text-danger'
       }`}
     >
       {confirmed ? 'Confirm?' : <Trash2 className="w-3.5 h-3.5" />}

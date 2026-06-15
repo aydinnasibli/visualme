@@ -19,17 +19,17 @@ export default function AdminSidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between h-14 px-4 bg-zinc-950 border-b border-white/6">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between h-14 px-4 bg-surface-1 border-b border-edge">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-indigo-500/20 flex items-center justify-center">
-            <Shield className="w-4 h-4 text-indigo-400" />
+          <div className="w-7 h-7 rounded-md bg-surface-2 border border-edge flex items-center justify-center text-accent">
+            <Shield className="w-4 h-4" />
           </div>
-          <p className="text-sm font-semibold text-white leading-tight">Admin</p>
+          <p className="text-sm font-semibold text-ink leading-tight">Admin</p>
         </div>
         <button
           onClick={() => setIsOpen(true)}
           aria-label="Open menu"
-          className="w-9 h-9 -mr-2 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+          className="w-9 h-9 -mr-2 flex items-center justify-center text-ink-faint hover:text-ink transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -45,24 +45,24 @@ export default function AdminSidebar() {
       )}
 
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-56 shrink-0 h-full flex flex-col bg-zinc-950 border-r border-white/6 transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-56 shrink-0 h-full flex flex-col bg-surface-1 border-r border-edge transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="px-4 py-5 border-b border-white/6 flex items-center justify-between">
+        <div className="px-4 py-5 border-b border-edge flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-indigo-500/20 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-indigo-400" />
+            <div className="w-7 h-7 rounded-md bg-surface-2 border border-edge flex items-center justify-center text-accent">
+              <Shield className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white leading-tight">Admin</p>
-              <p className="text-[11px] text-white/30">VisualMe</p>
+              <p className="text-sm font-semibold text-ink leading-tight">Admin</p>
+              <p className="text-[11px] text-ink-faint">VisualMe</p>
             </div>
           </div>
           <button
             onClick={() => setIsOpen(false)}
             aria-label="Close menu"
-            className="lg:hidden w-7 h-7 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+            className="lg:hidden w-7 h-7 flex items-center justify-center text-ink-faint hover:text-ink transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -78,8 +78,8 @@ export default function AdminSidebar() {
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                   isActive
-                    ? 'bg-indigo-500/15 text-indigo-400 font-medium'
-                    : 'text-white/40 hover:text-white hover:bg-white/4'
+                    ? 'bg-surface-2 text-ink font-medium'
+                    : 'text-ink-faint hover:text-ink hover:bg-surface-2'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -89,11 +89,11 @@ export default function AdminSidebar() {
           })}
         </nav>
 
-        <div className="px-2 py-3 border-t border-white/6">
+        <div className="px-2 py-3 border-t border-edge">
           <Link
             href="/dashboard"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/30 hover:text-white hover:bg-white/4 transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to App

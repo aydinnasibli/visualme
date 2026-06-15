@@ -3,50 +3,45 @@ import { Quote } from 'lucide-react';
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-500/20 rounded-full blur-[120px] opacity-30 animate-pulse-slow" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] opacity-20 animate-pulse-slow" style={{ animationDelay: '1s' }} />
-      </div>
-
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+    <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
         {/* Left Side */}
         <div className="hidden lg:flex flex-col gap-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-indigo-500/20">V</div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">VisualMe</h1>
+            <div className="w-12 h-12 rounded-xl bg-surface-2 border border-edge flex items-center justify-center text-accent font-display font-bold text-2xl">V</div>
+            <h1 className="font-display text-3xl font-bold tracking-tight text-ink">VisualMe</h1>
           </div>
 
-          <h2 className="text-4xl font-bold leading-tight text-white">
+          <h2 className="font-display text-4xl font-bold leading-tight text-ink">
             Join thousands of users <br /> visualizing ideas instantly.
           </h2>
 
-          <p className="text-lg text-zinc-400 max-w-md">
+          <p className="text-lg text-ink-muted max-w-md">
             Create unlimited diagrams, access premium visualization types, and collaborate with your team.
           </p>
 
           <div className="grid grid-cols-2 gap-4 mt-4">
-            <div className="bg-slate-800 border border-white/5 p-4 rounded-xl">
-              <div className="text-2xl font-bold text-white mb-1">10k+</div>
-              <div className="text-sm text-zinc-400">Visualizations Created</div>
+            <div className="surface-panel p-4 rounded-xl">
+              <div className="text-2xl font-bold text-ink mb-1">10k+</div>
+              <div className="text-sm text-ink-muted">Visualizations Created</div>
             </div>
-            <div className="bg-slate-800 border border-white/5 p-4 rounded-xl">
-              <div className="text-2xl font-bold text-white mb-1">4.9/5</div>
-              <div className="text-sm text-zinc-400">User Rating</div>
+            <div className="surface-panel p-4 rounded-xl">
+              <div className="text-2xl font-bold text-ink mb-1">4.9/5</div>
+              <div className="text-sm text-ink-muted">User Rating</div>
             </div>
           </div>
 
-          <div className="mt-8 bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-white/5 relative">
-            <div className="absolute -top-3 left-6 bg-indigo-500 text-white p-1 rounded-full">
+          <div className="mt-8 surface-panel p-6 rounded-2xl relative">
+            <div className="absolute -top-3 left-6 bg-accent text-surface-0 p-1 rounded-full">
               <Quote size={16} />
             </div>
-            <p className="text-zinc-300 italic mb-4">&ldquo;This tool has completely changed how I plan my projects. The ability to just type and see a Gantt chart is like magic.&rdquo;</p>
+            <p className="text-ink-muted italic mb-4">&ldquo;This tool has completely changed how I plan my projects. The ability to just type and see a Gantt chart is like magic.&rdquo;</p>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-zinc-700" />
+              <div className="w-8 h-8 rounded-full bg-surface-3" />
               <div>
-                <div className="text-sm font-semibold text-white">Alex Morgan</div>
-                <div className="text-xs text-zinc-500">Product Manager</div>
+                <div className="text-sm font-semibold text-ink">Alex Morgan</div>
+                <div className="text-xs text-ink-faint">Product Manager</div>
               </div>
             </div>
           </div>
@@ -54,25 +49,25 @@ export default function SignUpPage() {
 
         {/* Right Side */}
         <div className="flex flex-col items-center justify-center">
-          <div className="w-full max-w-md bg-slate-800 border border-white/10 p-1 rounded-2xl shadow-2xl">
+          <div className="w-full max-w-md surface-panel p-1 rounded-2xl">
             <SignUp
               appearance={{
                 elements: {
                   rootBox: "w-full",
-                  card: "bg-slate-800 border-none shadow-none w-full p-6",
-                  headerTitle: "text-white text-2xl font-bold",
-                  headerSubtitle: "text-zinc-400",
-                  socialButtonsBlockButton: "bg-white/5 border border-white/10 hover:bg-white/10 text-white",
-                  socialButtonsBlockButtonText: "text-white font-medium",
-                  dividerLine: "bg-white/10",
-                  dividerText: "text-zinc-500",
-                  formFieldLabel: "text-zinc-300",
-                  formFieldInput: "bg-slate-900 border-white/10 text-white focus:border-indigo-500/50",
-                  formButtonPrimary: "bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/20",
-                  footerActionText: "text-zinc-400",
-                  footerActionLink: "text-indigo-400 hover:text-indigo-300",
-                  identityPreviewText: "text-zinc-300",
-                  identityPreviewEditButton: "text-indigo-400 hover:text-indigo-300",
+                  card: "bg-transparent border-none shadow-none w-full p-6",
+                  headerTitle: "text-ink text-2xl font-bold",
+                  headerSubtitle: "text-ink-muted",
+                  socialButtonsBlockButton: "surface-control text-ink",
+                  socialButtonsBlockButtonText: "text-ink font-medium",
+                  dividerLine: "bg-edge",
+                  dividerText: "text-ink-faint",
+                  formFieldLabel: "text-ink-muted",
+                  formFieldInput: "surface-control text-ink focus:border-accent/40",
+                  formButtonPrimary: "bg-accent hover:bg-accent-hover text-surface-0",
+                  footerActionText: "text-ink-faint",
+                  footerActionLink: "text-accent hover:text-accent-hover",
+                  identityPreviewText: "text-ink-muted",
+                  identityPreviewEditButton: "text-accent hover:text-accent-hover",
                 },
                 options: {
                   socialButtonsPlacement: 'bottom',

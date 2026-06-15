@@ -7,9 +7,9 @@ import UpdatePlanForm from '@/components/admin/UpdatePlanForm'
 export const dynamic = 'force-dynamic'
 
 const PLAN_BADGE: Record<string, string> = {
-  enterprise: 'bg-yellow-500/15 text-yellow-400',
-  pro: 'bg-indigo-500/15 text-indigo-400',
-  free: 'bg-white/5 text-white/40',
+  enterprise: 'bg-warning/15 text-warning',
+  pro: 'bg-accent/10 text-ink',
+  free: 'bg-surface-2 text-ink-faint',
 }
 
 export default async function AdminUserDetailPage({
@@ -40,20 +40,20 @@ export default async function AdminUserDetailPage({
       <div>
         <Link
           href="/admin/users"
-          className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-xs text-ink-faint hover:text-ink transition-colors mb-4"
         >
           <ArrowLeft className="w-3 h-3" />
           Users
         </Link>
-        <h1 className="text-xl font-semibold text-white">{displayName}</h1>
-        <p className="text-xs text-white/30 mt-0.5 font-mono">{user.clerkId}</p>
+        <h1 className="text-xl font-semibold text-ink">{displayName}</h1>
+        <p className="text-xs text-ink-faint mt-0.5 font-mono">{user.clerkId}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="space-y-4">
           {/* Profile card */}
-          <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
+          <div className="surface-panel rounded-xl p-5">
             <div className="flex items-center gap-3 mb-5">
               {user.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -63,19 +63,19 @@ export default async function AdminUserDetailPage({
                   className="w-10 h-10 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                  <User className="w-5 h-5 text-indigo-400" />
+                <div className="w-10 h-10 rounded-full bg-surface-2 border border-edge flex items-center justify-center text-accent">
+                  <User className="w-5 h-5" />
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{displayName}</p>
-                <p className="text-xs text-white/30 truncate">{user.email}</p>
+                <p className="text-sm font-medium text-ink truncate">{displayName}</p>
+                <p className="text-xs text-ink-faint truncate">{user.email}</p>
               </div>
             </div>
 
             <dl className="space-y-2.5 text-xs">
               <div className="flex justify-between">
-                <dt className="text-white/30">Plan</dt>
+                <dt className="text-ink-faint">Plan</dt>
                 <dd>
                   <span className={`px-2 py-0.5 rounded-full ${PLAN_BADGE[user.plan] ?? PLAN_BADGE.free}`}>
                     {user.plan}
@@ -83,17 +83,17 @@ export default async function AdminUserDetailPage({
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-white/30">Joined</dt>
-                <dd className="text-white/70">{new Date(user.createdAt).toLocaleDateString()}</dd>
+                <dt className="text-ink-faint">Joined</dt>
+                <dd className="text-ink-muted">{new Date(user.createdAt).toLocaleDateString()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-white/30">Total vizs</dt>
-                <dd className="text-white/70 tabular-nums">{totalVisualizations}</dd>
+                <dt className="text-ink-faint">Total vizs</dt>
+                <dd className="text-ink-muted tabular-nums">{totalVisualizations}</dd>
               </div>
               {user.lastLoginAt && (
                 <div className="flex justify-between">
-                  <dt className="text-white/30">Last login</dt>
-                  <dd className="text-white/70">{new Date(user.lastLoginAt).toLocaleDateString()}</dd>
+                  <dt className="text-ink-faint">Last login</dt>
+                  <dd className="text-ink-muted">{new Date(user.lastLoginAt).toLocaleDateString()}</dd>
                 </div>
               )}
             </dl>
@@ -101,35 +101,35 @@ export default async function AdminUserDetailPage({
 
           {/* Token usage */}
           {usage && (
-            <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
-              <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">
+            <div className="surface-panel rounded-xl p-5">
+              <h3 className="text-xs font-medium text-ink-muted uppercase tracking-wider mb-3">
                 Token Usage
               </h3>
-              <div className="flex justify-between text-xs text-white/40 mb-1.5">
+              <div className="flex justify-between text-xs text-ink-faint mb-1.5">
                 <span>{usage.tokensUsed.toLocaleString()} used</span>
                 <span>{usage.tokensLimit.toLocaleString()} limit</span>
               </div>
-              <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-surface-3 rounded-full overflow-hidden">
                 <div
                   className={`h-1.5 rounded-full transition-all ${
-                    tokenPct > 80 ? 'bg-red-400' : tokenPct > 50 ? 'bg-yellow-400' : 'bg-indigo-500'
+                    tokenPct > 80 ? 'bg-danger' : tokenPct > 50 ? 'bg-warning' : 'bg-accent'
                   }`}
                   style={{ width: `${tokenPct}%` }}
                 />
               </div>
-              <p className="text-xs text-white/25 mt-2">
+              <p className="text-xs text-ink-faint mt-2">
                 Resets {new Date(usage.tokenResetDate).toLocaleDateString()}
               </p>
-              <div className="mt-3 pt-3 border-t border-white/6 flex justify-between text-xs">
-                <span className="text-white/30">Tier</span>
-                <span className="text-white/60 capitalize">{usage.tier}</span>
+              <div className="mt-3 pt-3 border-t border-edge flex justify-between text-xs">
+                <span className="text-ink-faint">Tier</span>
+                <span className="text-ink-muted capitalize">{usage.tier}</span>
               </div>
             </div>
           )}
 
           {/* Plan management */}
-          <div className="bg-slate-800 rounded-xl border border-white/6 p-5">
-            <h3 className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">
+          <div className="surface-panel rounded-xl p-5">
+            <h3 className="text-xs font-medium text-ink-muted uppercase tracking-wider mb-3">
               Manage Plan
             </h3>
             <UpdatePlanForm
@@ -141,36 +141,36 @@ export default async function AdminUserDetailPage({
 
         {/* Right column — visualizations */}
         <div className="lg:col-span-2">
-          <div className="bg-slate-800 rounded-xl border border-white/6 overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/6">
-              <h2 className="text-sm font-medium text-white">
+          <div className="surface-panel rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-edge">
+              <h2 className="text-sm font-medium text-ink">
                 Recent Visualizations
-                <span className="text-white/25 text-xs font-normal ml-2">
+                <span className="text-ink-faint text-xs font-normal ml-2">
                   ({totalVisualizations} total)
                 </span>
               </h2>
             </div>
 
             {recentVisualizations.length === 0 ? (
-              <div className="px-5 py-14 text-center text-sm text-white/25">No visualizations</div>
+              <div className="px-5 py-14 text-center text-sm text-ink-faint">No visualizations</div>
             ) : (
-              <div className="divide-y divide-white/[0.03]">
+              <div className="divide-y divide-edge/60">
                 {recentVisualizations.map(viz => (
                   <div key={viz._id} className="px-5 py-3 flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm text-white truncate">{viz.title}</p>
+                      <p className="text-sm text-ink truncate">{viz.title}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full ${
                           viz.isPublic
-                            ? 'bg-green-500/15 text-green-400'
-                            : 'bg-white/5 text-white/30'
+                            ? 'bg-success/15 text-success'
+                            : 'bg-surface-2 text-ink-faint'
                         }`}
                       >
                         {viz.isPublic ? 'public' : 'private'}
                       </span>
-                      <span className="text-xs text-white/25">
+                      <span className="text-xs text-ink-faint">
                         {new Date(viz.createdAt).toLocaleDateString()}
                       </span>
                     </div>

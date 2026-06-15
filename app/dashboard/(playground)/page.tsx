@@ -121,15 +121,6 @@ function DashboardContent() {
   const [chartType, setChartType] = useState<ChartSelection | null>(null);
   const handleClearChartType = useCallback(() => setChartType(null), []);
 
-  /* ── Starter template gallery — pre-fills prompt, sample data, and chart type for the empty composer ── */
-  const handleUseTemplate = useCallback((template: StarterTemplate) => {
-    setInput(template.prompt);
-    setAttachment(buildSampleAttachment(template.sampleFilename, template.sampleData));
-    setLiveSheet(null);
-    setStatRun(null);
-    setChartType(template.chartSelection);
-  }, []);
-
   /* ── Live Google Sheet / CSV connected via the composer ── */
   const [liveSheet, setLiveSheet] = useState<LiveSheetData | null>(null);
   const handleConnectLiveSheet = useCallback((data: LiveSheetData) => {
@@ -140,6 +131,15 @@ function DashboardContent() {
   const handleDisconnectLiveSheet = useCallback(() => {
     setLiveSheet(null);
     setStatRun(null);
+  }, [setStatRun]);
+
+  /* ── Starter template gallery — pre-fills prompt, sample data, and chart type for the empty composer ── */
+  const handleUseTemplate = useCallback((template: StarterTemplate) => {
+    setInput(template.prompt);
+    setAttachment(buildSampleAttachment(template.sampleFilename, template.sampleData));
+    setLiveSheet(null);
+    setStatRun(null);
+    setChartType(template.chartSelection);
   }, [setStatRun]);
 
   /* ── Dataset behind whichever attachment/live sheet is connected — lets the Focus panel run stat tests too ── */

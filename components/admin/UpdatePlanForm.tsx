@@ -33,7 +33,7 @@ export default function UpdatePlanForm({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-1 p-1 bg-black/20 rounded-lg">
+      <div className="grid grid-cols-3 gap-1 p-1 bg-surface-2 border border-edge rounded-lg">
         {PLANS.map(plan => (
           <button
             key={plan}
@@ -41,8 +41,8 @@ export default function UpdatePlanForm({
             onClick={() => setSelected(plan)}
             className={`py-1.5 rounded-md text-xs font-medium transition-all capitalize ${
               selected === plan
-                ? 'bg-indigo-500 text-white'
-                : 'text-white/40 hover:text-white'
+                ? 'bg-accent text-surface-0'
+                : 'text-ink-faint hover:text-ink'
             }`}
           >
             {plan}
@@ -53,15 +53,15 @@ export default function UpdatePlanForm({
         type="button"
         onClick={handleUpdate}
         disabled={isPending || selected === currentPlan}
-        className="w-full py-2 px-4 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm text-white font-medium transition-colors"
+        className="w-full py-2 px-4 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm text-surface-0 font-medium transition-colors"
       >
         {isPending ? 'Updating…' : 'Apply Plan'}
       </button>
       {selected !== currentPlan && (
-        <p className="text-xs text-white/30 text-center">
-          Current: <span className="text-white/50 capitalize">{currentPlan}</span>
+        <p className="text-xs text-ink-faint text-center">
+          Current: <span className="text-ink-muted capitalize">{currentPlan}</span>
           {' → '}
-          <span className="text-indigo-400 capitalize">{selected}</span>
+          <span className="text-accent capitalize">{selected}</span>
         </p>
       )}
     </div>

@@ -177,14 +177,14 @@ export default function VisualizationModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-7xl h-[90vh] overflow-hidden flex flex-col"
+          className="surface-panel rounded-2xl w-full max-w-7xl h-[90vh] overflow-hidden flex flex-col shadow-[0_24px_64px_rgba(0,0,0,0.35)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+          <div className="flex items-center justify-between p-6 border-b border-edge">
             <div>
-              <h2 className="text-2xl font-bold text-white mb-1">{currentVisualization.title}</h2>
-              <p className="text-sm text-zinc-400 flex items-center gap-1.5">
+              <h2 className="text-2xl font-bold text-ink mb-1">{currentVisualization.title}</h2>
+              <p className="text-sm text-ink-faint flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5" /> Chart
               </p>
             </div>
@@ -192,7 +192,7 @@ export default function VisualizationModal({
               <button
                 onClick={handleShare}
                 className={`px-3 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium ${
-                  isPublic ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                  isPublic ? 'bg-success/15 text-success hover:bg-success/25' : 'surface-control text-ink-muted'
                 }`}
                 title={isPublic ? 'Copy public link' : 'Make public & copy link'}
               >
@@ -204,7 +204,7 @@ export default function VisualizationModal({
               <div className="relative" ref={exportMenuRef}>
                 <button
                   onClick={() => setExportOpen(p => !p)}
-                  className="px-3 py-2 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition flex items-center gap-2 text-sm font-medium"
+                  className="px-3 py-2 rounded-lg surface-control text-ink-muted transition flex items-center gap-2 text-sm font-medium"
                 >
                   <Download className="w-4 h-4" />
                   Export
@@ -216,22 +216,22 @@ export default function VisualizationModal({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 4, scale: 0.96 }}
                       transition={{ duration: 0.13 }}
-                      className="absolute right-0 top-full mt-1.5 w-44 rounded-xl overflow-hidden z-50 bg-slate-900 border border-white/9 shadow-[0_16px_48px_rgba(0,0,0,0.6)]"
+                      className="absolute right-0 top-full mt-1.5 w-44 rounded-xl overflow-hidden z-50 surface-panel shadow-[0_16px_48px_rgba(0,0,0,0.35)]"
                     >
-                      <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                      <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors">
                         <ImageIcon size={13} className="text-blue-400" /> Export as PNG
                       </button>
-                      <button onClick={() => { setExportOpen(false); handleExportPDF(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                      <button onClick={() => { setExportOpen(false); handleExportPDF(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors">
                         <FileText size={13} className="text-rose-400" /> Export as PDF
                       </button>
-                      <div className="h-px bg-white/[0.06] mx-3 my-1" />
-                      <button onClick={() => { setExportOpen(false); handleExportData('json'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                      <div className="h-px bg-edge mx-3 my-1" />
+                      <button onClick={() => { setExportOpen(false); handleExportData('json'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors">
                         <FileJson size={13} className="text-amber-400" /> Export as JSON
                       </button>
-                      <button onClick={() => { setExportOpen(false); handleExportData('csv'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                      <button onClick={() => { setExportOpen(false); handleExportData('csv'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors">
                         <FileSpreadsheet size={13} className="text-emerald-400" /> Export as CSV
                       </button>
-                      <button onClick={() => { setExportOpen(false); handleExportData('html'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-colors">
+                      <button onClick={() => { setExportOpen(false); handleExportData('html'); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors">
                         <FileCode size={13} className="text-cyan-400" /> Export as HTML
                       </button>
                     </motion.div>
@@ -241,7 +241,7 @@ export default function VisualizationModal({
 
               <button
                 onClick={handleRevisualize}
-                className="px-3 py-2 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition flex items-center gap-2 text-sm font-medium"
+                className="px-3 py-2 rounded-lg bg-accent text-surface-0 hover:bg-accent-hover transition flex items-center gap-2 text-sm font-medium"
               >
                 Revisualize <ArrowRight className="w-4 h-4" />
               </button>
@@ -249,13 +249,13 @@ export default function VisualizationModal({
               <button
                 onClick={handleEditModeToggle}
                 className={`px-3 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium ${
-                  isEditMode ? "bg-zinc-700 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                  isEditMode ? "bg-surface-3 text-ink" : "surface-control text-ink-muted"
                 }`}
               >
                 <Edit3 className="w-4 h-4" />
                 {isEditMode ? "Close Edit" : "Edit JSON"}
               </button>
-              <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-lg transition text-zinc-400 hover:text-white">
+              <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-lg transition text-ink-faint hover:text-ink">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -265,18 +265,18 @@ export default function VisualizationModal({
             <div className="flex-1 flex flex-col min-w-0">
               {/* Manual Edit Mode */}
               {isEditMode && (
-                <div className="px-6 pt-4 pb-2 border-b border-zinc-800 bg-zinc-900/50">
+                <div className="px-6 pt-4 pb-2 border-b border-edge bg-surface-2/40">
                   <textarea
                     value={manualEditJson}
                     onChange={(e) => setManualEditJson(e.target.value)}
-                    className="w-full h-48 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none mb-2"
+                    className="w-full h-48 px-4 py-3 bg-surface-2 border border-edge rounded-lg text-ink font-mono text-xs focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none mb-2"
                     placeholder="Edit the chart's ECharts option JSON directly..."
                   />
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-zinc-500">Edit the ECharts option JSON directly. Maintain valid JSON format.</p>
+                    <p className="text-xs text-ink-faint">Edit the ECharts option JSON directly. Maintain valid JSON format.</p>
                     <button
                       onClick={handleManualEdit}
-                      className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition flex items-center gap-2 font-medium"
+                      className="px-6 py-3 bg-accent hover:bg-accent-hover text-surface-0 rounded-lg transition flex items-center gap-2 font-medium"
                     >
                       <Send className="w-4 h-4" /> Apply Changes
                     </button>
@@ -285,9 +285,9 @@ export default function VisualizationModal({
               )}
 
               {/* Visualization Content */}
-              <div className="flex-1 overflow-hidden min-h-0 relative bg-zinc-950/50" data-viz-area>
+              <div className="flex-1 overflow-hidden min-h-0 relative bg-surface-0" data-viz-area>
                 <VisualizationErrorBoundary>
-                  <EChartsRenderer spec={currentVisualization.spec} className="w-full h-full p-6" forceMode="dark" />
+                  <EChartsRenderer spec={currentVisualization.spec} className="w-full h-full p-6" />
                 </VisualizationErrorBoundary>
               </div>
             </div>

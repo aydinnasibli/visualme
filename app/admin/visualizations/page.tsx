@@ -19,7 +19,7 @@ export default async function AdminVisualizationsPage({
   if (!result.success || !result.data) {
     return (
       <div className="p-8">
-        <p className="text-sm text-red-400">Failed to load: {result.error}</p>
+        <p className="text-sm text-danger">Failed to load: {result.error}</p>
       </div>
     )
   }
@@ -41,48 +41,48 @@ export default async function AdminVisualizationsPage({
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Visualizations</h1>
-        <p className="text-sm text-white/30 mt-0.5">{total.toLocaleString()} total</p>
+        <h1 className="text-xl font-semibold text-ink">Visualizations</h1>
+        <p className="text-sm text-ink-faint mt-0.5">{total.toLocaleString()} total</p>
       </div>
 
       {/* Filters */}
       <div className="space-y-3">
         <form method="get" action="/admin/visualizations" className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint pointer-events-none" />
           <input
             name="search"
             defaultValue={search}
             placeholder="Search by title…"
-            className="w-full bg-slate-800 border border-white/6 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 transition-colors"
+            className="w-full surface-control rounded-lg pl-9 pr-4 py-2 text-sm text-ink placeholder-ink-faint focus:outline-none focus:border-accent/40 transition-colors"
           />
         </form>
       </div>
 
       {/* Table */}
-      <div className="bg-slate-800 rounded-xl border border-white/6 overflow-hidden">
+      <div className="surface-panel rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/6">
-                <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Title</th>
-                <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Visibility</th>
-                <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">User</th>
-                <th className="text-left px-5 py-3 text-xs text-white/30 font-medium">Created</th>
+              <tr className="border-b border-edge">
+                <th className="text-left px-5 py-3 text-xs text-ink-faint font-medium">Title</th>
+                <th className="text-left px-5 py-3 text-xs text-ink-faint font-medium">Visibility</th>
+                <th className="text-left px-5 py-3 text-xs text-ink-faint font-medium">User</th>
+                <th className="text-left px-5 py-3 text-xs text-ink-faint font-medium">Created</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.03]">
+            <tbody className="divide-y divide-edge/60">
               {visualizations.map(viz => (
-                <tr key={viz._id} className="hover:bg-white/[0.02] transition-colors group">
+                <tr key={viz._id} className="hover:bg-surface-2 transition-colors group">
                   <td className="px-5 py-3">
-                    <p className="text-white font-medium truncate max-w-[220px]">{viz.title}</p>
+                    <p className="text-ink font-medium truncate max-w-[220px]">{viz.title}</p>
                   </td>
                   <td className="px-5 py-3">
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${
                         viz.isPublic
-                          ? 'bg-green-500/15 text-green-400'
-                          : 'bg-white/5 text-white/30'
+                          ? 'bg-success/15 text-success'
+                          : 'bg-surface-2 text-ink-faint'
                       }`}
                     >
                       {viz.isPublic ? 'public' : 'private'}
@@ -91,12 +91,12 @@ export default async function AdminVisualizationsPage({
                   <td className="px-5 py-3">
                     <Link
                       href={`/admin/users/${viz.userId}`}
-                      className="text-xs text-white/30 hover:text-indigo-400 transition-colors font-mono"
+                      className="text-xs text-ink-faint hover:text-accent transition-colors font-mono"
                     >
                       {viz.userId.slice(0, 16)}…
                     </Link>
                   </td>
-                  <td className="px-5 py-3 text-xs text-white/25 whitespace-nowrap">
+                  <td className="px-5 py-3 text-xs text-ink-faint whitespace-nowrap">
                     {new Date(viz.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-5 py-3">
@@ -109,21 +109,21 @@ export default async function AdminVisualizationsPage({
         </div>
 
         {visualizations.length === 0 && (
-          <div className="px-5 py-14 text-center text-sm text-white/25">No visualizations found</div>
+          <div className="px-5 py-14 text-center text-sm text-ink-faint">No visualizations found</div>
         )}
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-white/30">
+          <p className="text-xs text-ink-faint">
             Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">
             {page > 1 && (
               <Link
                 href={buildHref({ page: page - 1 })}
-                className="px-3 py-1.5 bg-slate-800 border border-white/6 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
+                className="px-3 py-1.5 surface-control rounded-lg text-xs text-ink-muted hover:text-ink transition-colors"
               >
                 ← Previous
               </Link>
@@ -131,7 +131,7 @@ export default async function AdminVisualizationsPage({
             {page < totalPages && (
               <Link
                 href={buildHref({ page: page + 1 })}
-                className="px-3 py-1.5 bg-slate-800 border border-white/6 rounded-lg text-xs text-white/50 hover:text-white transition-colors"
+                className="px-3 py-1.5 surface-control rounded-lg text-xs text-ink-muted hover:text-ink transition-colors"
               >
                 Next →
               </Link>
