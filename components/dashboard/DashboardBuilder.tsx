@@ -24,6 +24,7 @@ import {
 import { exportDashboardAsPDF, exportDashboardAsSlidePNGs } from '@/lib/utils/export-dashboard';
 import type { Dashboard, DashboardLayoutItem, DashboardVizSlot } from '@/lib/types/dashboard';
 import type { SavedVisualization } from '@/lib/types/visualization';
+import type { VisualizationSpec } from '@/lib/types/echarts-spec';
 
 // ─── constants ──────────────────────────────────────────────────────────────
 
@@ -47,6 +48,40 @@ function nextY(layout: DashboardLayoutItem[]): number {
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
+/**
+ * Renders the real chart only once scrolled near the viewport — avoids
+ * mounting many live ECharts canvases at once in the picker list.
+ */
+function ChartThumbnail({ spec }: { spec: VisualizationSpec }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="absolute inset-0">
+      {visible ? (
+        <EChartsRenderer spec={spec} compact hideTitle className="w-full h-full" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-ink-faint/40 group-hover:text-accent/40 transition-colors">
+          <BarChart3 size={32} strokeWidth={1.2} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VizPickerCard({
   viz,
   added,
@@ -68,13 +103,12 @@ function VizPickerCard({
       }}
       onClick={onAdd}
     >
-      <div className="h-24 bg-surface-2 relative flex items-center justify-center">
-        {added ? (
+      <div className="h-24 bg-surface-2 relative overflow-hidden">
+        <ChartThumbnail spec={viz.spec} />
+        {added && (
           <div className="absolute inset-0 flex items-center justify-center bg-accent/10">
             <Check className="w-6 h-6 text-accent" />
           </div>
-        ) : (
-          <BarChart3 size={32} strokeWidth={1.2} className="text-ink-faint/40 group-hover:text-accent/40 transition-colors" />
         )}
       </div>
       <div className="px-3 py-2 flex items-center justify-between gap-2">

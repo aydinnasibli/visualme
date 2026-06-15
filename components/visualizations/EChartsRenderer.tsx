@@ -113,7 +113,7 @@ export default function EChartsRenderer({ spec, className, forceMode, hideTitle,
     const tryResize = () => {
       const inst = chartRef.current?.getEchartsInstance();
       const { clientWidth, clientHeight } = el;
-      if (!inst || clientWidth === 0 || clientHeight === 0) {
+      if (!inst || inst.isDisposed() || clientWidth === 0 || clientHeight === 0) {
         if (attempts < 5) { attempts++; raf = requestAnimationFrame(tryResize); }
         return;
       }
@@ -129,7 +129,7 @@ export default function EChartsRenderer({ spec, className, forceMode, hideTitle,
       const height = clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       inst.resize({ width, height });
       constrainTitleWidth();
-      const canvas = inst.getDom().querySelector('canvas');
+      const canvas = inst.getDom()?.querySelector('canvas');
       const styleW = canvas ? parseFloat(canvas.style.width) : width;
       if (attempts < 5 && styleW !== width) {
         attempts++;
