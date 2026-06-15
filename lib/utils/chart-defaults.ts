@@ -248,6 +248,12 @@ function hideAxisDecorations(axis: Record<string, unknown>): Record<string, unkn
   };
 }
 
+/** Strips a parallel-coordinates axis's name/labels but keeps its line — the lines are the chart's frame. */
+function stripAxisName(axis: Record<string, unknown>): Record<string, unknown> {
+  const { name, ...rest } = axis;
+  return { ...rest, axisLabel: { show: false } };
+}
+
 /** Reads a percent-like value (`'60%'`, `60`, `0.6`) as a 0-100 number, falling back if it's anything else. */
 function parsePercent(value: unknown, fallback: number): number {
   if (typeof value === 'number') return value <= 1 ? value * 100 : value;
@@ -317,6 +323,18 @@ export function applyPreviewOverrides(option: EChartsOption): EChartsOption {
     }),
     ...(original.radar !== undefined && {
       radar: mapComponent(original.radar, (r) => ({ ...r, axisName: { show: false }, radius: '85%' })),
+    }),
+    ...(original.angleAxis !== undefined && { angleAxis: mapComponent(original.angleAxis, hideAxisDecorations) }),
+    ...(original.radiusAxis !== undefined && { radiusAxis: mapComponent(original.radiusAxis, hideAxisDecorations) }),
+    ...(original.polar !== undefined && { polar: mapComponent(original.polar, (p) => ({ ...p, radius: '85%' })) }),
+    ...(original.parallelAxis !== undefined && { parallelAxis: mapComponent(original.parallelAxis, stripAxisName) }),
+    ...(original.calendar !== undefined && {
+      calendar: mapComponent(original.calendar, (c) => ({
+        ...c,
+        dayLabel: { show: false },
+        monthLabel: { show: false },
+        yearLabel: { show: false },
+      })),
     }),
     ...(original.visualMap !== undefined && { visualMap: mapComponent(original.visualMap, (c) => ({ ...c, show: false })) }),
     ...(original.dataZoom !== undefined && { dataZoom: mapComponent(original.dataZoom, (c) => ({ ...c, show: false })) }),
