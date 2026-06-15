@@ -95,6 +95,28 @@ export async function readFileAttachment(file: File): Promise<{ attachment?: Fil
   };
 }
 
+/**
+ * Builds a FileAttachment directly from in-memory sample rows (used by the
+ * starter-template gallery) — mirrors the tabular branch of
+ * `readFileAttachment` without going through `parseFile`, since the rows are
+ * already structured data.
+ */
+export function buildSampleAttachment(filename: string, rows: Record<string, unknown>[]): FileAttachment {
+  const body = JSON.stringify(rows, null, 2);
+  const promptSegment = `Attached data file "${filename}" — ${rows.length.toLocaleString()} rows:\n\`\`\`\n${truncate(body)}\n\`\`\``;
+  const datasetColumns = detectColumns(rows);
+
+  return {
+    id: `${filename}-sample-${rows.length}`,
+    name: filename,
+    size: body.length,
+    extension: 'csv',
+    rowCount: rows.length,
+    promptSegment,
+    datasetColumns: datasetColumns.length > 0 ? datasetColumns : undefined,
+  };
+}
+
 /** Merges the user's typed instructions with the attached file's data for the AI prompt. */
 export function composePromptWithAttachment(text: string, attachment: FileAttachment | null): string {
   if (!attachment) return text;

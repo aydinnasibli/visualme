@@ -2,7 +2,10 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Sparkles, ArrowUp, CheckCircle2, Paperclip, Loader2, LayoutGrid, Sigma, Trash2 } from 'lucide-react';
+import {
+  Plus, Sparkles, ArrowUp, CheckCircle2, Paperclip, Loader2, LayoutGrid, Sigma, Trash2,
+  TrendingUp, FlaskConical, ClipboardList, Workflow, Megaphone, Wallet, Activity, Target,
+} from 'lucide-react';
 import { getChartTypeInfo } from '@/lib/utils/series-icon';
 import type { VisualizationSpec } from '@/lib/types/echarts-spec';
 import type { FileAttachment } from '@/lib/utils/file-attachment';
@@ -10,6 +13,7 @@ import { ATTACHMENT_ACCEPT } from '@/lib/utils/file-attachment';
 import type { ChartSelection } from '@/lib/utils/chart-types';
 import type { StatTestResult, StatTestSelection } from '@/lib/types/statistics';
 import type { LiveSheetData } from '@/lib/utils/live-sheet';
+import { STARTER_TEMPLATES, type StarterTemplate } from '@/lib/utils/starter-templates';
 import AttachmentChip from '@/components/dashboard/AttachmentChip';
 import ChartTypeChip from '@/components/dashboard/ChartTypeChip';
 import ChartTypeGalleryModal from '@/components/dashboard/ChartTypeGalleryModal';
@@ -17,6 +21,10 @@ import StatTestChip from '@/components/dashboard/StatTestChip';
 import StatTestPickerModal from '@/components/dashboard/StatTestPickerModal';
 import LiveSheetChip from '@/components/dashboard/LiveSheetChip';
 import LiveSheetButton from '@/components/dashboard/LiveSheetButton';
+
+const TEMPLATE_ICONS: Record<string, React.ElementType> = {
+  TrendingUp, FlaskConical, ClipboardList, Workflow, Megaphone, Wallet, Activity, Target,
+};
 
 export interface StatRun {
   selection: StatTestSelection;
@@ -365,6 +373,7 @@ export interface VizThreadProps {
   onConnectLiveSheet: (data: LiveSheetData) => void;
   onDisconnectLiveSheet: () => void;
   onDelete: (id: string) => void;
+  onUseTemplate: (template: StarterTemplate) => void;
 }
 
 export default function VizThread({
@@ -374,7 +383,7 @@ export default function VizThread({
   chartType, onChooseChartType, onClearChartType,
   statRun, onRunStat, onClearStat,
   liveSheet, onConnectLiveSheet, onDisconnectLiveSheet,
-  onDelete,
+  onDelete, onUseTemplate,
 }: VizThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -406,31 +415,40 @@ export default function VizThread({
       {/* Thread list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar min-h-0">
         {threads.length === 0 && !loading && (
-          <div className="flex flex-col items-center gap-5 pt-6 pb-4 px-1">
-            <div className="text-center">
+          <div className="flex flex-col gap-4 pt-5 pb-4 px-1">
+            <div className="text-center px-2">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3 bg-accent/7 border border-accent/13">
                 <Sparkles className="w-4.5 h-4.5 text-accent/50" />
               </div>
-              <p className="text-xs font-semibold text-ink-faint">Try an example</p>
-              <p className="text-[11px] text-ink-faint/60 mt-1">Click any prompt to get started</p>
+              <p className="text-xs font-semibold text-ink-faint">Start from a template</p>
+              <p className="text-[11px] text-ink-faint/60 mt-1">Sample data included — tap to load, then send</p>
             </div>
             <div className="w-full space-y-1.5">
-              {[
-                { label: 'Sankey diagram of a SaaS startup\'s revenue and cost flow', icon: '🌊' },
-                { label: 'Sunburst chart: global energy mix by source and region', icon: '⚡' },
-                { label: 'Treemap of S&P 500 companies by sector and market cap', icon: '📈' },
-                { label: 'Theme river: social media platform popularity 2012–2024', icon: '📡' },
-                { label: 'Radar comparison of iPhone 16, Galaxy S25, and Pixel 9', icon: '📱' },
-              ].map(({ label, icon }) => (
-                <button
-                  key={label}
-                  onClick={() => setInput(label)}
-                  className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors group bg-surface-1 border border-edge hover:bg-accent/6 hover:border-accent/20"
-                >
-                  <span className="text-sm shrink-0">{icon}</span>
-                  <span className="text-[11px] text-ink-muted leading-snug group-hover:text-ink transition-colors">{label}</span>
-                </button>
-              ))}
+              {STARTER_TEMPLATES.map(template => {
+                const Icon = TEMPLATE_ICONS[template.icon] ?? Sparkles;
+                return (
+                  <button
+                    key={template.id}
+                    onClick={() => onUseTemplate(template)}
+                    className="w-full text-left flex items-start gap-2.5 px-3 py-2.5 rounded-lg transition-colors group bg-surface-1 border border-edge hover:bg-accent/6 hover:border-accent/20"
+                  >
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-accent/10 border border-accent/20">
+                      <Icon size={13} className="text-accent" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p className="text-[11.5px] font-semibold text-ink truncate">{template.title}</p>
+                        <span className="shrink-0 text-[9px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full text-accent/70 bg-accent/8 border border-accent/15">
+                          {template.category}
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-ink-faint leading-snug line-clamp-2 group-hover:text-ink-muted transition-colors">
+                        {template.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

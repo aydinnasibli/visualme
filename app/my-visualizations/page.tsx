@@ -4,12 +4,48 @@ import { getUserVisualizations, deleteVisualization } from '@/lib/actions/visual
 import Header from '@/components/dashboard/Header';
 import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { SavedVisualization } from '@/lib/types/visualization';
+import type { VisualizationSpec } from '@/lib/types/echarts-spec';
 import VisualizationModal from '@/components/visualizations/VisualizationModal';
+import EChartsRenderer from '@/components/visualizations/EChartsRenderer';
 import {
   Search, Grid, List, SearchX, Plus, Trash2, BarChart3,
 } from 'lucide-react';
+
+/**
+ * Renders the real chart only once scrolled near the viewport — avoids
+ * mounting dozens of live ECharts canvases at once on a large library page.
+ */
+function ChartPreview({ spec }: { spec: VisualizationSpec }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="absolute inset-0">
+      {visible ? (
+        <EChartsRenderer spec={spec} compact hideTitle className="w-full h-full" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-ink-faint/40 group-hover:text-accent/40 transition-colors">
+          <BarChart3 size={44} strokeWidth={1.25} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function VisualizationsContent() {
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
@@ -144,21 +180,32 @@ function VisualizationsContent() {
               }`}
             >
               {/* Preview area */}
-              <div className={`relative bg-surface-2 ${viewMode === 'list' ? 'w-28 h-18 rounded-lg shrink-0' : 'h-40 w-full'}`}>
-                <div className="absolute inset-0 flex items-center justify-center text-ink-faint/40 group-hover:text-accent/40 transition-colors">
-                  <BarChart3 size={44} strokeWidth={1.25} />
-                </div>
+              <div className={`relative overflow-hidden bg-surface-2 ${viewMode === 'list' ? 'w-28 h-18 rounded-lg shrink-0' : 'h-40 w-full'}`}>
+                <ChartPreview spec={viz.spec} />
               </div>
 
               {/* Content */}
               <div className={`flex-1 min-w-0 ${viewMode === 'grid' ? 'p-4' : ''}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-ink group-hover:text-accent transition-colors line-clamp-1 text-[13.5px] mb-0.5">
-                      {viz.title}
-                    </h3>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <h3 className="font-semibold text-ink group-hover:text-accent transition-colors line-clamp-1 text-[13.5px]">
+                        {viz.title}
+                      </h3>
+                      {viz.liveData?.url && (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-success shrink-0">
+                          <span
+                            className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0"
+                            style={{ boxShadow: '0 0 4px var(--color-success)' }}
+                          />
+                          Live
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-ink-faint">
-                      Edited {new Date(viz.updatedAt || viz.createdAt).toLocaleDateString()}
+                      {viz.liveData?.lastRefreshed
+                        ? `Refreshed ${new Date(viz.liveData.lastRefreshed).toLocaleString()}`
+                        : `Edited ${new Date(viz.updatedAt || viz.createdAt).toLocaleDateString()}`}
                     </p>
                   </div>
                   {viewMode === 'list' && (

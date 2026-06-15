@@ -13,9 +13,10 @@ import {
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
-import { readFileAttachment, composePromptWithAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
+import { readFileAttachment, composePromptWithAttachment, buildSampleAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
 import { composePromptWithChartType, getStyleEffect, type ChartSelection } from '@/lib/utils/chart-types';
 import { composePromptWithLiveSheet, formatLiveDataBlock, type LiveSheetData } from '@/lib/utils/live-sheet';
+import type { StarterTemplate } from '@/lib/utils/starter-templates';
 import type { ColumnSchema } from '@/lib/utils/csv-schema';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { toast } from 'sonner';
@@ -119,6 +120,15 @@ function DashboardContent() {
   /* ── Forced chart type (gallery picker) — overrides the AI's own type judgment for the next request ── */
   const [chartType, setChartType] = useState<ChartSelection | null>(null);
   const handleClearChartType = useCallback(() => setChartType(null), []);
+
+  /* ── Starter template gallery — pre-fills prompt, sample data, and chart type for the empty composer ── */
+  const handleUseTemplate = useCallback((template: StarterTemplate) => {
+    setInput(template.prompt);
+    setAttachment(buildSampleAttachment(template.sampleFilename, template.sampleData));
+    setLiveSheet(null);
+    setStatRun(null);
+    setChartType(template.chartSelection);
+  }, []);
 
   /* ── Live Google Sheet / CSV connected via the composer ── */
   const [liveSheet, setLiveSheet] = useState<LiveSheetData | null>(null);
@@ -297,7 +307,7 @@ function DashboardContent() {
         title: data.title || displayPrompt.slice(0, 60),
         chatHistory: [],
         vizId: null,
-        isSaved: false,
+        isSaved: !!liveDataForEntry,
         isPublic: false,
         shareId: null,
         metadata: data.metadata ? {
@@ -505,7 +515,11 @@ function DashboardContent() {
 
     // Optimistic update
     setThreads(p => p.map(t => t.id === id
-      ? { ...t, liveData: config ? { ...config, lastRefreshed: t.liveData?.lastRefreshed } : undefined }
+      ? {
+          ...t,
+          liveData: config ? { ...config, lastRefreshed: t.liveData?.lastRefreshed } : undefined,
+          isSaved: config ? true : t.isSaved,
+        }
       : t
     ));
 
@@ -662,6 +676,7 @@ function DashboardContent() {
                   onConnectLiveSheet={handleConnectLiveSheet}
                   onDisconnectLiveSheet={handleDisconnectLiveSheet}
                   onDelete={handleDeleteThread}
+                  onUseTemplate={handleUseTemplate}
                 />
               </div>
             </motion.div>

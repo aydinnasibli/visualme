@@ -229,3 +229,96 @@ export function applyChartDefaults(option: EChartsOption): EChartsOption {
     series: Array.isArray(series) ? merged : merged[0],
   } as EChartsOption;
 }
+
+/** Applies `fn` to a field that may be a single component or an array of them, leaving the shape unchanged. */
+function mapComponent(value: unknown, fn: (item: Record<string, unknown>) => Record<string, unknown>): unknown {
+  if (Array.isArray(value)) return value.map((v) => fn(v as Record<string, unknown>));
+  return fn(value as Record<string, unknown>);
+}
+
+/** Strips an axis's name/labels/ticks/lines — there's no room for any of it at thumbnail size. */
+function hideAxisDecorations(axis: Record<string, unknown>): Record<string, unknown> {
+  const { name, ...rest } = axis;
+  return {
+    ...rest,
+    axisLabel: { show: false },
+    axisTick: { show: false },
+    axisLine: { show: false },
+    splitLine: { show: false },
+  };
+}
+
+/** Reads a percent-like value (`'60%'`, `60`, `0.6`) as a 0-100 number, falling back if it's anything else. */
+function parsePercent(value: unknown, fallback: number): number {
+  if (typeof value === 'number') return value <= 1 ? value * 100 : value;
+  if (typeof value === 'string') {
+    const n = parseFloat(value);
+    return Number.isNaN(n) ? fallback : n;
+  }
+  return fallback;
+}
+
+/** Near-zero margins — with labels/legends gone, the plot area can use almost the entire canvas. */
+const TIGHT_GRID = { left: 8, right: 8, top: 8, bottom: 8, containLabel: false };
+
+/**
+ * Strips legends, data labels, axis labels/names, and other text-heavy
+ * decorations from a chart option, then tightens layout (grid margins,
+ * pie/radar/gauge radius) to use the space that freed up — for small
+ * thumbnail/preview contexts (e.g. a library card) where that text would
+ * just overlap and clutter rather than communicate anything at that size.
+ * The chart's shape and colors (what a thumbnail is for) are left untouched,
+ * just made to fill the available area instead of floating in a sea of margin.
+ */
+export function applyPreviewOverrides(option: EChartsOption): EChartsOption {
+  const original = option as Record<string, unknown>;
+  const series = original.series;
+  const list = Array.isArray(series) ? series : series ? [series] : [];
+
+  const strippedSeries = list.map((s) => {
+    const entry: Record<string, unknown> = { ...(s as Record<string, unknown>), label: { show: false }, labelLine: { show: false } };
+    const type = entry.type as string | undefined;
+    if (type === 'treemap') {
+      entry.upperLabel = { show: false };
+      entry.breadcrumb = { show: false };
+    }
+    if (type === 'gauge') {
+      entry.title = { show: false };
+      entry.detail = { show: false };
+      entry.axisLabel = { show: false };
+      entry.radius = '92%';
+    }
+    if (type === 'pie') {
+      const radius = entry.radius;
+      if (Array.isArray(radius) && radius.length === 2) {
+        const ratio = parsePercent(radius[0], 0) / (parsePercent(radius[1], 75) || 1);
+        entry.radius = [`${Math.round(ratio * 90)}%`, '90%'];
+      } else {
+        entry.radius = '90%';
+      }
+      entry.center = ['50%', '50%'];
+    }
+    return entry;
+  });
+
+  const isCartesian = original.xAxis !== undefined || original.yAxis !== undefined || original.grid !== undefined;
+
+  return {
+    ...original,
+    legend: { show: false },
+    series: Array.isArray(series) ? strippedSeries : strippedSeries[0],
+    ...(original.xAxis !== undefined && { xAxis: mapComponent(original.xAxis, hideAxisDecorations) }),
+    ...(original.yAxis !== undefined && { yAxis: mapComponent(original.yAxis, hideAxisDecorations) }),
+    ...(original.singleAxis !== undefined && {
+      singleAxis: mapComponent(original.singleAxis, (a) => ({ ...hideAxisDecorations(a), top: 10, bottom: 10 })),
+    }),
+    ...(isCartesian && {
+      grid: original.grid !== undefined ? mapComponent(original.grid, () => ({ ...TIGHT_GRID })) : TIGHT_GRID,
+    }),
+    ...(original.radar !== undefined && {
+      radar: mapComponent(original.radar, (r) => ({ ...r, axisName: { show: false }, radius: '85%' })),
+    }),
+    ...(original.visualMap !== undefined && { visualMap: mapComponent(original.visualMap, (c) => ({ ...c, show: false })) }),
+    ...(original.dataZoom !== undefined && { dataZoom: mapComponent(original.dataZoom, (c) => ({ ...c, show: false })) }),
+  } as EChartsOption;
+}

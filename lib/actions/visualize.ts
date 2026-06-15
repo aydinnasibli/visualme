@@ -189,8 +189,11 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
  * Auto-persist a freshly generated visualization as an ephemeral "session" —
  * created immediately after generation, without a "Save" click. Unlike
  * `saveVisualization`, this never counts against the saved-visualization
- * limit and expires via `sessionExpiresAt` (TTL) unless connected to a live
- * data source (which never expires).
+ * limit and expires via `sessionExpiresAt` (TTL).
+ *
+ * Exception: a session connected to a live data source never expires, so
+ * it's marked `isSaved: true` immediately — otherwise it would persist
+ * forever yet stay invisible on the "My Visualizations" page.
  */
 export async function createSession(
   title: string,
@@ -211,7 +214,8 @@ export async function createSession(
 
     await connectToDatabase();
 
-    const sessionExpiresAt = liveData?.url ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const isLive = !!liveData?.url;
+    const sessionExpiresAt = isLive ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const visualization = await VisualizationModel.create({
       userId,
@@ -219,9 +223,9 @@ export async function createSession(
       spec,
       metadata,
       isPublic: false,
-      isSaved: false,
+      isSaved: isLive,
       sessionExpiresAt,
-      ...(liveData?.url ? { liveData } : {}),
+      ...(isLive ? { liveData } : {}),
       history: (history || []).map(h => ({
         ...h,
         timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp,
@@ -703,8 +707,9 @@ export async function saveLiveDataConfig(
 
     let update: Record<string, unknown>;
     if (liveData) {
-      // Connecting to a live source: never expires.
-      update = { $set: { liveData }, $unset: { sessionExpiresAt: '' } };
+      // Connecting to a live source: never expires, and promotes the
+      // session to "saved" so it shows up on the "My Visualizations" page.
+      update = { $set: { liveData, isSaved: true }, $unset: { sessionExpiresAt: '' } };
     } else {
       update = { $unset: { liveData: '' } };
       if (doc.isSaved === false) {

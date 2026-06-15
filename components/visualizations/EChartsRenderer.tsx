@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTheme } from "next-themes";
 import ReactECharts from "echarts-for-react";
 import { applyBrandTheme, withAppMode } from "@/lib/utils/echarts-theme";
-import { applyChartDefaults } from "@/lib/utils/chart-defaults";
+import { applyChartDefaults, applyPreviewOverrides } from "@/lib/utils/chart-defaults";
 import type { VisualizationSpec } from "@/lib/types/echarts-spec";
 import { DEFAULT_SUNSET_THEME } from "@/lib/types/echarts-spec";
 import { useMounted } from "@/lib/hooks/useMounted";
@@ -26,11 +26,17 @@ interface EChartsRendererProps {
    * already displays the visualization's title, so it isn't shown twice.
    */
   hideTitle?: boolean;
+  /**
+   * Drop the default 280×320 minimum canvas size — for small thumbnail/
+   * preview contexts (e.g. a library card) where the chart should shrink to
+   * fit its container instead of forcing the container to grow.
+   */
+  compact?: boolean;
 }
 
 const EmptyState = () => (
   <div className="w-full h-full flex items-center justify-center">
-    <p className="text-zinc-500 text-sm">No data to display</p>
+    <p className="text-ink-faint text-sm">No data to display</p>
   </div>
 );
 
@@ -39,7 +45,7 @@ const EmptyState = () => (
  * components. Structure (`spec.option`) and presentation (`spec.theme`) are
  * composed here so any chart shape can be restyled without regenerating data.
  */
-export default function EChartsRenderer({ spec, className, forceMode, hideTitle }: EChartsRendererProps) {
+export default function EChartsRenderer({ spec, className, forceMode, hideTitle, compact }: EChartsRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<InstanceType<typeof ReactECharts>>(null);
 
@@ -55,12 +61,13 @@ export default function EChartsRenderer({ spec, className, forceMode, hideTitle 
     const appMode = forceMode ?? (mounted && resolvedTheme === 'light' ? 'light' : mounted ? 'dark' : theme.mode);
     const syncedTheme = withAppMode(theme, appMode);
     const structuralOption = applyChartDefaults(spec.option);
+    const previewOption = compact ? applyPreviewOverrides(structuralOption) : structuralOption;
     return applyBrandTheme(
-      hideTitle ? { ...structuralOption, title: undefined } : structuralOption,
+      hideTitle ? { ...previewOption, title: undefined } : previewOption,
       syncedTheme,
       spec.styleEffect
     );
-  }, [spec, mounted, resolvedTheme, forceMode, hideTitle]);
+  }, [spec, mounted, resolvedTheme, forceMode, hideTitle, compact]);
 
   // `autoResize` only reacts to `window` resize events — it stays unaware of
   // layout-driven container resizes (sidebar collapse, panel splits, flex
@@ -144,14 +151,14 @@ export default function EChartsRenderer({ spec, className, forceMode, hideTitle 
   if (!themedOption) return <EmptyState />;
 
   return (
-    <div ref={containerRef} className={className ?? "w-full h-full p-6"} style={{ minHeight: 280, minWidth: 320 }}>
+    <div ref={containerRef} className={className ?? "w-full h-full p-6"} style={compact ? undefined : { minHeight: 280, minWidth: 320 }}>
       <ReactECharts
         ref={chartRef}
         option={themedOption}
         notMerge
         lazyUpdate
         opts={{ renderer: "canvas" }}
-        style={{ height: "100%", width: "100%", minHeight: 240 }}
+        style={compact ? { height: "100%", width: "100%" } : { height: "100%", width: "100%", minHeight: 240 }}
       />
     </div>
   );
