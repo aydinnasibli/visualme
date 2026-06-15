@@ -66,7 +66,9 @@ export async function getUserProfile(): Promise<{ success: boolean; data?: UserP
       usageCount: user.usageCount || 0,
       totalSavedVisualizations: user.savedVisualizations.length,
       createdAt: user.createdAt.toISOString(),
-      notificationPreferences: user.notificationPreferences ?? { usageAlerts: true },
+      notificationPreferences: {
+        usageAlerts: user.notificationPreferences?.usageAlerts ?? true,
+      },
     };
 
     return { success: true, data: profile };

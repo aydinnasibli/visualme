@@ -111,6 +111,10 @@ export interface FocusPanelProps {
   datasetColumns?: DatasetColumn[];
   datasetRowCount?: number;
   onRunStat?: (run: StatRun) => void;
+  /** Lazily fetches & detects columns for this thread's connected live data source, so the Test button works even before `datasetColumns` is populated. */
+  onPrepareStatTest?: () => Promise<void>;
+  /** True while `onPrepareStatTest` is fetching/parsing the connected live source. */
+  preparingStatTest?: boolean;
 }
 
 const INTERVAL_OPTIONS = [
@@ -128,6 +132,7 @@ export default function FocusPanel({
   onThemeChange, onTitleChange,
   onLiveDataChange, onRefreshLiveData, isRefreshing, onScheduleChange,
   statRun, datasetColumns, datasetRowCount, onRunStat,
+  onPrepareStatTest, preparingStatTest,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -314,13 +319,22 @@ export default function FocusPanel({
               <span className="hidden sm:inline">{thread.isPublic ? 'Public' : 'Share'}</span>
             </ActionBtn>
 
-            {datasetColumns && datasetColumns.length > 0 && (
+            {(thread.liveData?.url || (datasetColumns && datasetColumns.length > 0)) && (
               <ActionBtn
                 title="Run a statistical test on the connected dataset"
-                onClick={() => setStatPickerOpen(true)}
+                onClick={async () => {
+                  if (preparingStatTest) return;
+                  if (!datasetColumns || datasetColumns.length === 0) {
+                    await onPrepareStatTest?.();
+                  }
+                  setStatPickerOpen(true);
+                }}
                 active={Boolean(statRun)}
               >
-                <Sigma size={13} />
+                {preparingStatTest
+                  ? <div className="w-3 h-3 border-2 border-ink-faint/30 border-t-ink-muted rounded-full animate-spin" />
+                  : <Sigma size={13} />
+                }
                 <span className="hidden sm:inline">Test</span>
               </ActionBtn>
             )}

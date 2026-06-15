@@ -15,7 +15,7 @@ import type { SavedVisualization } from '@/lib/types/visualization';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { readFileAttachment, composePromptWithAttachment, buildSampleAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
 import { composePromptWithChartType, getStyleEffect, type ChartSelection } from '@/lib/utils/chart-types';
-import { composePromptWithLiveSheet, formatLiveDataBlock, type LiveSheetData } from '@/lib/utils/live-sheet';
+import { composePromptWithLiveSheet, formatLiveDataBlock, detectLiveSheetColumns, type LiveSheetData } from '@/lib/utils/live-sheet';
 import type { StarterTemplate } from '@/lib/utils/starter-templates';
 import type { ColumnSchema } from '@/lib/utils/csv-schema';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -58,13 +58,15 @@ function readRevisualizeHandoff(): { entry: ThreadEntry; title: string } | null 
       title: parsed.title || 'Visualization',
       chatHistory: (parsed.history || []) as ThreadEntry['chatHistory'],
       vizId: parsed._id || null,
-      isSaved: false,
+      isSaved: parsed.isSaved ?? true,
       isPublic: parsed.isPublic ?? false,
       shareId: parsed.shareId ?? null,
       metadata: parsed.metadata ? {
         generatedAt: typeof parsed.metadata.generatedAt === 'string' ? parsed.metadata.generatedAt : parsed.metadata.generatedAt?.toString(),
         aiModel: parsed.metadata.aiModel,
       } : undefined,
+      liveData: parsed.liveData,
+      schedule: parsed.schedule,
     };
     return { entry, title: parsed.title || 'Visualization' };
   } catch {
@@ -142,9 +144,51 @@ function DashboardContent() {
     setChartType(template.chartSelection);
   }, [setStatRun]);
 
+  /* ── Live sheet data for the *currently loaded* thread's persisted liveData —
+   * lazily fetched when the Test button is pressed, so a revisualized/reloaded
+   * live chart can run stat tests without an eager (rate-limited) fetch on
+   * every thread switch. ── */
+  const [activeLiveSheet, setActiveLiveSheet] = useState<LiveSheetData | null>(null);
+  const [preparingStatTest, setPreparingStatTest] = useState(false);
+
+  // Reset during render (not an effect) when the active thread changes — avoids
+  // a cascading extra render from setState-in-effect for what's purely a
+  // derived "stale data belongs to a different thread" reset.
+  const [prevActiveIdForLiveSheet, setPrevActiveIdForLiveSheet] = useState(activeId);
+  if (activeId !== prevActiveIdForLiveSheet) {
+    setPrevActiveIdForLiveSheet(activeId);
+    setActiveLiveSheet(null);
+  }
+
+  const handlePrepareStatTest = useCallback(async () => {
+    const url = activeThread?.liveData?.url;
+    if (!url || activeLiveSheet?.url === url) return;
+    setPreparingStatTest(true);
+    try {
+      const res = await fetch(`/api/live-data?url=${encodeURIComponent(url)}`);
+      const data: LiveDataResponse = await res.json();
+      if (!res.ok || data.error || !data.rawCsv) {
+        toast.error(data.error || `Failed to fetch live data (HTTP ${res.status})`);
+        return;
+      }
+      setActiveLiveSheet({
+        url,
+        rawCsv: data.rawCsv,
+        headers: data.headers ?? [],
+        rowCount: data.rowCount ?? 0,
+        schema: data.schema ?? [],
+        datasetColumns: detectLiveSheetColumns(data.rawCsv),
+      });
+    } catch {
+      toast.error('Failed to load dataset for testing');
+    } finally {
+      setPreparingStatTest(false);
+    }
+  }, [activeThread, activeLiveSheet]);
+
   /* ── Dataset behind whichever attachment/live sheet is connected — lets the Focus panel run stat tests too ── */
-  const datasetColumns = attachment?.datasetColumns ?? liveSheet?.datasetColumns;
-  const datasetRowCount = attachment?.rowCount ?? liveSheet?.rowCount ?? datasetColumns?.[0]?.values.length ?? 0;
+  const datasetColumns = attachment?.datasetColumns ?? liveSheet?.datasetColumns ?? activeLiveSheet?.datasetColumns;
+  const datasetRowCount = attachment?.rowCount ?? liveSheet?.rowCount ?? activeLiveSheet?.rowCount ?? datasetColumns?.[0]?.values.length ?? 0;
 
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
@@ -726,6 +770,8 @@ function DashboardContent() {
             datasetColumns={datasetColumns}
             datasetRowCount={datasetRowCount}
             onRunStat={handleRunStat}
+            onPrepareStatTest={handlePrepareStatTest}
+            preparingStatTest={preparingStatTest}
           />
         </div>
       </div>

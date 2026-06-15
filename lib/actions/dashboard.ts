@@ -6,6 +6,9 @@ import { connectToDatabase } from '@/lib/database/mongodb';
 import { DashboardModel, VisualizationModel } from '@/lib/database/models';
 import { validateObjectId, sanitizeError } from '@/lib/utils/validation';
 import { sanitizeVisualization } from '@/lib/utils/helpers';
+import { fetchAndParseSheet } from '@/lib/utils/sheet-fetch';
+import { refreshChartData } from '@/lib/utils/chart-data-refresh';
+import type { EChartsOption } from 'echarts';
 import type { Dashboard, DashboardLayoutItem, DashboardSchedule, DashboardVizSlot, DashboardWithVizzes } from '@/lib/types/dashboard';
 
 const MAX_SLOTS = 12;
@@ -260,6 +263,53 @@ export async function getSharedDashboard(dashboardId: string): Promise<{ success
   } catch (error) {
     console.error('getSharedDashboard error:', error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch shared dashboard') };
+  }
+}
+
+/**
+ * Manually refresh a single visualization's connected live data source —
+ * mirrors the scheduled digest cron's per-chart logic (fetch → patch → persist)
+ * so a dashboard card's "Refresh" button reflects fresh data immediately
+ * instead of waiting for the next cron run.
+ */
+export async function refreshDashboardVizLiveData(visualizationId: string) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) return { success: false, error: idValidation.error };
+
+    await connectToDatabase();
+
+    const viz = await VisualizationModel.findOne({ _id: visualizationId, userId });
+    if (!viz) return { success: false, error: 'Visualization not found or unauthorized' };
+
+    const url = viz.liveData?.url;
+    if (!url) return { success: false, error: 'This visualization has no connected live data source' };
+
+    const sheet = await fetchAndParseSheet(url);
+    if (!sheet.ok) return { success: false, error: sheet.error };
+
+    const result = refreshChartData(viz.spec.option as EChartsOption, sheet);
+
+    if (!result.refreshed) {
+      return { success: true, data: { refreshed: false, summary: result.summary } };
+    }
+
+    const lastRefreshed = new Date().toISOString();
+    await VisualizationModel.updateOne(
+      { _id: visualizationId },
+      { $set: { 'spec.option': result.option, 'liveData.lastRefreshed': lastRefreshed } }
+    );
+
+    return {
+      success: true,
+      data: { refreshed: true, option: result.option, lastRefreshed, summary: result.summary },
+    };
+  } catch (error) {
+    console.error('refreshDashboardVizLiveData error:', error);
+    return { success: false, error: sanitizeError(error, 'Failed to refresh live data') };
   }
 }
 

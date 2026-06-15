@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Plus, Trash2, Share2, Check, Copy,
   ChevronLeft, ChevronRight, Save, BarChart3, Pencil, X,
   ExternalLink, Eye, Globe, Lock, Download, FileText, Images,
-  Mail, AlertCircle, Loader2,
+  Mail, AlertCircle, Loader2, RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 import ThemeToggle from '@/components/dashboard/ThemeToggle';
@@ -20,6 +20,7 @@ import {
   publishDashboard,
   updateDashboardSchedule,
   deleteDashboard,
+  refreshDashboardVizLiveData,
 } from '@/lib/actions/dashboard';
 import { exportDashboardAsPDF, exportDashboardAsSlidePNGs } from '@/lib/utils/export-dashboard';
 import type { Dashboard, DashboardLayoutItem, DashboardVizSlot } from '@/lib/types/dashboard';
@@ -44,6 +45,16 @@ function buildShareUrl(dashboardId: string) {
 function nextY(layout: DashboardLayoutItem[]): number {
   if (!layout.length) return 0;
   return Math.max(...layout.map(l => l.y + l.h));
+}
+
+/** Compact "Xm/h/d ago" label for a "last refreshed" timestamp. */
+function formatRelativeTime(iso: string): string {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 // ─── sub-components ──────────────────────────────────────────────────────────
@@ -180,20 +191,56 @@ function GridCell({
   viz,
   titleSnapshot,
   onRemove,
+  onRefresh,
+  refreshing,
 }: {
   viz: SavedVisualization | null;
   titleSnapshot: string;
   onRemove: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
 }) {
+  const liveData = viz?.liveData;
+
   return (
     <div className="h-full w-full rounded-xl overflow-hidden border border-edge bg-surface-1 relative group">
       {viz ? (
         <>
           <EChartsRenderer spec={viz.spec} className="w-full h-full" />
-          <div className="absolute bottom-0 left-0 right-0 px-3 py-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity"
+
+          {/* Persistent live indicator — always visible so users can tell at a glance which charts are connected */}
+          {liveData?.url && (
+            <div
+              className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium text-success"
+              style={{ background: 'var(--color-surface-0)', border: '1px solid var(--color-edge)' }}
+              title={liveData.lastRefreshed ? `Last refreshed: ${new Date(liveData.lastRefreshed).toLocaleString()}` : 'Connected to a live data source'}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" style={{ boxShadow: '0 0 4px var(--color-success)' }} />
+              Live
+            </div>
+          )}
+
+          <div className="absolute bottom-0 left-0 right-0 px-3 py-2 flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ background: 'linear-gradient(to top, var(--color-surface-0) 70%, transparent)' }}
           >
-            <span className="text-[10px] font-medium text-ink-muted truncate max-w-[80%]">{viz.title}</span>
+            <span className="text-[10px] font-medium text-ink-muted truncate min-w-0 flex-1">{viz.title}</span>
+            {liveData?.url && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {liveData.lastRefreshed && (
+                  <span className="text-[10px] text-ink-faint" title={new Date(liveData.lastRefreshed).toLocaleString()}>
+                    {formatRelativeTime(liveData.lastRefreshed)}
+                  </span>
+                )}
+                <button
+                  onClick={e => { e.stopPropagation(); onRefresh(); }}
+                  disabled={refreshing}
+                  title="Refresh live data"
+                  className="w-5 h-5 rounded-md flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />
+                </button>
+              </div>
+            )}
           </div>
         </>
       ) : (
@@ -467,8 +514,9 @@ interface DashboardBuilderProps {
 }
 
 export default function DashboardBuilder({ initialVizzes, initialDashboards }: DashboardBuilderProps) {
-  const [vizzes] = useState(initialVizzes);
+  const [vizzes, setVizzes] = useState(initialVizzes);
   const [dashboards, setDashboards] = useState(initialDashboards);
+  const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
 
   // Active dashboard state
   const [activeDashboardId, setActiveDashboardId] = useState<string | null>(
@@ -544,6 +592,25 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
     setSlots(prev => prev.filter(s => s.vizId !== vizId));
     setLayout(prev => prev.filter(l => l.i !== vizId));
     setIsDirty(true);
+  }, []);
+
+  const handleRefreshViz = useCallback(async (vizId: string) => {
+    setRefreshingIds(prev => new Set(prev).add(vizId));
+    try {
+      const res = await refreshDashboardVizLiveData(vizId);
+      if (!res.success) { toast.error(res.error || 'Refresh failed'); return; }
+      if (!res.data?.refreshed) { toast.info(res.data?.summary || 'No new data to refresh'); return; }
+      const { option, lastRefreshed, summary } = res.data;
+      setVizzes(prev => prev.map(v => v._id === vizId
+        ? { ...v, spec: { ...v.spec, option: option! }, liveData: { ...v.liveData!, lastRefreshed: lastRefreshed! } }
+        : v
+      ));
+      toast.success(summary || 'Chart refreshed');
+    } catch {
+      toast.error('Refresh failed');
+    } finally {
+      setRefreshingIds(prev => { const next = new Set(prev); next.delete(vizId); return next; });
+    }
   }, []);
 
   const handleLayoutChange = useCallback((newLayout: Layout) => {
@@ -891,6 +958,8 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
                       viz={vizMap.get(slot.vizId) ?? null}
                       titleSnapshot={slot.titleSnapshot}
                       onRemove={() => removeViz(slot.vizId)}
+                      onRefresh={() => handleRefreshViz(slot.vizId)}
+                      refreshing={refreshingIds.has(slot.vizId)}
                     />
                   </div>
                 ))}
