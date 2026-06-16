@@ -243,6 +243,19 @@ export default function FocusPanel({
     }
   }, [thread, statRun]);
 
+  const handleExportSVG = useCallback(async () => {
+    if (!thread) return;
+    setExportOpen(false);
+    try {
+      const { exportChartAsSVG } = await import('@/lib/utils/export-svg');
+      const ok = exportChartAsSVG(thread.spec.option, `${safeTitle(thread)}.svg`);
+      if (!ok) toast.error('SVG export failed');
+      else toast.success('Exported as SVG');
+    } catch {
+      toast.error('SVG export failed');
+    }
+  }, [thread]);
+
   const handleCopyStatResult = useCallback(() => {
     if (!statRun?.result) return;
     navigator.clipboard.writeText(formatStatResultSummary(statRun.result)).then(() => {
@@ -297,6 +310,12 @@ export default function FocusPanel({
             <BadgeIcon size={12} className="text-accent" />
             <span className="hidden sm:inline text-[11px] font-semibold text-accent">{badgeLabel}</span>
           </div>
+          {thread.isDemoThread && (
+            <span className="hidden sm:inline text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+              style={{ background: 'oklch(72% 0.13 55 / 0.12)', color: 'oklch(55% 0.10 55)', border: '1px solid oklch(72% 0.13 55 / 0.25)' }}>
+              Example — try editing below
+            </span>
+          )}
 
           {/* Title — click to rename */}
           {editingTitle ? (
@@ -407,6 +426,9 @@ export default function FocusPanel({
                     <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
                       <ImageIcon size={13} className="text-ink-faint" /> Export as PNG
                     </button>
+                    <button onClick={handleExportSVG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
+                      <ImageIcon size={13} className="text-ink-faint" /> Export as SVG
+                    </button>
                     <button onClick={handleExportPDF} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
                       <FileText size={13} className="text-ink-faint" /> Export as PDF
                     </button>
@@ -438,7 +460,7 @@ export default function FocusPanel({
                     >
                       <FileCode size={13} className="text-accent" /> Export as HTML
                     </button>
-                    {thread.isPublic && thread.shareId && (
+                    {thread.shareId && (
                       <>
                         <div className="h-px bg-edge mx-3 my-1" />
                         <button
@@ -663,7 +685,7 @@ export default function FocusPanel({
           </div>
         )}
 
-        {/* Key takeaway — short insight generated alongside the chart */}
+        {/* AI Insight — narrative generated alongside the chart */}
         <AnimatePresence mode="wait">
           {thread.spec.narrative && (
             <motion.div
@@ -672,13 +694,18 @@ export default function FocusPanel({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="shrink-0 border-t border-edge bg-surface-1 px-6 py-4"
+              className="shrink-0 border-t border-edge px-6 py-4"
+              style={{ background: 'oklch(72% 0.13 55 / 0.04)' }}
             >
-              <div className="flex items-center gap-2 mb-1.5">
-                <Sparkles size={13} className="text-accent" />
-                <span className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">Key takeaway</span>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                  style={{ background: 'oklch(72% 0.13 55 / 0.14)' }}>
+                  <Sparkles size={10} style={{ color: 'oklch(60% 0.12 55)' }} />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: 'oklch(60% 0.12 55)' }}>AI Insight</span>
               </div>
-              <p className="text-[13px] text-ink-muted leading-relaxed">{thread.spec.narrative}</p>
+              <p className="text-[13.5px] text-ink-muted leading-relaxed">{thread.spec.narrative}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -785,12 +812,16 @@ export default function FocusPanel({
               </VisualizationErrorBoundary>
             </div>
 
-            {/* Narrative at bottom */}
+            {/* AI Insight at bottom of presentation */}
             {thread.spec.narrative && (
               <div className="shrink-0 px-8 pb-6">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Sparkles size={12} className="text-accent" />
-                  <span className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">Key takeaway</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                    style={{ background: 'oklch(72% 0.13 55 / 0.14)' }}>
+                    <Sparkles size={10} style={{ color: 'oklch(60% 0.12 55)' }} />
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider"
+                    style={{ color: 'oklch(60% 0.12 55)' }}>AI Insight</span>
                 </div>
                 <p className="text-sm text-ink-muted leading-relaxed max-w-3xl">{thread.spec.narrative}</p>
               </div>

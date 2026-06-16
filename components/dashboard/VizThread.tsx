@@ -79,6 +79,8 @@ export interface ThreadEntry {
   datasetRowCount?: number;
   /** Client-only undo stack — spec snapshots taken before each successful AI edit. Not persisted. */
   specHistory?: VisualizationSpec[];
+  /** True for the hardcoded example chart shown on first visit. Cleared when the user edits it. */
+  isDemoThread?: boolean;
 }
 
 /* ── Thread card ── */

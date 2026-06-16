@@ -212,7 +212,7 @@ function TokenVisual() {
       <div className="w-full max-w-[260px]">
         <div className="flex justify-between text-[10px] text-ink-faint mb-1.5">
           <span>0</span>
-          <span>110 / month (Free)</span>
+          <span>200 / month (Free)</span>
         </div>
         <div className="h-2 rounded-full w-full" style={{ background: 'var(--color-surface-3)' }}>
           <div className="h-full rounded-full" style={{ width: '79%', background: 'var(--color-accent)' }} />
@@ -225,8 +225,8 @@ function TokenVisual() {
         <div className="flex-1 rounded-lg border p-2.5 text-center"
           style={{ background: 'oklch(72% 0.13 55 / 0.05)', borderColor: 'oklch(72% 0.13 55 / 0.2)' }}>
           <p className="text-[10px] text-ink-faint">Free</p>
-          <p className="text-sm font-bold text-ink mt-0.5">110</p>
-          <p className="text-[9px] text-ink-faint">≈10 charts/mo</p>
+          <p className="text-sm font-bold text-ink mt-0.5">200</p>
+          <p className="text-[9px] text-ink-faint">≈18 charts/mo</p>
         </div>
         <div className="flex-1 rounded-lg border p-2.5 text-center"
           style={{ background: 'oklch(72% 0.13 55 / 0.1)', borderColor: 'oklch(72% 0.13 55 / 0.3)' }}>
@@ -263,7 +263,7 @@ const SLIDES = [
   {
     visual: TokenVisual,
     title: 'Your monthly token budget',
-    body: "Each generation uses tokens. Free accounts start with 110 tokens per month. The ⚡ badge in the top bar shows your live balance. Tokens reset on the 1st of each month.",
+    body: "Each generation uses tokens. Free accounts start with 200 tokens per month. The ⚡ badge in the top bar shows your live balance. Tokens reset on the 1st of each month.",
     cta: 'Start Visualizing',
   },
 ] as const;

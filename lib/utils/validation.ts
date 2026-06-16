@@ -39,7 +39,7 @@ export const VALIDATION_LIMITS = {
  */
 
 export const TOKEN_LIMITS = {
-  FREE_TIER_MONTHLY_TOKENS: 110,          // ~10 generates ($0.105 AI cost)
+  FREE_TIER_MONTHLY_TOKENS: 200,          // ~18 generates ($0.19 AI cost)
   PRO_TIER_MONTHLY_TOKENS: 5_400,         // $5.00 AI budget — no combination exceeds $5
   ENTERPRISE_TIER_MONTHLY_TOKENS: 27_000, // ~$24.76 AI budget
 };

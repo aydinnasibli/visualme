@@ -13,6 +13,7 @@ import {
 import { exportVisualization, createShareLink } from '@/lib/actions/export';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
+import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
 import { readFileAttachment, composePromptWithAttachment, buildSampleAttachment, type FileAttachment } from '@/lib/utils/file-attachment';
 import { composePromptWithChartType, getStyleEffect, type ChartSelection } from '@/lib/utils/chart-types';
 import { composePromptWithLiveSheet, formatLiveDataBlock, detectLiveSheetColumns, type LiveSheetData } from '@/lib/utils/live-sheet';
@@ -43,6 +44,36 @@ const Loading = () => (
 
 function genId() {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+}
+
+function createDemoThread(): ThreadEntry {
+  return {
+    id: genId(),
+    isDemoThread: true,
+    prompt: 'Website traffic by acquisition channel over 6 months',
+    title: 'Website Traffic by Channel',
+    chatHistory: [],
+    vizId: null,
+    isSaved: false,
+    isPublic: false,
+    shareId: null,
+    spec: {
+      option: {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } } },
+        legend: { data: ['Organic', 'Paid', 'Referral'] },
+        xAxis: [{ type: 'category', boundaryGap: false, data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] }],
+        yAxis: [{ type: 'value', name: 'Visitors' }],
+        series: [
+          { name: 'Organic', type: 'line', stack: 'Total', smooth: true, areaStyle: {}, emphasis: { focus: 'series' }, data: [8200, 8600, 9100, 9800, 10400, 11200] },
+          { name: 'Paid',    type: 'line', stack: 'Total', smooth: true, areaStyle: {}, emphasis: { focus: 'series' }, data: [3100, 3400, 3900, 4300, 4800, 5600] },
+          { name: 'Referral',type: 'line', stack: 'Total', smooth: true, areaStyle: {}, emphasis: { focus: 'series' }, data: [1400, 1500, 1700, 1900, 2100, 2400] },
+        ],
+      },
+      theme: DEFAULT_SUNSET_THEME,
+      title: 'Website Traffic by Channel',
+      narrative: "Organic search is your fastest-growing channel — up 37% over 6 months — and now drives 58% of total traffic. Paid is scaling efficiently alongside it. At this trajectory you'll cross 20K monthly visitors by September without increasing ad spend.",
+    },
+  };
 }
 
 /* Consume a "re-visualize" handoff left in sessionStorage by another page. */
@@ -291,7 +322,13 @@ function DashboardContent() {
             liveData: viz.liveData,
             schedule: viz.schedule,
           }));
-          setThreads(entries);
+          if (entries.length === 0) {
+            const demo = createDemoThread();
+            setThreads([demo]);
+            setActiveId(demo.id);
+          } else {
+            setThreads(entries);
+          }
         }
       } catch { /* sidebar hydration is best-effort */ }
     };
@@ -367,7 +404,7 @@ function DashboardContent() {
         datasetColumns: pendingAttachment?.datasetColumns ?? pendingLiveSheet?.datasetColumns,
         datasetRowCount: pendingAttachment?.rowCount ?? pendingLiveSheet?.rowCount,
       };
-      setThreads(p => [...p, entry]);
+      setThreads(p => [...p.filter(t => !t.isDemoThread), entry]);
       setActiveId(entry.id);
 
       // Auto-persist as a session — patch vizId once the doc is created
@@ -427,6 +464,8 @@ function DashboardContent() {
         specHistory: res.option
           ? [...(t.specHistory ?? []).slice(-9), prevSpec]
           : t.specHistory,
+        // Once the user edits the demo chart, it's theirs — drop the badge
+        isDemoThread: res.option ? false : t.isDemoThread,
       } : t));
       toast.success(res.option ? 'Updated!' : 'Response received');
     } catch (err) {
