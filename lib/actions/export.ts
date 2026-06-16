@@ -131,13 +131,25 @@ export async function createShareLink(
       return { success: false, error: 'Visualization not found' };
     }
 
-    // Generate share link
-    const { shareId, shareUrl } = await generateShareLink();
-
-    // Update visualization with share ID
-    visualization.shareId = shareId;
+    // Generate share link — retry on the rare duplicate-key collision.
     visualization.isPublic = options.isPublic;
-    await visualization.save();
+    let shareId = '';
+    let shareUrl = '';
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      ({ shareId, shareUrl } = await generateShareLink());
+      visualization.shareId = shareId;
+      try {
+        await visualization.save();
+        lastErr = undefined;
+        break;
+      } catch (err: unknown) {
+        const e = err as { name?: string; code?: number };
+        if (e?.name !== 'MongoServerError' || e?.code !== 11000) throw err;
+        lastErr = err;
+      }
+    }
+    if (lastErr) throw lastErr;
 
     return {
       success: true,

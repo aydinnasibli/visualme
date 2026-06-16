@@ -27,7 +27,7 @@ export function validateFileSize(sizeInBytes: number, maxSizeMB: number = 10): b
 /**
  * Validate file type
  */
-export function validateFileType(filename: string, allowedTypes: string[] = ['csv', 'json', 'txt', 'pdf']): boolean {
+export function validateFileType(filename: string, allowedTypes: string[] = ['csv', 'json', 'txt', 'pdf', 'xlsx']): boolean {
   const extension = filename.split('.').pop()?.toLowerCase();
   return extension ? allowedTypes.includes(extension) : false;
 }

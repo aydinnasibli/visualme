@@ -4,6 +4,7 @@
  */
 
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { validateFileSize, validateFileType } from '../utils/helpers';
 
 export interface ParsedFileResult {
@@ -56,6 +57,8 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
         return await parseJSON(file, fileInfo);
       case 'txt':
         return await parseTXT(file, fileInfo);
+      case 'xlsx':
+        return await parseXLSX(file, fileInfo);
       case 'pdf':
         return await parsePDF(file, fileInfo);
       default:
@@ -149,6 +152,29 @@ async function parseTXT(file: File, fileInfo: ParsedFileResult['fileInfo']): Pro
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to read text file',
+      fileInfo,
+    };
+  }
+}
+
+/**
+ * Parse XLSX file — reads the first sheet and returns rows as objects
+ */
+async function parseXLSX(file: File, fileInfo: ParsedFileResult['fileInfo']): Promise<ParsedFileResult> {
+  try {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer);
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      return { success: false, error: 'No sheets found in the workbook', fileInfo };
+    }
+    const sheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
+    return { success: true, data, fileInfo };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to parse XLSX file',
       fileInfo,
     };
   }

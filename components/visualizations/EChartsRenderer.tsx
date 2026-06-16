@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import ReactECharts from "echarts-for-react";
 import { applyBrandTheme, withAppMode } from "@/lib/utils/echarts-theme";
 import { applyChartDefaults, applyPreviewOverrides } from "@/lib/utils/chart-defaults";
-import type { VisualizationSpec } from "@/lib/types/echarts-spec";
+import type { VisualizationSpec, Annotation } from "@/lib/types/echarts-spec";
 import { DEFAULT_SUNSET_THEME } from "@/lib/types/echarts-spec";
 import { useMounted } from "@/lib/hooks/useMounted";
 
@@ -40,6 +40,102 @@ const EmptyState = () => (
   </div>
 );
 
+const CARTESIAN_SERIES_TYPES = new Set([
+  'bar', 'line', 'scatter', 'effectScatter', 'boxplot',
+  'candlestick', 'heatmap', 'custom',
+]);
+
+function hasCartesianAxes(series: unknown[]): boolean {
+  return series.some(s => {
+    const t = (s as Record<string, unknown>).type;
+    return typeof t === 'string' && CARTESIAN_SERIES_TYPES.has(t);
+  });
+}
+
+/** True when xAxis is the value axis (horizontal bar chart — axes are swapped). */
+function isHorizontalChart(option: Record<string, unknown>): boolean {
+  const xAxes = Array.isArray(option.xAxis) ? option.xAxis : option.xAxis ? [option.xAxis] : [];
+  const yAxes = Array.isArray(option.yAxis) ? option.yAxis : option.yAxis ? [option.yAxis] : [];
+  const xType = (xAxes[0] as Record<string, unknown> | undefined)?.type;
+  const yType = (yAxes[0] as Record<string, unknown> | undefined)?.type;
+  return xType === 'value' && yType === 'category';
+}
+
+function applyAnnotations(option: Record<string, unknown>, annotations?: Annotation[]): Record<string, unknown> {
+  if (!annotations?.length) return option;
+
+  const hlines = annotations.filter(a => a.type === 'hline' && a.value !== undefined);
+  const texts  = annotations.filter(a => a.type === 'text'  && a.label);
+
+  let result = { ...option };
+
+  if (hlines.length) {
+    const existingSeries = Array.isArray(result.series) ? [...(result.series as unknown[])] : [];
+    // Only add reference lines on cartesian charts — pie/radar/treemap have no value axis.
+    if (hasCartesianAxes(existingSeries)) {
+      // Horizontal bar charts have xAxis as the value axis — use xAxis in markLine.
+      const axisKey = isHorizontalChart(result) ? 'xAxis' : 'yAxis';
+      const labelPos = isHorizontalChart(result) ? 'insideEndBottom' as const : 'insideEndTop' as const;
+      existingSeries.push({
+        type: 'line',
+        data: [],
+        silent: true,
+        animation: false,
+        legendHoverLink: false,
+        markLine: {
+          silent: true,
+          symbol: ['none', 'none'],
+          data: hlines.map(a => {
+            const label = String(a.label);
+            return {
+              [axisKey]: a.value,
+              name: label,
+              lineStyle: { color: a.color ?? '#ef4444', type: 'dashed' as const, width: 1.5 },
+              label: {
+                show: true,
+                position: labelPos,
+                fontSize: 11,
+                fontWeight: 600 as const,
+                // Function formatter avoids template-engine interpolation of user text
+                formatter: () => label,
+                color: a.color ?? '#ef4444',
+              },
+            };
+          }),
+        },
+      });
+      result = { ...result, series: existingSeries };
+    }
+  }
+
+  if (texts.length) {
+    const existingGraphic = Array.isArray(result.graphic) ? [...(result.graphic as unknown[])] : [];
+    texts.forEach(a => {
+      existingGraphic.push({
+        type: 'text',
+        id: `annot-text-${a.id}`,
+        left: `${Math.min(Math.max(a.xPct ?? 10, 0), 95)}%`,
+        top: `${Math.min(Math.max(a.yPct ?? 10, 0), 95)}%`,
+        z: 100,
+        style: {
+          text: a.label,
+          fill: a.color ?? '#f59e0b',
+          fontSize: 12,
+          fontWeight: 700,
+          // strokeFirst ensures the border renders behind the fill
+          strokeFirst: true,
+          stroke: 'rgba(0,0,0,0.55)',
+          lineWidth: 3,
+        },
+        draggable: false,
+      });
+    });
+    result = { ...result, graphic: existingGraphic };
+  }
+
+  return result;
+}
+
 /**
  * Single renderer for every chart type — replaces the per-format React
  * components. Structure (`spec.option`) and presentation (`spec.theme`) are
@@ -62,11 +158,12 @@ export default function EChartsRenderer({ spec, className, forceMode, hideTitle,
     const syncedTheme = withAppMode(theme, appMode);
     const structuralOption = applyChartDefaults(spec.option);
     const previewOption = compact ? applyPreviewOverrides(structuralOption) : structuralOption;
-    return applyBrandTheme(
+    const themed = applyBrandTheme(
       hideTitle ? { ...previewOption, title: undefined } : previewOption,
       syncedTheme,
       spec.styleEffect
     );
+    return applyAnnotations(themed, spec.annotations);
   }, [spec, mounted, resolvedTheme, forceMode, hideTitle, compact]);
 
   // `autoResize` only reacts to `window` resize events — it stays unaware of

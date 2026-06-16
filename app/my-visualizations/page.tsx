@@ -1,6 +1,6 @@
 'use client';
 
-import { getUserVisualizations, deleteVisualization } from '@/lib/actions/visualize';
+import { getUserVisualizations, deleteVisualization, duplicateVisualization } from '@/lib/actions/visualize';
 import Header from '@/components/dashboard/Header';
 import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ import Link from 'next/link';
 import {
   Search, Grid, List, SearchX, Plus, Trash2, BarChart3,
   ArrowUpDown, ChevronDown, CheckSquare, Square, TrendingUp,
-  FlaskConical, ClipboardList, Workflow, Megaphone, Wallet, Activity, Target, Sparkles,
+  FlaskConical, ClipboardList, Workflow, Megaphone, Wallet, Activity, Target, Sparkles, Copy,
 } from 'lucide-react';
 
 type SortKey = 'updated' | 'created' | 'name' | 'type';
@@ -79,6 +79,7 @@ function VisualizationsContent() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDuplicating, setBulkDuplicating] = useState(false);
 
   useEffect(() => {
     getUserVisualizations().then(res => {
@@ -117,6 +118,28 @@ function VisualizationsContent() {
     });
   };
 
+  const handleBulkDuplicate = async () => {
+    if (!selected.size) return;
+    setBulkDuplicating(true);
+    const ids = [...selected];
+    try {
+      const results = await Promise.all(ids.map(id => duplicateVisualization(id)));
+      const copies = results.flatMap(r => (r.success && r.data ? [r.data as SavedVisualization] : []));
+      if (copies.length) {
+        setVisualizations(prev => [...copies, ...prev]);
+        toast.success(`Duplicated ${copies.length} visualization${copies.length > 1 ? 's' : ''}`);
+      }
+      const failed = results.filter(r => !r.success).length;
+      if (failed) toast.error(`${failed} duplication${failed > 1 ? 's' : ''} failed`);
+    } catch {
+      toast.error('An unexpected error occurred while duplicating');
+    } finally {
+      setSelected(new Set());
+      setSelectMode(false);
+      setBulkDuplicating(false);
+    }
+  };
+
   const handleBulkDelete = () => {
     if (!selected.size) return;
     toast(`Delete ${selected.size} visualization${selected.size > 1 ? 's' : ''}?`, {
@@ -125,12 +148,17 @@ function VisualizationsContent() {
         onClick: async () => {
           setBulkDeleting(true);
           const ids = [...selected];
-          await Promise.all(ids.map(id => deleteVisualization(id)));
-          setVisualizations(prev => prev.filter(v => !ids.includes(v._id!)));
-          setSelected(new Set());
-          setSelectMode(false);
-          setBulkDeleting(false);
-          toast.success(`Deleted ${ids.length} visualization${ids.length > 1 ? 's' : ''}`);
+          try {
+            await Promise.all(ids.map(id => deleteVisualization(id)));
+            setVisualizations(prev => prev.filter(v => !ids.includes(v._id!)));
+            toast.success(`Deleted ${ids.length} visualization${ids.length > 1 ? 's' : ''}`);
+          } catch {
+            toast.error('An unexpected error occurred while deleting');
+          } finally {
+            setSelected(new Set());
+            setSelectMode(false);
+            setBulkDeleting(false);
+          }
         },
       },
       cancel: { label: 'Cancel', onClick: () => {} },
@@ -285,14 +313,26 @@ function VisualizationsContent() {
           <span className="text-xs text-ink-faint">{selected.size} selected</span>
           <div className="flex-1" />
           {selected.size > 0 && (
-            <button
-              onClick={handleBulkDelete}
-              disabled={bulkDeleting}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-danger/30 text-danger hover:bg-danger/8 transition-colors disabled:opacity-50"
-            >
-              <Trash2 size={12} />
-              Delete {selected.size}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBulkDuplicate}
+                disabled={bulkDuplicating || bulkDeleting}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-edge text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors disabled:opacity-50"
+              >
+                {bulkDuplicating
+                  ? <div className="w-3 h-3 border-2 border-ink-faint/30 border-t-ink-muted rounded-full animate-spin" />
+                  : <Copy size={12} />}
+                Duplicate {selected.size}
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting || bulkDuplicating}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-danger/30 text-danger hover:bg-danger/8 transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={12} />
+                Delete {selected.size}
+              </button>
+            </div>
           )}
         </div>
       )}

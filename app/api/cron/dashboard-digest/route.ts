@@ -82,6 +82,11 @@ export async function GET(request: NextRequest) {
               ? `${baseUrl}/share/dashboard/${dashboard.dashboardId}`
               : `${baseUrl}/dashboard/builder`;
 
+          // Write lastSentAt before the email send — if the function times out
+          // between the send and this write, the next cron run would re-send.
+          // A missed digest is preferable to a duplicate.
+          await DashboardModel.updateOne({ _id: dashboard._id }, { $set: { 'schedule.lastSentAt': now } });
+
           await sendDashboardDigest({
             to: user.email,
             dashboardTitle: dashboard.title,
@@ -91,8 +96,9 @@ export async function GET(request: NextRequest) {
           sent++;
         }
       }
-
-      await DashboardModel.updateOne({ _id: dashboard._id }, { $set: { 'schedule.lastSentAt': now } });
+      // lastSentAt is only written when an email is actually sent above.
+      // Dashboards with no live-data slots produce charts.length === 0 and
+      // are intentionally left un-stamped so their schedule isn't silently consumed.
     } catch (err) {
       console.error(`[cron/dashboard-digest] Failed for dashboard ${dashboard._id}:`, err);
     }
@@ -140,6 +146,9 @@ export async function GET(request: NextRequest) {
             ? `${baseUrl}/share/${viz.shareId}`
             : `${baseUrl}/my-visualizations`;
 
+        // Write lastSentAt before the email send — same reasoning as dashboards above.
+        await VisualizationModel.updateOne({ _id: viz._id }, { $set: { 'schedule.lastSentAt': now } });
+
         await sendVisualizationDigest({
           to: user.email,
           chartTitle: viz.title,
@@ -148,8 +157,6 @@ export async function GET(request: NextRequest) {
         });
         sent++;
       }
-
-      await VisualizationModel.updateOne({ _id: viz._id }, { $set: { 'schedule.lastSentAt': now } });
     } catch (err) {
       console.error(`[cron/dashboard-digest] Failed for visualization ${viz._id}:`, err);
     }

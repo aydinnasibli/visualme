@@ -57,6 +57,21 @@ function csvCell(v: unknown): string {
  * Falls back to JSON for relational types (graph, tree, sankey) whose data
  * isn't meaningfully tabular.
  */
+type SeriesShape = 'named-value' | 'indexed' | 'array' | 'empty';
+
+function detectSeriesShape(data: unknown[]): SeriesShape {
+  for (const point of data) {
+    if (point === null || point === undefined) continue;
+    if (typeof point === 'object' && !Array.isArray(point)) {
+      const p = point as Record<string, unknown>;
+      return 'value' in p && 'name' in p ? 'named-value' : 'indexed';
+    }
+    if (Array.isArray(point)) return 'array';
+    if (typeof point === 'number' || typeof point === 'string') return 'indexed';
+  }
+  return 'empty';
+}
+
 export function exportAsCSV(visualization: SavedVisualization): string {
   const { option } = visualization.spec;
   const series = Array.isArray(option.series) ? option.series : option.series ? [option.series] : [];
@@ -67,6 +82,15 @@ export function exportAsCSV(visualization: SavedVisualization): string {
   const xAxisRaw = (option as Record<string, unknown>).xAxis;
   const primaryXAxis = (Array.isArray(xAxisRaw) ? xAxisRaw[0] : xAxisRaw) as Record<string, unknown> | undefined;
   const xCategories = Array.isArray(primaryXAxis?.data) ? (primaryXAxis!.data as unknown[]).map(String) : null;
+
+  // Pre-scan all series shapes. Mixed shapes (e.g. one named-value series and
+  // one indexed series) would produce rows that disagree with a single header —
+  // fall back to JSON rather than emitting a misleading CSV.
+  const shapes = series
+    .map(s => detectSeriesShape(((s as Record<string, unknown>).data as unknown[]) ?? []))
+    .filter((shape): shape is Exclude<SeriesShape, 'empty'> => shape !== 'empty');
+  const uniqueShapes = new Set(shapes);
+  if (uniqueShapes.size > 1) return exportAsJSON(visualization);
 
   try {
     const rows: string[] = [];

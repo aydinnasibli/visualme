@@ -4,6 +4,7 @@
 // scheduled dashboard digest cron job (server-initiated, no HTTP round trip).
 // ============================================================================
 
+import { promises as dnsPromises } from 'dns';
 import Papa from 'papaparse';
 import { type ColumnSchema, inferSchema } from '@/lib/utils/csv-schema';
 
@@ -43,6 +44,54 @@ export function normalizeSheetUrl(raw: string): string {
   return raw;
 }
 
+/* ── Private-IP helper for DNS pre-resolution check ── */
+function isPrivateIPv4(ip: string): boolean {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return false;
+  const [a, b] = parts;
+  if (a === 127) return true;                          // loopback
+  if (a === 10) return true;                            // RFC 1918
+  if (a === 172 && b >= 16 && b <= 31) return true;    // RFC 1918
+  if (a === 192 && b === 168) return true;              // RFC 1918
+  if (a === 169 && b === 254) return true;              // link-local
+  if (a === 0) return true;                             // reserved
+  return false;
+}
+
+function isPrivateIPv6(ip: string): boolean {
+  const lower = ip.toLowerCase();
+  if (lower === '::1') return true;
+  if (lower.startsWith('fe80:')) return true;
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true;
+  if (lower.startsWith('::ffff:')) return true;
+  if (lower.startsWith('ff')) return true;
+  return false;
+}
+
+/**
+ * Resolves the hostname and checks that none of the resulting IPs are private
+ * or reserved. Guards against DNS-rebinding attacks where an attacker controls
+ * a public domain that resolves to an internal IP.
+ *
+ * Note: there is an inherent TOCTOU window between this check and the actual
+ * fetch — a sufficiently short DNS TTL could swap the IP between the two. This
+ * is a best-effort mitigation; a network-level egress firewall is the complete
+ * solution for high-security environments.
+ */
+async function isDNSRebindingAttempt(hostname: string): Promise<boolean> {
+  const [v4Result, v6Result] = await Promise.allSettled([
+    dnsPromises.resolve4(hostname),
+    dnsPromises.resolve6(hostname),
+  ]);
+  const addresses = [
+    ...(v4Result.status === 'fulfilled' ? v4Result.value : []),
+    ...(v6Result.status === 'fulfilled' ? v6Result.value : []),
+  ];
+  // If DNS resolution fails entirely, allow through — the fetch will also fail.
+  if (addresses.length === 0) return false;
+  return addresses.some(ip => isPrivateIPv4(ip) || isPrivateIPv6(ip));
+}
+
 /* ── SSRF protection ── */
 export function isBlockedSheetUrl(urlString: string): boolean {
   let parsed: URL;
@@ -54,7 +103,7 @@ export function isBlockedSheetUrl(urlString: string): boolean {
   if (parsed.protocol !== 'https:') return true;
   const h = parsed.hostname.toLowerCase();
   // IPv4 private/reserved
-  if (h === 'localhost' || h === '127.0.0.1') return true;
+  if (h === 'localhost' || /^127\./.test(h)) return true; // full 127.0.0.0/8 loopback range
   if (/^10\./.test(h)) return true;
   if (/^192\.168\./.test(h)) return true;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
@@ -127,6 +176,17 @@ export async function fetchAndParseSheet(rawUrl: string): Promise<FetchedSheet |
 
   if (isBlockedSheetUrl(url)) {
     return { ok: false, error: 'URL not allowed', status: 400 };
+  }
+
+  // Secondary check: resolve the hostname and reject if any returned IP is
+  // private/reserved (guards against DNS-rebinding bypasses of the above).
+  try {
+    const hostname = new URL(url).hostname;
+    if (await isDNSRebindingAttempt(hostname)) {
+      return { ok: false, error: 'URL not allowed', status: 400 };
+    }
+  } catch {
+    return { ok: false, error: 'Invalid URL', status: 400 };
   }
 
   const controller = new AbortController();

@@ -72,6 +72,24 @@ export interface BrandKit {
 }
 
 /**
+ * User-added visual annotation overlaid on a chart.
+ * Stored separately from the AI-generated option so annotations survive
+ * AI edits without being clobbered.
+ */
+export interface Annotation {
+  id: string;
+  /** hline = horizontal reference line (yAxis value), text = floating label */
+  type: 'hline' | 'text';
+  label: string;
+  /** Axis value for hline */
+  value?: number;
+  /** Position 0-100 for text annotations */
+  xPct?: number;
+  yPct?: number;
+  color?: string;
+}
+
+/**
  * What the AI generates and what the renderer consumes: a structural
  * `option` (chart type, series, encodings, raw data) plus the brand theme
  * that personalizes its appearance.
@@ -85,6 +103,8 @@ export interface VisualizationSpec {
   styleEffect?: ChartStyleEffect;
   /** Short AI-written takeaway about the chart's data — shown alongside the chart. */
   narrative?: string;
+  /** User-added visual annotations (reference lines, text labels) — not AI-generated. */
+  annotations?: Annotation[];
 }
 
 // ============================================================================

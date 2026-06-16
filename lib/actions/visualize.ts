@@ -1,7 +1,7 @@
 'use server';
 
 import { after } from 'next/server';
-import type { Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
@@ -486,10 +486,18 @@ export async function saveVisualization(
         existingVisualization.updatedAt = new Date();
 
         if (existingVisualization.isSaved === false) {
+          const user = await UserModel.findOrCreate(userId);
+          const maxAllowed = tier === 'free'
+            ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
+            : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
+          if (user.savedVisualizations.length >= maxAllowed) {
+            return {
+              success: false,
+              error: `Maximum saved visualizations limit reached (${maxAllowed}). Please delete some or upgrade your plan.`,
+            };
+          }
           existingVisualization.isSaved = true;
           existingVisualization.sessionExpiresAt = undefined;
-
-          const user = await UserModel.findOrCreate(userId);
           const visualizationIdStr = existingVisualization._id.toString();
           if (!user.savedVisualizations.some(vId => vId.toString() === visualizationIdStr)) {
             user.savedVisualizations.push(existingVisualization._id as unknown as Types.ObjectId);
@@ -779,6 +787,54 @@ export async function updateVisualizationSchedule(
 /**
  * Delete a visualization
  */
+export async function duplicateVisualization(
+  visualizationId: string
+): Promise<{ success: boolean; data?: SavedVisualization | null; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: 'Authentication required' };
+
+    const idValidation = validateObjectId(visualizationId);
+    if (!idValidation.valid) return { success: false, error: idValidation.error };
+
+    await connectToDatabase();
+
+    const source = await VisualizationModel.findOne({ _id: visualizationId, userId });
+    if (!source) return { success: false, error: 'Visualization not found or unauthorized' };
+
+    const userUsage = await UserUsageModel.findOne({ userId });
+    const tier = userUsage?.tier || 'free';
+    const user = await UserModel.findOrCreate(userId);
+    const maxAllowed = tier === 'free'
+      ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
+      : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
+    if (user.savedVisualizations.length >= maxAllowed) {
+      return { success: false, error: `Saved visualizations limit reached (${maxAllowed}). Delete some or upgrade.` };
+    }
+
+    const suffix = ' (copy)';
+    const maxBase = VALIDATION_LIMITS.MAX_TITLE_LENGTH - suffix.length;
+    const copyTitle = `${(source.title as string).slice(0, maxBase)}${suffix}`;
+
+    const copy = new VisualizationModel({
+      userId,
+      title: copyTitle,
+      spec: source.spec,
+      metadata: { ...source.metadata, generatedAt: new Date() },
+      isPublic: false,
+      isSaved: true,
+      history: [],
+    });
+    await copy.save();
+    user.savedVisualizations.push(copy._id as unknown as Types.ObjectId);
+    await user.save();
+
+    return { success: true, data: sanitizeVisualization(copy) };
+  } catch (error) {
+    return { success: false, error: sanitizeError(error, 'Failed to duplicate visualization') };
+  }
+}
+
 export async function deleteVisualization(visualizationId: string) {
   try {
     const { userId } = await auth();
@@ -804,10 +860,11 @@ export async function deleteVisualization(visualizationId: string) {
       return { success: false, error: 'Visualization not found or unauthorized' };
     }
 
-    // Remove stale reference from user's savedVisualizations array
+    // Remove stale reference from user's savedVisualizations array.
+    // Use an explicit ObjectId so the match is type-safe regardless of context.
     await UserModel.findOneAndUpdate(
       { clerkId: userId },
-      { $pull: { savedVisualizations: visualizationId } }
+      { $pull: { savedVisualizations: new Types.ObjectId(visualizationId) } }
     );
 
     return { success: true };

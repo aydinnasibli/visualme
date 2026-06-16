@@ -6,7 +6,7 @@ import {
   Share2, CheckCircle,
   Pencil, Sparkles, X, Download, ImageIcon,
   Globe, FileJson, FileSpreadsheet, FileCode, FileText,
-  Rss, RefreshCw, Clock, Unlink, Mail, Sigma, Copy, Check, Maximize2, Minimize2, Code2, Undo2,
+  Rss, RefreshCw, Clock, Unlink, Mail, Sigma, Copy, Check, Maximize2, Minimize2, Code2, Undo2, Highlighter,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ThreadEntry, StatRun } from '@/components/dashboard/VizThread';
@@ -20,8 +20,9 @@ import { getChartTypeInfo } from '@/lib/utils/series-icon';
 import { formatStatResultSummary } from '@/lib/utils/stat-test-format';
 import StatTestPickerModal from '@/components/dashboard/StatTestPickerModal';
 import type { DatasetColumn } from '@/lib/types/statistics';
-import type { BrandTheme } from '@/lib/types/echarts-spec';
+import type { BrandTheme, Annotation } from '@/lib/types/echarts-spec';
 import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
+import AnnotationPanel from '@/components/dashboard/AnnotationPanel';
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -70,31 +71,53 @@ function ActionBtn({
   );
 }
 
+const EXAMPLE_PROMPTS = [
+  'Monthly revenue by product line — bar chart',
+  'Show website traffic trends over the last 6 months',
+  'Compare team performance scores across 5 departments',
+  'Sales funnel: leads → qualified → proposals → closed',
+  'Distribution of response times — histogram',
+  'Market share breakdown by category — donut chart',
+];
+
 /* ── Empty state ── */
-function EmptyFocus() {
+function EmptyFocus({ onSuggestPrompt }: { onSuggestPrompt?: (p: string) => void }) {
   return (
-    <div className="w-full h-full flex items-center justify-center select-none">
-      <div className="flex flex-col items-center gap-5 opacity-50">
-        <div className="relative w-40 h-28">
-          {[
-            { x: 0, y: 0, w: '55%', h: '48%' },
-            { x: '45%', y: 0, w: '55%', h: '48%' },
-            { x: 0, y: '52%', w: '35%', h: '48%' },
-            { x: '38%', y: '52%', w: '62%', h: '48%' },
-          ].map((c, i) => (
-            <div
-              key={i}
-              className="absolute rounded-lg border border-edge bg-surface-2"
-              style={{ left: c.x, top: c.y, width: c.w, height: c.h }}
-            >
-              <div className="h-[5px] rounded-t-lg bg-surface-3" />
-            </div>
-          ))}
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-semibold text-ink-muted">Select a visualization</p>
-          <p className="text-xs text-ink-faint mt-1">Click any item in the thread to view it here</p>
-        </div>
+    <div className="w-full h-full flex flex-col items-center justify-center px-8 py-10 select-none gap-8">
+      {/* Idle graphic */}
+      <div className="relative w-36 h-24 opacity-40">
+        {[
+          { x: 0, y: 0, w: '55%', h: '48%' },
+          { x: '45%', y: 0, w: '55%', h: '48%' },
+          { x: 0, y: '52%', w: '35%', h: '48%' },
+          { x: '38%', y: '52%', w: '62%', h: '48%' },
+        ].map((c, i) => (
+          <div
+            key={i}
+            className="absolute rounded-lg border border-edge bg-surface-2"
+            style={{ left: c.x, top: c.y, width: c.w, height: c.h }}
+          >
+            <div className="h-[5px] rounded-t-lg bg-surface-3" />
+          </div>
+        ))}
+      </div>
+
+      <div className="text-center">
+        <p className="text-sm font-semibold text-ink-muted">Describe what you want to see</p>
+        <p className="text-xs text-ink-faint mt-1">Type in the panel on the left, or try one of these:</p>
+      </div>
+
+      {/* Clickable prompt suggestions */}
+      <div className="w-full max-w-sm space-y-1.5">
+        {EXAMPLE_PROMPTS.map(prompt => (
+          <button
+            key={prompt}
+            onClick={() => onSuggestPrompt?.(prompt)}
+            className="w-full text-left px-3 py-2 rounded-lg text-xs text-ink-muted bg-surface-1 border border-edge hover:bg-accent/6 hover:border-accent/25 hover:text-ink transition-colors"
+          >
+            {prompt}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -130,6 +153,10 @@ export interface FocusPanelProps {
   onUndo?: () => void;
   /** True when there is at least one spec snapshot available to undo to. */
   canUndo?: boolean;
+  /** Update the user-added visual annotations (reference lines, text labels). */
+  onAnnotate?: (annotations: Annotation[]) => void;
+  /** Called when user clicks a suggested prompt in the empty state — parent should populate the composer input. */
+  onSuggestPrompt?: (prompt: string) => void;
 }
 
 const INTERVAL_OPTIONS = [
@@ -148,9 +175,10 @@ export default function FocusPanel({
   onLiveDataChange, onRefreshLiveData, isRefreshing, onScheduleChange,
   statRun, datasetColumns, datasetRowCount, onRunStat,
   onPrepareStatTest, preparingStatTest,
-  onUndo, canUndo,
+  onUndo, canUndo, onAnnotate, onSuggestPrompt,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [annotateOpen, setAnnotateOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [statPickerOpen, setStatPickerOpen] = useState(false);
@@ -163,8 +191,11 @@ export default function FocusPanel({
   const [statCopied, setStatCopied] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef<HTMLDivElement>(null);
+  const shareRef = useRef<HTMLDivElement>(null);
 
   /* Below `sm`, the Refine panel becomes a full-screen overlay */
   const isMobile = useMediaQuery('(max-width: 639px)');
@@ -197,6 +228,16 @@ export default function FocusPanel({
     return () => document.removeEventListener('mousedown', close);
   }, [liveOpen]);
 
+  /* Close share popover when clicking outside */
+  useEffect(() => {
+    if (!shareOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!shareRef.current?.contains(e.target as Node)) setShareOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [shareOpen]);
+
   /* Sync URL input and reset inline title editor whenever the active thread changes */
   const [prevThreadId, setPrevThreadId] = useState(thread?.id);
   if (thread?.id !== prevThreadId) {
@@ -205,8 +246,10 @@ export default function FocusPanel({
     setScheduleEnabled(thread?.schedule?.enabled ?? false);
     setScheduleDayOfWeek(thread?.schedule?.dayOfWeek ?? 1);
     setLiveOpen(false);
+    setShareOpen(false);
     setEditingTitle(false);
     setEditTitleValue('');
+    setAnnotateOpen(false);
   }
 
   const vizAreaRef = useRef<HTMLDivElement | null>(null);
@@ -273,7 +316,16 @@ export default function FocusPanel({
       setEmbedCopied(true);
       toast.success('Embed code copied');
       setTimeout(() => setEmbedCopied(false), 2000);
-    });
+    }).catch(() => toast.error('Could not copy — please copy the embed code manually'));
+  }, [thread]);
+
+  const handleCopyLink = useCallback(() => {
+    if (!thread?.shareId) return;
+    const url = `${window.location.origin}/share/${thread.shareId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }).catch(() => toast.error('Could not copy — please copy the link manually'));
   }, [thread]);
 
   /* ── Render viz ── */
@@ -285,7 +337,7 @@ export default function FocusPanel({
   if (!thread) {
     return (
       <div className="w-full h-full bg-surface-0">
-        <EmptyFocus />
+        <EmptyFocus onSuggestPrompt={onSuggestPrompt} />
       </div>
     );
   }
@@ -375,15 +427,52 @@ export default function FocusPanel({
               <span className="hidden sm:inline">{thread.isSaved ? 'Saved' : 'Save'}</span>
             </ActionBtn>
 
-            <ActionBtn
-              title={thread.isPublic ? 'Copy public link' : 'Create public share link'}
-              onClick={onShare}
-              variant={thread.isPublic ? 'success' : 'default'}
-              active={thread.isPublic}
-            >
-              {thread.isPublic ? <Globe size={13} /> : <Share2 size={13} />}
-              <span className="hidden sm:inline">{thread.isPublic ? 'Public' : 'Share'}</span>
-            </ActionBtn>
+            {/* Share button — if already public, opens a popover with link + embed; otherwise calls onShare */}
+            <div className="relative" ref={shareRef}>
+              <ActionBtn
+                title={thread.isPublic ? 'Share options' : 'Create public share link'}
+                onClick={() => thread.isPublic ? setShareOpen(p => !p) : onShare()}
+                variant={thread.isPublic ? 'success' : 'default'}
+                active={thread.isPublic || shareOpen}
+              >
+                {thread.isPublic ? <Globe size={13} /> : <Share2 size={13} />}
+                <span className="hidden sm:inline">{thread.isPublic ? 'Shared' : 'Share'}</span>
+              </ActionBtn>
+              <AnimatePresence>
+                {shareOpen && thread.isPublic && thread.shareId && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                    transition={{ duration: 0.13 }}
+                    className="absolute right-0 top-full mt-1.5 w-64 rounded-xl z-50 bg-surface-2 border border-edge shadow-[0_16px_48px_rgba(0,0,0,0.5)] p-3 space-y-2"
+                  >
+                    <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide">Share link</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="flex-1 text-[10px] text-ink-muted truncate bg-surface-1 border border-edge rounded-lg px-2 py-1.5 font-mono">
+                        {`${window.location.origin}/share/${thread.shareId}`}
+                      </p>
+                      <button
+                        onClick={handleCopyLink}
+                        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-3 transition-colors border border-edge"
+                        title="Copy link"
+                      >
+                        {linkCopied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                      </button>
+                    </div>
+                    <div className="h-px bg-edge" />
+                    <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide">Embed</p>
+                    <button
+                      onClick={() => { setShareOpen(false); handleCopyEmbed(); }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors border border-edge"
+                    >
+                      {embedCopied ? <Check size={12} className="text-success" /> : <Code2 size={12} className="text-ink-faint" />}
+                      {embedCopied ? 'Copied!' : 'Copy iframe embed code'}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {(thread.liveData?.url || (datasetColumns && datasetColumns.length > 0)) && (
               <ActionBtn
@@ -634,7 +723,16 @@ export default function FocusPanel({
 
             <div className="hidden sm:block w-px h-4 bg-edge mx-0.5" />
 
-            <ActionBtn title="Refine with AI" onClick={() => setEditOpen(p => !p)} active={editOpen}>
+            <ActionBtn
+              title="Add annotations (reference lines, text labels)"
+              onClick={() => { setAnnotateOpen(p => !p); if (editOpen) setEditOpen(false); }}
+              active={annotateOpen}
+            >
+              <Highlighter size={12} />
+              <span className="hidden sm:inline">Annotate</span>
+            </ActionBtn>
+
+            <ActionBtn title="Refine with AI" onClick={() => { setEditOpen(p => !p); if (annotateOpen) setAnnotateOpen(false); }} active={editOpen}>
               <Pencil size={12} />
               <span className="hidden sm:inline">Refine</span>
             </ActionBtn>
@@ -765,6 +863,64 @@ export default function FocusPanel({
                 />
               </div>
             </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Annotate panel (slide in from right) ── */}
+      <AnimatePresence>
+        {annotateOpen && (
+          <>
+            {isMobile && (
+              <motion.div
+                key="annotate-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="fixed inset-0 z-30 bg-black/50"
+                onClick={() => setAnnotateOpen(false)}
+                aria-hidden="true"
+              />
+            )}
+            <motion.div
+              key="annotate-panel"
+              initial={isMobile ? { x: '100%' } : { width: 0, opacity: 0 }}
+              animate={isMobile ? { x: 0 } : { width: 280, opacity: 1 }}
+              exit={isMobile ? { x: '100%' } : { width: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className={
+                isMobile
+                  ? 'fixed top-16 inset-x-0 bottom-0 z-40 overflow-hidden'
+                  : 'shrink-0 overflow-hidden relative border-l border-edge'
+              }
+            >
+              <div className={isMobile ? 'w-full h-full flex flex-col bg-surface-1' : 'w-[280px] h-full flex flex-col bg-surface-1'}>
+                <div className="flex items-center justify-between px-4 h-12 shrink-0 border-b border-edge">
+                  <div className="flex items-center gap-2">
+                    <Highlighter className="w-3.5 h-3.5 text-accent/70" />
+                    <span className="text-xs font-semibold text-ink-muted">Annotate</span>
+                    {(thread?.spec.annotations?.length ?? 0) > 0 && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-accent/12 text-accent">
+                        {thread!.spec.annotations!.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setAnnotateOpen(false)}
+                    className="w-6 h-6 rounded flex items-center justify-center text-ink-faint hover:text-ink-muted hover:bg-surface-3 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden min-h-0">
+                  <AnnotationPanel
+                    annotations={thread?.spec.annotations ?? []}
+                    onChange={annotations => onAnnotate?.(annotations)}
+                  />
+                </div>
+              </div>
             </motion.div>
           </>
         )}

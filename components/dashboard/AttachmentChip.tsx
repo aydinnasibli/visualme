@@ -7,6 +7,7 @@ const EXTENSION_ICONS: Record<FileAttachment['extension'], React.ElementType> = 
   csv: FileSpreadsheet,
   json: FileJson,
   txt: FileText,
+  xlsx: FileSpreadsheet,
 };
 
 interface AttachmentChipProps {

@@ -582,6 +582,13 @@ function DashboardContent() {
     toast.success('Undone');
   }, [activeThread]);
 
+  const handleAnnotate = useCallback((annotations: import('@/lib/types/echarts-spec').Annotation[]) => {
+    if (!activeThread) return;
+    const id = activeThread.id;
+    const newSpec = { ...activeThread.spec, annotations };
+    setThreads(p => p.map(t => t.id === id ? { ...t, spec: newSpec } : t));
+  }, [activeThread]);
+
   const handleTitleChange = useCallback((title: string) => {
     if (!activeThread) return;
     const id = activeThread.id;
@@ -839,6 +846,8 @@ function DashboardContent() {
             preparingStatTest={preparingStatTest}
             onUndo={handleUndo}
             canUndo={Boolean(activeThread?.specHistory?.length)}
+            onAnnotate={handleAnnotate}
+            onSuggestPrompt={setInput}
           />
         </div>
       </div>

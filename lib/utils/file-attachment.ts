@@ -4,7 +4,7 @@ import { parseFile } from '@/lib/services/file-parser';
 import { detectColumns } from '@/lib/services/statistics-service';
 import type { DatasetColumn } from '@/lib/types/statistics';
 
-type AttachmentExtension = 'csv' | 'json' | 'txt';
+type AttachmentExtension = 'csv' | 'json' | 'txt' | 'xlsx';
 
 export interface FileAttachment {
   id: string;
@@ -24,8 +24,8 @@ export interface FileAttachment {
   datasetColumns?: DatasetColumn[];
 }
 
-const ACCEPTED_EXTENSIONS: AttachmentExtension[] = ['csv', 'json', 'txt'];
-export const ATTACHMENT_ACCEPT = '.csv,.json,.txt,text/csv,application/json,text/plain';
+const ACCEPTED_EXTENSIONS: AttachmentExtension[] = ['csv', 'json', 'txt', 'xlsx'];
+export const ATTACHMENT_ACCEPT = '.csv,.json,.txt,.xlsx,text/csv,application/json,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /** Keep embedded data well within VALIDATION_LIMITS.MAX_INPUT_LENGTH (10K chars). */
 const MAX_EMBED_CHARS = 6000;
@@ -50,10 +50,10 @@ export async function readFileAttachment(file: File): Promise<{ attachment?: Fil
   const extension = file.name.split('.').pop()?.toLowerCase();
 
   if (extension === 'pdf') {
-    return { error: 'PDF support is coming soon — try CSV, JSON, or TXT for now.' };
+    return { error: 'PDF support is coming soon — try CSV, JSON, XLSX, or TXT for now.' };
   }
   if (!extension || !ACCEPTED_EXTENSIONS.includes(extension as AttachmentExtension)) {
-    return { error: `Unsupported file type "${extension ?? file.name}". Accepted: CSV, JSON, TXT.` };
+    return { error: `Unsupported file type "${extension ?? file.name}". Accepted: CSV, JSON, XLSX, TXT.` };
   }
 
   const result = await parseFile(file);
