@@ -139,6 +139,21 @@ export async function deductTokens(
   };
 }
 
+/**
+ * Refund tokens back to a user (e.g. when the actual AI cost was less than
+ * the pre-deducted estimate). Clamps at 0 so tokensUsed never goes negative.
+ */
+export async function refundTokens(userId: string, amount: number): Promise<void> {
+  if (amount <= 0) return;
+  // Pipeline update required for $max/$subtract expressions. Mongoose 9 needs
+  // updatePipeline: true explicitly (it throws on pipeline syntax by default).
+  await UserUsageModel.findOneAndUpdate(
+    { userId },
+    [{ $set: { tokensUsed: { $max: [0, { $subtract: ['$tokensUsed', amount] }] } } }],
+    { updatePipeline: true }
+  );
+}
+
 export async function getTokenBalance(userId: string): Promise<{
   tokensUsed: number;
   tokensLimit: number;

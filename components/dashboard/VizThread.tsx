@@ -11,7 +11,7 @@ import type { VisualizationSpec } from '@/lib/types/echarts-spec';
 import type { FileAttachment } from '@/lib/utils/file-attachment';
 import { ATTACHMENT_ACCEPT } from '@/lib/utils/file-attachment';
 import type { ChartSelection } from '@/lib/utils/chart-types';
-import type { StatTestResult, StatTestSelection } from '@/lib/types/statistics';
+import type { StatTestResult, StatTestSelection, DatasetColumn } from '@/lib/types/statistics';
 import type { LiveSheetData } from '@/lib/utils/live-sheet';
 import { STARTER_TEMPLATES, type StarterTemplate } from '@/lib/utils/starter-templates';
 import AttachmentChip from '@/components/dashboard/AttachmentChip';
@@ -21,6 +21,17 @@ import StatTestChip from '@/components/dashboard/StatTestChip';
 import StatTestPickerModal from '@/components/dashboard/StatTestPickerModal';
 import LiveSheetChip from '@/components/dashboard/LiveSheetChip';
 import LiveSheetButton from '@/components/dashboard/LiveSheetButton';
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
 
 const TEMPLATE_ICONS: Record<string, React.ElementType> = {
   TrendingUp, FlaskConical, ClipboardList, Workflow, Megaphone, Wallet, Activity, Target,
@@ -57,6 +68,17 @@ export interface ThreadEntry {
     dayOfWeek: number;
     lastSentAt?: string;
   };
+  /**
+   * The dataset behind the attachment/live sheet this chart was generated
+   * from, kept with the thread so the "Test" button stays available for the
+   * rest of the session — not just while that attachment is still the active
+   * composer state. Not persisted to the DB (re-derived via `liveData.url`
+   * for live threads after reload; unavailable for plain attachments).
+   */
+  datasetColumns?: DatasetColumn[];
+  datasetRowCount?: number;
+  /** Client-only undo stack — spec snapshots taken before each successful AI edit. Not persisted. */
+  specHistory?: VisualizationSpec[];
 }
 
 /* ── Thread card ── */
@@ -86,15 +108,6 @@ function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; 
         border: `1px solid ${active ? 'oklch(72% 0.13 55 / 0.3)' : 'var(--color-edge)'}`,
       }}
     >
-      {/* Active accent bar */}
-      <div
-        className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full transition-opacity duration-150"
-        style={{
-          background: 'linear-gradient(to bottom, var(--color-accent), color-mix(in oklch, var(--color-accent) 50%, transparent))',
-          opacity: active ? 1 : 0,
-        }}
-      />
-
       <button
         type="button"
         title="Delete session"
@@ -118,12 +131,12 @@ function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; 
               <CheckCircle2 className="w-3 h-3 shrink-0 text-success/60" />
             )}
             {isLive && (
-              <span className="flex items-center gap-1 text-[10px] font-medium text-success">
+              <span className="flex items-center gap-1 text-[10px] font-medium text-success" title={entry.liveData?.lastRefreshed ? `Last refreshed ${new Date(entry.liveData.lastRefreshed).toLocaleString()}` : 'Live data connected'}>
                 <span
                   className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0"
                   style={{ boxShadow: '0 0 4px var(--color-success)' }}
                 />
-                Live
+                {entry.liveData?.lastRefreshed ? relativeTime(entry.liveData.lastRefreshed) : 'Live'}
               </span>
             )}
           </div>
@@ -212,6 +225,33 @@ function ThreadInput({
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(e as unknown as React.FormEvent); }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!canAttach) return;
+    const text = e.clipboardData.getData('text');
+    if (!text) return;
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return;
+    const tabs = lines[0].split('\t').length;
+    const commas = lines[0].split(',').length;
+    const isTabular = (tabs > 1 && lines.every(l => l.split('\t').length === tabs))
+      || (commas > 1 && lines.every(l => l.split(',').length === commas));
+    if (!isTabular) return;
+    e.preventDefault();
+    const sep = tabs > 1 ? '\t' : ',';
+    const rows: Record<string, string>[] = [];
+    const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g, ''));
+    for (const line of lines.slice(1)) {
+      if (!line.trim()) continue;
+      const vals = line.split(sep).map(v => v.trim().replace(/^"|"$/g, ''));
+      const row: Record<string, string> = {};
+      headers.forEach((h, i) => { row[h] = vals[i] ?? ''; });
+      rows.push(row);
+    }
+    const csvContent = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))].join('\n');
+    const file = new File([csvContent], 'pasted-data.csv', { type: 'text/csv' });
+    onAttach(file);
+  };
+
   const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) onAttach(file);
@@ -257,6 +297,7 @@ function ThreadInput({
         value={input}
         onChange={e => setInput(e.target.value)}
         onKeyDown={handleKey}
+        onPaste={handlePaste}
         placeholder={
           liveSheet ? 'Add instructions for this data (optional)…'
           : attachment ? 'Add instructions for this data (optional)…'

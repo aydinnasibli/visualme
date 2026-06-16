@@ -26,6 +26,7 @@ import {
 import { checkTokenBalance, deductTokens } from '@/lib/utils/tokens';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { getCachedVisualization, setCachedVisualization } from '@/lib/utils/cache';
+import { isBlockedSheetUrl } from '@/lib/utils/sheet-fetch';
 import type {
   VisualizationResponse,
   VisualizationMetadata,
@@ -65,7 +66,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       );
     }
 
-    // ── Token balance check (always — cache benefit is speed, not free usage) ─
+    // ── Token balance pre-check (fast read before AI spend) ──────────────────
     await connectToDatabase();
 
     const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
@@ -75,10 +76,11 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
     // otherwise the built-in sunset theme. Applies to every newly generated chart.
     const defaultTheme = (await getDefaultBrandTheme(userId)) ?? DEFAULT_SUNSET_THEME;
 
-    // ── Cache lookup (instant result, tokens still charged) ───────────────────
+    // ── Cache lookup (instant result, tokens still charged) ──────────────────
     const cached = await getCachedVisualization(input);
     if (cached) {
-      await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
+      const cachedDeduction = await deductTokens(userId, TOKEN_COSTS.GENERATE_VISUALIZATION);
+      if (!cachedDeduction.success) return fail(cachedDeduction.error || 'Insufficient tokens');
       await Promise.all([
         UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
         UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
@@ -143,11 +145,16 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
     // alive past the response boundary so the write is guaranteed to complete.
     after(() => setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason, narrative }).catch(() => {}));
 
-    // ── Deduct actual token cost based on real OpenAI usage ───────────────────
+    // ── Deduct actual cost — if this fails (race condition) block the result ──
+    // The atomic $expr condition prevents overdraft. If it fails, another
+    // concurrent request already consumed the remaining balance between our
+    // pre-check and this deduction. Return an error — never hand out the
+    // result for free.
     const actualCost = calcInternalTokens(promptTokens + narrativePromptTokens, completionTokens + narrativeCompletionTokens);
     const deduction = await deductTokens(userId, actualCost);
     if (!deduction.success) {
-      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
+      console.error(`[billing] post-AI deduction failed userId=${userId} cost=${actualCost}: ${deduction.error}`);
+      return fail('Your token balance was depleted by a concurrent request. Please try again.');
     }
     await Promise.all([
       UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
@@ -277,16 +284,17 @@ export async function editVisualizationAction(
 
     await connectToDatabase();
 
-    // TOKEN SYSTEM: Check if user has enough tokens
+    // TOKEN SYSTEM: Pre-check balance before AI spend
     const tokenCheck = await checkTokenBalance(userId, TOKEN_COSTS.EDIT_VISUALIZATION);
     if (!tokenCheck.allowed) {
-      return {
-        success: false,
-        error: tokenCheck.error || 'Insufficient tokens'
-      };
+      return { success: false, error: tokenCheck.error || 'Insufficient tokens' };
     }
 
-    const contextHistory = messages ? messages.map(m => ({ role: m.role, content: m.content })) : [];
+    const AI_CONTEXT_WINDOW = 20; // messages sent to the AI — keeps prompts lean
+    const DB_HISTORY_CAP = 100;  // messages stored per doc — prevents extreme abuse
+    const contextHistory = messages
+      ? messages.slice(-AI_CONTEXT_WINDOW).map(m => ({ role: m.role, content: m.content }))
+      : [];
 
     const result = await editChartSpec(existingOption, editPrompt, contextHistory);
 
@@ -308,11 +316,12 @@ export async function editVisualizationAction(
       }
     }
 
-    // Deduct actual token cost based on real OpenAI usage
+    // ── Atomic deduction — if race depleted balance, block the result ─────────
     const actualCost = calcInternalTokens(result.promptTokens + narrativePromptTokens, result.completionTokens + narrativeCompletionTokens);
     const deduction = await deductTokens(userId, actualCost);
     if (!deduction.success) {
-      console.error(`[billing] deductTokens failed for userId=${userId} cost=${actualCost}: ${deduction.error}`);
+      console.error(`[billing] edit deduction failed userId=${userId} cost=${actualCost}: ${deduction.error}`);
+      return { success: false, error: 'Your token balance was depleted by a concurrent request. Please try again.' };
     }
 
     let updatedVisualization: SavedVisualization | null = null;
@@ -330,7 +339,8 @@ export async function editVisualizationAction(
            visualization.sessionExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
          }
 
-         // Update history — messages already includes the new user message, so only append assistant reply
+         // Update history — messages already includes the new user message, so only append assistant reply.
+         // Cap at MAX_HISTORY to prevent unbounded document growth.
          if (messages) {
             const historyItems: { role: "user" | "assistant"; content: string; timestamp: Date }[] = [
                 ...messages.map(h => ({
@@ -340,7 +350,7 @@ export async function editVisualizationAction(
                 })),
                 { role: 'assistant' as const, content: result.message, timestamp: new Date() }
             ];
-            visualization.history = historyItems;
+            visualization.history = historyItems.slice(-DB_HISTORY_CAP);
          }
 
          await visualization.save();
@@ -572,10 +582,13 @@ export async function getUserVisualizations(limit?: number) {
 }
 
 /**
- * Get the current user's ephemeral, not-yet-expired "session" chats —
- * i.e. auto-persisted but not explicitly saved (`isSaved: false`) — for
- * hydrating the sidebar on load. Explicitly saved visualizations live only
- * in "My Visualizations" and are never returned here.
+ * Get the current user's "session" chats for hydrating the sidebar on load:
+ * ephemeral, not-yet-expired sessions (`isSaved: false`), plus any
+ * live-connected visualization (`liveData.url` set) regardless of
+ * `isSaved` — lives stay in the sidebar forever, until deleted, even though
+ * connecting live data also promotes them to "My Visualizations". All other
+ * explicitly saved visualizations live only in "My Visualizations" and are
+ * never returned here.
  */
 export async function getUserSessions(limit: number = 50) {
   try {
@@ -587,7 +600,10 @@ export async function getUserSessions(limit: number = 50) {
 
     await connectToDatabase();
 
-    const visualizations = await VisualizationModel.find({ userId, isSaved: false })
+    const visualizations = await VisualizationModel.find({
+      userId,
+      $or: [{ isSaved: false }, { 'liveData.url': { $exists: true, $nin: [null, ''] } }],
+    })
       .select('_id title spec metadata isPublic shareId createdAt updatedAt history liveData schedule isSaved')
       .sort({ updatedAt: -1 })
       .limit(limit)
@@ -689,12 +705,8 @@ export async function saveLiveDataConfig(
     if (!idValidation.valid) return { success: false, error: idValidation.error };
 
     if (liveData) {
-      let parsed: URL;
-      try { parsed = new URL(liveData.url); } catch {
-        return { success: false, error: 'Invalid URL' };
-      }
-      if (parsed.protocol !== 'https:') {
-        return { success: false, error: 'Only HTTPS URLs are allowed' };
+      if (isBlockedSheetUrl(liveData.url)) {
+        return { success: false, error: 'Only HTTPS URLs to public data sources are allowed' };
       }
     }
 

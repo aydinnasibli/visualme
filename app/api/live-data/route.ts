@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { fetchAndParseSheet } from '@/lib/utils/sheet-fetch';
 
@@ -16,6 +17,12 @@ function getClientIp(request: NextRequest): string {
 }
 
 export async function GET(request: NextRequest) {
+  // ── Auth (middleware guards this route, but check explicitly for defense-in-depth)
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
   // ── Rate limiting (per-IP, before any outbound fetch) ──────────────────────
   const ip = getClientIp(request);
   const rateCheck = await checkRateLimit(ip, 'live-data');

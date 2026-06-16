@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import Header from '@/components/dashboard/Header';
 import VizThread, { type ThreadEntry, type StatRun } from '@/components/dashboard/VizThread';
 import FocusPanel from '@/components/dashboard/FocusPanel';
+import WelcomeModal from '@/components/dashboard/WelcomeModal';
 
 /* ── Helpers ── */
 interface LiveDataResponse {
@@ -186,9 +187,11 @@ function DashboardContent() {
     }
   }, [activeThread, activeLiveSheet]);
 
-  /* ── Dataset behind whichever attachment/live sheet is connected — lets the Focus panel run stat tests too ── */
-  const datasetColumns = attachment?.datasetColumns ?? liveSheet?.datasetColumns ?? activeLiveSheet?.datasetColumns;
-  const datasetRowCount = attachment?.rowCount ?? liveSheet?.rowCount ?? activeLiveSheet?.rowCount ?? datasetColumns?.[0]?.values.length ?? 0;
+  /* ── Dataset behind whichever attachment/live sheet is connected — lets the Focus panel run stat tests too.
+   * The active thread's own dataset (captured at generation time) takes priority, so the Test button stays
+   * available for that chart for the rest of the session, even after the composer attachment is cleared. ── */
+  const datasetColumns = activeThread?.datasetColumns ?? attachment?.datasetColumns ?? liveSheet?.datasetColumns ?? activeLiveSheet?.datasetColumns;
+  const datasetRowCount = activeThread?.datasetRowCount ?? attachment?.rowCount ?? liveSheet?.rowCount ?? activeLiveSheet?.rowCount ?? datasetColumns?.[0]?.values.length ?? 0;
 
   /* ── Save / share ── */
   const [saving, setSaving]         = useState(false);
@@ -361,6 +364,8 @@ function DashboardContent() {
           fromCache: data.fromCache,
         } : undefined,
         liveData: liveDataForEntry,
+        datasetColumns: pendingAttachment?.datasetColumns ?? pendingLiveSheet?.datasetColumns,
+        datasetRowCount: pendingAttachment?.rowCount ?? pendingLiveSheet?.rowCount,
       };
       setThreads(p => [...p, entry]);
       setActiveId(entry.id);
@@ -403,6 +408,7 @@ function DashboardContent() {
     setThreads(p => p.map(t => t.id === id ? { ...t, chatHistory: newHist } : t));
 
     try {
+      const prevSpec = activeThread.spec;
       const res = await editVisualizationAction(
         message.trim(), activeThread.spec.option,
         activeThread.vizId || undefined,
@@ -417,6 +423,10 @@ function DashboardContent() {
         ...t,
         spec: res.option ? { ...t.spec, option: res.option, narrative: res.narrative ?? t.spec.narrative } : t.spec,
         chatHistory: finalHist,
+        // Push spec snapshot for undo only when the chart actually changed
+        specHistory: res.option
+          ? [...(t.specHistory ?? []).slice(-9), prevSpec]
+          : t.specHistory,
       } : t));
       toast.success(res.option ? 'Updated!' : 'Response received');
     } catch (err) {
@@ -518,6 +528,20 @@ function DashboardContent() {
   }, [activeThread]);
 
   const handleNew = useCallback(() => setActiveId(null), []);
+
+  const handleUndo = useCallback(() => {
+    if (!activeThread?.specHistory?.length) return;
+    const id = activeThread.id;
+    const prevHistory = activeThread.specHistory.slice(0, -1);
+    const prevSpec = activeThread.specHistory[activeThread.specHistory.length - 1];
+    setThreads(p => p.map(t => t.id === id ? {
+      ...t,
+      spec: prevSpec,
+      specHistory: prevHistory,
+      chatHistory: t.chatHistory.slice(0, -2),
+    } : t));
+    toast.success('Undone');
+  }, [activeThread]);
 
   const handleTitleChange = useCallback((title: string) => {
     if (!activeThread) return;
@@ -737,6 +761,8 @@ function DashboardContent() {
           {sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
         </button>
 
+        <WelcomeModal />
+
         {/* ── Right: Focus panel ── */}
         <div className="flex-1 relative overflow-hidden min-w-0">
           {/* Generation overlay */}
@@ -772,6 +798,8 @@ function DashboardContent() {
             onRunStat={handleRunStat}
             onPrepareStatTest={handlePrepareStatTest}
             preparingStatTest={preparingStatTest}
+            onUndo={handleUndo}
+            canUndo={Boolean(activeThread?.specHistory?.length)}
           />
         </div>
       </div>

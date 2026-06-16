@@ -96,7 +96,7 @@ function HeroMockup() {
           <div className="flex-1 p-2 space-y-1.5 overflow-hidden">
             {thread.map((item, i) => (
               <div key={i} className="rounded-lg p-2 border transition-colors"
-                style={{ background: item.active ? 'var(--color-accent)1A' : 'transparent', borderColor: item.active ? 'var(--color-accent)' : 'var(--color-edge)', opacity: item.active ? 1 : 0.55 }}>
+                style={{ background: item.active ? 'oklch(72% 0.13 55 / 0.1)' : 'transparent', borderColor: item.active ? 'oklch(72% 0.13 55)' : 'var(--color-edge)', opacity: item.active ? 1 : 0.55 }}>
                 <p className="text-[9px] font-semibold truncate" style={{ color: item.active ? 'var(--color-accent)' : 'var(--color-ink-faint)', maxWidth: 128 }}>{item.label}</p>
                 <p className="text-[8px] text-ink-faint mt-0.5">{item.type}</p>
               </div>

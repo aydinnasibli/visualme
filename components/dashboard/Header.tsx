@@ -1,11 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { UserResource } from '@clerk/shared/types';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Settings, FolderOpen, LayoutDashboard, Menu, X } from 'lucide-react';
+import { Settings, FolderOpen, LayoutDashboard, Menu, X, Zap } from 'lucide-react';
 import ThemeToggle from '@/components/dashboard/ThemeToggle';
+import { getUserLimits } from '@/lib/actions/profile';
+
+function TokenBadge() {
+  const [data, setData] = useState<{ remaining: number; limit: number; pct: number } | null>(null);
+
+  useEffect(() => {
+    getUserLimits().then(res => {
+      if (res.success && res.data) {
+        const { remaining, limit, percentageUsed } = res.data.tokens;
+        setData({ remaining, limit, pct: percentageUsed });
+      }
+    });
+  }, []);
+
+  if (!data) return null;
+
+  const isLow = data.pct >= 80;
+  const color = isLow ? 'var(--color-danger)' : 'var(--color-accent)';
+
+  return (
+    <div
+      className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium transition-colors"
+      style={{
+        background: isLow ? 'oklch(64% 0.19 23 / 0.08)' : 'oklch(72% 0.13 55 / 0.06)',
+        borderColor: isLow ? 'oklch(64% 0.19 23 / 0.3)' : 'oklch(72% 0.13 55 / 0.2)',
+        color,
+      }}
+      title={`${data.remaining.toLocaleString()} / ${data.limit.toLocaleString()} tokens remaining`}
+    >
+      <Zap size={11} />
+      {data.remaining.toLocaleString()}
+    </div>
+  );
+}
 
 interface HeaderProps {
   user: UserResource | null;
@@ -31,6 +65,7 @@ const Header = ({ user, label = 'Playground', actions }: HeaderProps) => {
 
         {/* Desktop / tablet actions */}
         <div className="hidden sm:flex items-center gap-3">
+          <TokenBadge />
           <ThemeToggle />
           <div className="h-6 w-px bg-edge/70" />
           <Link href="/my-visualizations" className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors" title="My Visualizations">

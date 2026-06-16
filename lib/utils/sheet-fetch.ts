@@ -53,13 +53,21 @@ export function isBlockedSheetUrl(urlString: string): boolean {
   }
   if (parsed.protocol !== 'https:') return true;
   const h = parsed.hostname.toLowerCase();
-  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return true;
+  // IPv4 private/reserved
+  if (h === 'localhost' || h === '127.0.0.1') return true;
   if (/^10\./.test(h)) return true;
   if (/^192\.168\./.test(h)) return true;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
   if (/^169\.254\./.test(h)) return true;
   if (/^0\./.test(h)) return true;
   if (h === 'metadata.google.internal') return true;
+  // IPv6 private/reserved. Node.js URL always includes brackets in .hostname
+  // e.g. new URL('https://[::1]/').hostname === '[::1]'
+  if (h === '[::1]') return true;
+  if (h.startsWith('[fe80:')) return true;
+  if (h.startsWith('[fc') || h.startsWith('[fd')) return true;
+  if (h.startsWith('[::ffff:')) return true;
+  if (h.startsWith('[ff')) return true;
   return false;
 }
 

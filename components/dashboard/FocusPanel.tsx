@@ -6,7 +6,7 @@ import {
   Share2, CheckCircle,
   Pencil, Sparkles, X, Download, ImageIcon,
   Globe, FileJson, FileSpreadsheet, FileCode, FileText,
-  Rss, RefreshCw, Clock, Unlink, Mail, Sigma, Copy, Check,
+  Rss, RefreshCw, Clock, Unlink, Mail, Sigma, Copy, Check, Maximize2, Minimize2, Code2, Undo2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ThreadEntry, StatRun } from '@/components/dashboard/VizThread';
@@ -22,6 +22,17 @@ import StatTestPickerModal from '@/components/dashboard/StatTestPickerModal';
 import type { DatasetColumn } from '@/lib/types/statistics';
 import type { BrandTheme } from '@/lib/types/echarts-spec';
 import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
 
 /* ── Header action button ── */
 function ActionBtn({
@@ -115,6 +126,10 @@ export interface FocusPanelProps {
   onPrepareStatTest?: () => Promise<void>;
   /** True while `onPrepareStatTest` is fetching/parsing the connected live source. */
   preparingStatTest?: boolean;
+  /** Revert the chart to the spec it had before the most recent AI edit. Session-only. */
+  onUndo?: () => void;
+  /** True when there is at least one spec snapshot available to undo to. */
+  canUndo?: boolean;
 }
 
 const INTERVAL_OPTIONS = [
@@ -133,6 +148,7 @@ export default function FocusPanel({
   onLiveDataChange, onRefreshLiveData, isRefreshing, onScheduleChange,
   statRun, datasetColumns, datasetRowCount, onRunStat,
   onPrepareStatTest, preparingStatTest,
+  onUndo, canUndo,
 }: FocusPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -145,11 +161,21 @@ export default function FocusPanel({
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState(1);
   const [statCopied, setStatCopied] = useState(false);
+  const [presentMode, setPresentMode] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef<HTMLDivElement>(null);
 
   /* Below `sm`, the Refine panel becomes a full-screen overlay */
   const isMobile = useMediaQuery('(max-width: 639px)');
+
+  /* Escape closes presentation mode */
+  useEffect(() => {
+    if (!presentMode) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPresentMode(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [presentMode]);
 
   /* Close export dropdown only when clicking outside it */
   useEffect(() => {
@@ -226,6 +252,17 @@ export default function FocusPanel({
     });
   }, [statRun]);
 
+  const handleCopyEmbed = useCallback(() => {
+    if (!thread?.shareId) return;
+    const url = `${window.location.origin}/share/${thread.shareId}`;
+    const code = `<iframe src="${url}?embed=1" width="800" height="500" frameborder="0" style="border-radius:12px;"></iframe>`;
+    navigator.clipboard.writeText(code).then(() => {
+      setEmbedCopied(true);
+      toast.success('Embed code copied');
+      setTimeout(() => setEmbedCopied(false), 2000);
+    });
+  }, [thread]);
+
   /* ── Render viz ── */
   const renderViz = useCallback((t: ThreadEntry) => {
     // The header above already shows the title — don't render it again inside the chart.
@@ -285,17 +322,27 @@ export default function FocusPanel({
               className="text-sm font-semibold text-ink bg-transparent border-b border-accent/50 focus:outline-none flex-1 min-w-0 pb-px"
             />
           ) : (
-            <h2
-              className="text-sm font-semibold text-ink-muted truncate flex-1 cursor-text hover:text-ink transition-colors"
+            <button
+              type="button"
+              className="flex items-center gap-1.5 group/title flex-1 min-w-0 text-left"
               title="Click to rename"
               onClick={() => { setEditingTitle(true); setEditTitleValue(thread.title); }}
             >
-              {thread.title}
-            </h2>
+              <h2 className="text-sm font-semibold text-ink-muted truncate group-hover/title:text-ink transition-colors">
+                {thread.title}
+              </h2>
+              <Pencil size={11} className="shrink-0 text-ink-faint opacity-0 group-hover/title:opacity-100 transition-opacity" />
+            </button>
           )}
 
           {/* Actions */}
           <div className="flex items-center gap-1 shrink-0">
+            {canUndo && (
+              <ActionBtn title="Undo last AI edit" onClick={() => onUndo?.()}>
+                <Undo2 size={13} />
+                <span className="hidden sm:inline">Undo</span>
+              </ActionBtn>
+            )}
             <ActionBtn
               title={thread.isSaved ? 'Saved' : 'Save visualization'}
               onClick={saving ? () => {} : onSave}
@@ -355,7 +402,7 @@ export default function FocusPanel({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
                     transition={{ duration: 0.13 }}
-                    className="absolute right-0 top-full mt-1.5 w-40 rounded-xl overflow-hidden z-50 bg-surface-2 border border-edge shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+                    className="absolute right-0 top-full mt-1.5 w-44 rounded-xl overflow-hidden z-50 bg-surface-2 border border-edge shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
                   >
                     <button onClick={handleExportPNG} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors">
                       <ImageIcon size={13} className="text-ink-faint" /> Export as PNG
@@ -364,22 +411,54 @@ export default function FocusPanel({
                       <FileText size={13} className="text-ink-faint" /> Export as PDF
                     </button>
                     <div className="h-px bg-edge mx-3 my-1" />
-                    <button onClick={() => { setExportOpen(false); onExportData('json'); }} disabled={!thread.vizId} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-ink-muted hover:enabled:bg-surface-3 hover:enabled:text-ink" title={!thread.vizId ? 'Save the visualization first' : undefined}>
-                      <FileJson size={13} className="text-accent" />
-                      Export as JSON
+                    <button
+                      onClick={() => {
+                        if (!thread.vizId) { toast.error('Save the visualization first'); return; }
+                        setExportOpen(false); onExportData('json');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors"
+                    >
+                      <FileJson size={13} className="text-accent" /> Export as JSON
                     </button>
-                    <button onClick={() => { setExportOpen(false); onExportData('csv'); }} disabled={!thread.vizId} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-ink-muted hover:enabled:bg-surface-3 hover:enabled:text-ink" title={!thread.vizId ? 'Save the visualization first' : undefined}>
-                      <FileSpreadsheet size={13} className="text-accent" />
-                      Export as CSV
+                    <button
+                      onClick={() => {
+                        if (!thread.vizId) { toast.error('Save the visualization first'); return; }
+                        setExportOpen(false); onExportData('csv');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors"
+                    >
+                      <FileSpreadsheet size={13} className="text-accent" /> Export as CSV
                     </button>
-                    <button onClick={() => { setExportOpen(false); onExportData('html'); }} disabled={!thread.vizId} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-ink-muted hover:enabled:bg-surface-3 hover:enabled:text-ink" title={!thread.vizId ? 'Save the visualization first' : undefined}>
-                      <FileCode size={13} className="text-accent" />
-                      Export as HTML
+                    <button
+                      onClick={() => {
+                        if (!thread.vizId) { toast.error('Save the visualization first'); return; }
+                        setExportOpen(false); onExportData('html');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors"
+                    >
+                      <FileCode size={13} className="text-accent" /> Export as HTML
                     </button>
+                    {thread.isPublic && thread.shareId && (
+                      <>
+                        <div className="h-px bg-edge mx-3 my-1" />
+                        <button
+                          onClick={() => { setExportOpen(false); handleCopyEmbed(); }}
+                          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-ink-muted hover:bg-surface-3 hover:text-ink transition-colors"
+                        >
+                          {embedCopied ? <Check size={13} className="text-success" /> : <Code2 size={13} className="text-ink-faint" />}
+                          {embedCopied ? 'Copied!' : 'Copy embed code'}
+                        </button>
+                      </>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
+
+            <ActionBtn title="Presentation mode (Esc to exit)" onClick={() => setPresentMode(true)}>
+              <Maximize2 size={13} />
+              <span className="hidden sm:inline">Present</span>
+            </ActionBtn>
 
             {/* Live Data dropdown — only shown once a sheet is connected (via the chat composer) */}
             {thread.liveData?.url && (
@@ -451,8 +530,8 @@ export default function FocusPanel({
 
                         {/* Last refreshed */}
                         {thread.liveData?.lastRefreshed && (
-                          <p className="text-[10px] text-ink-faint">
-                            Last refreshed: {new Date(thread.liveData.lastRefreshed).toLocaleString()}
+                          <p className="text-[10px] text-ink-faint" title={new Date(thread.liveData.lastRefreshed).toLocaleString()}>
+                            Last refreshed: {relativeTime(thread.liveData.lastRefreshed)}
                           </p>
                         )}
 
@@ -545,6 +624,22 @@ export default function FocusPanel({
           <VisualizationErrorBoundary>
             {renderViz(thread)}
           </VisualizationErrorBoundary>
+          <AnimatePresence>
+            {isEditing && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="absolute inset-0 flex items-center justify-center bg-surface-0/60 backdrop-blur-[2px] pointer-events-none"
+              >
+                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-surface-1 border border-accent/25 shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-sm font-medium text-accent">
+                  <div className="w-3.5 h-3.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0" />
+                  Updating chart…
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Verified result — real jStat output from the stat test picker, shown as a fact-check alongside the chart */}
@@ -658,6 +753,51 @@ export default function FocusPanel({
           onRun={run => onRunStat?.(run)}
         />
       )}
+
+      {/* Presentation mode — fullscreen overlay */}
+      <AnimatePresence>
+        {presentMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-100 flex flex-col bg-surface-0"
+          >
+            {/* Minimal top bar */}
+            <div className="flex items-center justify-between px-8 py-4 shrink-0">
+              <div>
+                <p className="text-xs text-ink-faint uppercase tracking-widest font-semibold mb-1">Presentation</p>
+                <h2 className="text-lg font-semibold text-ink">{thread.title}</h2>
+              </div>
+              <button
+                onClick={() => setPresentMode(false)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-faint hover:text-ink hover:bg-surface-2 border border-edge transition-colors"
+              >
+                <Minimize2 size={12} /> Exit (Esc)
+              </button>
+            </div>
+
+            {/* Chart fills remaining space */}
+            <div className="flex-1 min-h-0 px-8 pb-8">
+              <VisualizationErrorBoundary>
+                <EChartsRenderer spec={thread.spec} className="w-full h-full" hideTitle />
+              </VisualizationErrorBoundary>
+            </div>
+
+            {/* Narrative at bottom */}
+            {thread.spec.narrative && (
+              <div className="shrink-0 px-8 pb-6">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Sparkles size={12} className="text-accent" />
+                  <span className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">Key takeaway</span>
+                </div>
+                <p className="text-sm text-ink-muted leading-relaxed max-w-3xl">{thread.spec.narrative}</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
