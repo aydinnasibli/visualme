@@ -1,6 +1,7 @@
 import { getAdminUserById } from '@/lib/actions/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, User } from 'lucide-react'
 import UpdatePlanForm from '@/components/admin/UpdatePlanForm'
 
@@ -56,10 +57,11 @@ export default async function AdminUserDetailPage({
           <div className="surface-panel rounded-xl p-5">
             <div className="flex items-center gap-3 mb-5">
               {user.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={user.imageUrl}
                   alt={displayName}
+                  width={40}
+                  height={40}
                   className="w-10 h-10 rounded-full object-cover"
                 />
               ) : (

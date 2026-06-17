@@ -59,7 +59,7 @@ function buildHtml({ title, url, urlLabel, footerNote, charts }: DigestHtmlParam
       <h1 style="font-size:18px;margin:0 0 4px;">${escapeHtml(title)}</h1>
       <p style="font-size:13px;color:#71717a;margin:0 0 20px;">Your scheduled refresh just ran. Here's what changed:</p>
       <table style="width:100%;border-collapse:collapse;">${rows}</table>
-      <a href="${url}" style="display:inline-block;margin-top:24px;padding:10px 18px;border-radius:8px;background:#6366f1;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;">
+      <a href="${escapeHtml(url)}" style="display:inline-block;margin-top:24px;padding:10px 18px;border-radius:8px;background:#6366f1;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;">
         ${escapeHtml(urlLabel)}
       </a>
       <p style="font-size:11px;color:#a1a1aa;margin-top:24px;">
