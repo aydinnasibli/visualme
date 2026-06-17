@@ -65,20 +65,27 @@ export function sanitizeVisualization(viz: unknown): SavedVisualization | null {
   const metadata = obj.metadata as Record<string, unknown> | undefined;
   const history = obj.history as Array<Record<string, unknown>> | undefined;
 
-  return {
-    ...obj,
+  const result: SavedVisualization = {
     _id: (obj._id as { toString(): string } | undefined)?.toString(),
-    userId: (obj.userId as { toString(): string } | undefined)?.toString(),
-    createdAt: toIsoString(obj.createdAt),
-    updatedAt: toIsoString(obj.updatedAt),
+    userId: (obj.userId as { toString(): string } | undefined)?.toString() ?? '',
+    title: (obj.title as string) ?? '',
+    spec: obj.spec as SavedVisualization['spec'],
     metadata: metadata ? {
       ...metadata,
       generatedAt: toIsoString(metadata.generatedAt),
-    } : undefined,
+    } as SavedVisualization['metadata'] : {} as SavedVisualization['metadata'],
+    isPublic: (obj.isPublic as boolean) ?? false,
+    shareId: obj.shareId as string | undefined,
+    createdAt: toIsoString(obj.createdAt) ?? new Date().toISOString(),
+    updatedAt: toIsoString(obj.updatedAt) ?? new Date().toISOString(),
     history: Array.isArray(history) ? history.map((h) => ({
-      role: h.role,
-      content: h.content,
-      timestamp: h.timestamp ? toIsoString(h.timestamp) : new Date().toISOString(),
+      role: h.role as 'user' | 'assistant',
+      content: h.content as string,
+      timestamp: h.timestamp ? toIsoString(h.timestamp)! : new Date().toISOString(),
     })) : [],
-  } as unknown as SavedVisualization;
+    liveData: obj.liveData as SavedVisualization['liveData'],
+    schedule: obj.schedule as SavedVisualization['schedule'],
+    isSaved: obj.isSaved as boolean | undefined,
+  };
+  return result;
 }

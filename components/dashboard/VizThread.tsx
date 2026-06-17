@@ -183,7 +183,7 @@ function LoadingCard({ prompt }: { prompt: string }) {
 interface ThreadInputProps {
   input: string;
   setInput: (v: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.SyntheticEvent) => void;
   loading: boolean;
   attachment: FileAttachment | null;
   attaching: boolean;
@@ -224,7 +224,7 @@ function ThreadInput({
   }, [input]);
 
   const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(e as unknown as React.FormEvent); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(e); }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -401,7 +401,7 @@ export interface VizThreadProps {
   loadingPrompt: string;
   input: string;
   setInput: (v: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.SyntheticEvent) => void;
   attachment: FileAttachment | null;
   attaching: boolean;
   onAttach: (file: File) => void;

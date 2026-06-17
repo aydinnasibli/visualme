@@ -447,7 +447,7 @@ export async function saveVisualization(
 
          const visualizationIdStr = visualization._id.toString();
          if (!user.savedVisualizations.some(vId => vId.toString() === visualizationIdStr)) {
-           user.savedVisualizations.push(visualization._id as unknown as Types.ObjectId);
+           user.savedVisualizations.push(new Types.ObjectId(visualization._id));
            await user.save();
          }
        }
@@ -500,7 +500,7 @@ export async function saveVisualization(
           existingVisualization.sessionExpiresAt = undefined;
           const visualizationIdStr = existingVisualization._id.toString();
           if (!user.savedVisualizations.some(vId => vId.toString() === visualizationIdStr)) {
-            user.savedVisualizations.push(existingVisualization._id as unknown as Types.ObjectId);
+            user.savedVisualizations.push(new Types.ObjectId(existingVisualization._id));
             await user.save();
           }
         }
@@ -542,7 +542,7 @@ export async function saveVisualization(
         const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
 
         if (!exists) {
-          user.savedVisualizations.push(visualization._id as unknown as Types.ObjectId);
+          user.savedVisualizations.push(new Types.ObjectId(visualization._id));
           await user.save();
         }
       }
@@ -826,7 +826,7 @@ export async function duplicateVisualization(
       history: [],
     });
     await copy.save();
-    user.savedVisualizations.push(copy._id as unknown as Types.ObjectId);
+    user.savedVisualizations.push(new Types.ObjectId(copy._id));
     await user.save();
 
     return { success: true, data: sanitizeVisualization(copy) };

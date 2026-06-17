@@ -62,10 +62,12 @@ function sanitizeDashboard(doc: unknown): Dashboard {
   const slots = obj.slots as RawSlot[] | undefined;
   const layout = obj.layout as RawLayoutItem[] | undefined;
 
-  return {
-    ...obj,
+  const result: Dashboard = {
     _id: (obj._id as { toString(): string } | undefined)?.toString(),
-    userId: (obj.userId as { toString(): string } | undefined)?.toString(),
+    userId: (obj.userId as { toString(): string } | undefined)?.toString() ?? '',
+    title: typeof obj.title === 'string' ? obj.title : '',
+    dashboardId: typeof obj.dashboardId === 'string' ? obj.dashboardId : undefined,
+    isPublic: typeof obj.isPublic === 'boolean' ? obj.isPublic : false,
     createdAt: toIsoString(obj.createdAt) ?? new Date().toISOString(),
     updatedAt: toIsoString(obj.updatedAt) ?? new Date().toISOString(),
     slots: Array.isArray(slots)
@@ -88,7 +90,8 @@ function sanitizeDashboard(doc: unknown): Dashboard {
         }))
       : [],
     schedule: sanitizeSchedule(obj.schedule),
-  } as unknown as Dashboard;
+  };
+  return result;
 }
 
 /** Create a new dashboard. */
@@ -149,8 +152,8 @@ export async function updateDashboard(
     if (!doc) return { success: false, error: 'Dashboard not found or unauthorized' };
 
     if (updates.title !== undefined) doc.title = updates.title.trim();
-    if (updates.slots !== undefined) doc.slots = updates.slots as unknown as typeof doc.slots;
-    if (updates.layout !== undefined) doc.layout = updates.layout as unknown as typeof doc.layout;
+    if (updates.slots !== undefined) doc.set('slots', updates.slots);
+    if (updates.layout !== undefined) doc.set('layout', updates.layout);
 
     await doc.save();
 

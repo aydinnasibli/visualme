@@ -194,31 +194,44 @@ const POWER_FEATURES = [
   },
   {
     Icon: Code2,
-    title: 'Drop into the JSON when you need to',
-    body: 'Every chart is a live ECharts option object. Open the JSON editor and modify anything directly — series config, custom marks, axis overrides. Saved and persisted to your dashboard.',
+    title: 'Live data from Google Sheets',
+    body: 'Connect a public Google Sheet and your chart refreshes automatically. Set an interval — hourly, every 6 hours, or daily — and get a weekly email digest summarizing what changed.',
   },
   {
     Icon: Share2,
     title: 'Share or export in any format',
-    body: 'PNG, SVG, JSON, CSV, or a shareable link. Public or private. Charts live in your dashboard, versioned with their full refinement history.',
+    body: 'PNG, SVG, HTML, JSON, CSV, or a shareable link. Public or private. Charts live in your dashboard, versioned with their full refinement history.',
   },
+];
+
+const ALL_FEATURES = [
+  `${CHART_TYPES.length} chart types + variants`,
+  'PNG, SVG & HTML export',
+  'Refinement chat',
+  'File upload (CSV, JSON, XLSX)',
+  'Statistical analysis (t-test, ANOVA, chi-square)',
+  'Brand kit & theme editor',
+  'Live data from Google Sheets',
+  'Weekly email digests',
+  'Dashboard builder',
+  'Public & private sharing',
 ];
 
 const PLANS = [
   {
-    name: 'Free', price: '$0', period: '', desc: 'Start building immediately',
-    features: ['10 visualizations / month', `${CHART_TYPES.length} chart types`, 'PNG export', 'Public sharing', 'Refinement chat'],
+    name: 'Free', price: '$0', period: '', desc: 'All features included',
+    features: ['~18 AI generations / month', 'Up to 50 saved visualizations', 'All features — no restrictions'],
     cta: 'Get started free', href: '/sign-up', highlight: false,
   },
   {
-    name: 'Pro', price: '$12', period: '/ month', desc: 'For regular use',
-    features: ['Unlimited visualizations', `${CHART_TYPES.length} chart types + variants`, 'PNG + SVG export', 'Private visualizations', 'File upload (CSV, JSON)', 'Statistical analysis', 'Theme editor', 'Priority generation'],
+    name: 'Pro', price: '$12', period: '/ month', desc: 'More capacity, same features',
+    features: ['~490 AI generations / month', 'Up to 1,000 saved visualizations', 'All features — no restrictions'],
     cta: 'Start Pro', href: '/sign-up', highlight: true,
   },
   {
-    name: 'Team', price: '$39', period: '/ month', desc: 'For teams',
-    features: ['Everything in Pro', 'Up to 10 seats', 'Shared workspace', 'Team history', 'Priority support'],
-    cta: 'Contact us', href: '/sign-up', highlight: false,
+    name: 'Enterprise', price: 'Custom', period: '', desc: 'For organizations',
+    features: ['~2,450 AI generations / month', 'Unlimited saved visualizations', 'Dedicated support'],
+    cta: 'Contact us', href: 'mailto:aydinnasibli7@gmail.com', highlight: false,
   },
 ];
 
@@ -232,8 +245,8 @@ const USE_CASES = [
     how: 'Describe the services and their connections. Get a network graph. Adjust the layout with a follow-up.',
   },
   {
-    persona: 'You\'re a PM who needs to visualize a roadmap without opening Figma or Excel.',
-    how: 'Describe the timeline. Get a Gantt chart. Add milestones and reorder lanes in plain English.',
+    persona: 'You\'re a PM who needs to visualize a workflow without opening Figma or Excel.',
+    how: 'Describe the process stages and connections. Get a Sankey or funnel chart. Refine labels and reorder in plain English.',
   },
   {
     persona: 'You\'re a researcher comparing two datasets and need to run a significance test.',
@@ -269,7 +282,7 @@ export default function LandingPage() {
                 Write what you want to see. VisualMe picks the right chart, generates it in seconds, and refines it with you in plain English until it&apos;s exactly right.
               </p>
               <p className="mb-10 text-sm text-ink-faint" style={{ maxWidth: '44ch' }}>
-                Upload your own data. Run statistical tests. Export as PNG, SVG, or JSON. Share a link.
+                Upload your data. Connect live Google Sheets. Run statistical tests. Build dashboards. Export as PNG, SVG, HTML, or JSON. Every feature free.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors">
@@ -401,10 +414,24 @@ export default function LandingPage() {
       {/* ── Pricing ── */}
       <section id="pricing" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          <div className="mb-14">
+          <div className="mb-10">
             <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>Simple, honest pricing</h2>
-            <p className="text-ink-muted">Start free. Upgrade when you need more.</p>
+            <p className="text-ink-muted">Every feature is available on every plan. You only pay for more capacity.</p>
           </div>
+
+          {/* All features list */}
+          <div className="rounded-xl border border-edge bg-surface-0 p-6 mb-8">
+            <p className="text-sm font-semibold text-ink mb-4">Included on all plans — including Free</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
+              {ALL_FEATURES.map(f => (
+                <div key={f} className="flex items-start gap-2.5">
+                  <Check size={13} strokeWidth={2.5} className="mt-0.5 shrink-0 text-accent" />
+                  <span className="text-sm text-ink-muted">{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {PLANS.map(plan => (
               <div key={plan.name} className="rounded-2xl p-8 flex flex-col relative border" style={{ background: plan.highlight ? 'var(--color-accent)0D' : 'var(--color-surface-0)', borderColor: plan.highlight ? 'var(--color-accent)' : 'var(--color-edge)' }}>
@@ -442,7 +469,7 @@ export default function LandingPage() {
               Stop fighting chart tools.
             </h2>
             <p className="mb-8 leading-relaxed text-ink-muted">
-              Your first 10 visualizations are free. No credit card, no setup. Just type what you want to see.
+              Every feature is free. No credit card, no setup. Just type what you want to see.
             </p>
             <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors">
               Get started free <ArrowUpRight size={14} />

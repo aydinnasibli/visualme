@@ -11,9 +11,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { dashboardId } = await params;
   const res = await getSharedDashboard(dashboardId);
   if (!res.success || !res.data) return { title: 'Dashboard — VisualMe' };
+  const title = `${res.data.title} — VisualMe`;
+  const description = `${res.data.slots.length} interactive charts shared via VisualMe`;
   return {
-    title: `${res.data.title} — VisualMe`,
-    description: `${res.data.slots.length} interactive charts shared via VisualMe`,
+    title,
+    description,
+    openGraph: { title, description, type: 'website' },
   };
 }
 

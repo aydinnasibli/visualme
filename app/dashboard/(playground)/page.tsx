@@ -337,7 +337,7 @@ function DashboardContent() {
   }, [searchParams, isSignedIn, revHandoff]);
 
   /* ── Handlers ── */
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
     if ((!trimmed && !attachment && !chartType && !liveSheet) || loading) return;

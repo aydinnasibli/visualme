@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Share2, CheckCircle,
@@ -36,7 +36,7 @@ function relativeTime(iso: string): string {
 }
 
 /* ── Header action button ── */
-function ActionBtn({
+const ActionBtn = memo(function ActionBtn({
   onClick, title, children, variant = 'default', active,
 }: {
   onClick: () => void;
@@ -54,6 +54,7 @@ function ActionBtn({
   return (
     <button
       title={title}
+      aria-label={title}
       onClick={onClick}
       className="h-7 px-2 sm:px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-medium transition-all duration-150"
       style={{ color: active ? colors.hover : colors.base, background: active ? colors.bgActive : colors.bg }}
@@ -69,7 +70,7 @@ function ActionBtn({
       {children}
     </button>
   );
-}
+});
 
 const EXAMPLE_PROMPTS = [
   'Monthly revenue by product line — bar chart',
@@ -81,7 +82,7 @@ const EXAMPLE_PROMPTS = [
 ];
 
 /* ── Empty state ── */
-function EmptyFocus({ onSuggestPrompt }: { onSuggestPrompt?: (p: string) => void }) {
+const EmptyFocus = memo(function EmptyFocus({ onSuggestPrompt }: { onSuggestPrompt?: (p: string) => void }) {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center px-8 py-10 select-none gap-8">
       {/* Idle graphic */}
@@ -121,7 +122,7 @@ function EmptyFocus({ onSuggestPrompt }: { onSuggestPrompt?: (p: string) => void
       </div>
     </div>
   );
-}
+});
 
 /* ── Props ── */
 export interface FocusPanelProps {
@@ -846,6 +847,7 @@ export default function FocusPanel({
                 </div>
                 <button
                   onClick={() => setEditOpen(false)}
+                  aria-label="Close edit panel"
                   className="w-6 h-6 rounded flex items-center justify-center text-ink-faint hover:text-ink-muted hover:bg-surface-3 transition-colors"
                 >
                   <X size={13} />
@@ -945,6 +947,7 @@ export default function FocusPanel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            role="dialog" aria-modal="true" aria-label="Presentation mode"
             className="fixed inset-0 z-100 flex flex-col bg-surface-0"
           >
             {/* Minimal top bar */}
@@ -955,6 +958,7 @@ export default function FocusPanel({
               </div>
               <button
                 onClick={() => setPresentMode(false)}
+                aria-label="Exit presentation mode"
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-faint hover:text-ink hover:bg-surface-2 border border-edge transition-colors"
               >
                 <Minimize2 size={12} /> Exit (Esc)

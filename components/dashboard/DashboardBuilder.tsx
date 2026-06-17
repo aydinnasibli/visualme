@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { GridLayout, useContainerWidth } from 'react-grid-layout';
 import type { Layout } from 'react-grid-layout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -63,7 +63,7 @@ function formatRelativeTime(iso: string): string {
  * Renders the real chart only once scrolled near the viewport — avoids
  * mounting many live ECharts canvases at once in the picker list.
  */
-function ChartThumbnail({ spec }: { spec: VisualizationSpec }) {
+const ChartThumbnail = memo(function ChartThumbnail({ spec }: { spec: VisualizationSpec }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -91,9 +91,9 @@ function ChartThumbnail({ spec }: { spec: VisualizationSpec }) {
       )}
     </div>
   );
-}
+});
 
-function VizPickerCard({
+const VizPickerCard = memo(function VizPickerCard({
   viz,
   added,
   onAdd,
@@ -136,9 +136,9 @@ function VizPickerCard({
       </div>
     </motion.div>
   );
-}
+});
 
-function DashboardListItem({
+const DashboardListItem = memo(function DashboardListItem({
   dashboard,
   active,
   onSelect,
@@ -183,11 +183,11 @@ function DashboardListItem({
       </button>
     </motion.div>
   );
-}
+});
 
 // ─── grid cell ───────────────────────────────────────────────────────────────
 
-function GridCell({
+const GridCell = memo(function GridCell({
   viz,
   titleSnapshot,
   onRemove,
@@ -258,7 +258,7 @@ function GridCell({
       </button>
     </div>
   );
-}
+});
 
 // ─── share modal ─────────────────────────────────────────────────────────────
 
@@ -284,7 +284,7 @@ function ShareModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Share dashboard" onClick={onClose}>
       <div className="absolute inset-0 bg-surface-0/60 backdrop-blur-sm" />
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -296,7 +296,7 @@ function ShareModal({
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-lg font-semibold text-ink">Share Dashboard</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors">
+          <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors">
             <X size={15} />
           </button>
         </div>
@@ -320,6 +320,8 @@ function ShareModal({
           <button
             onClick={() => onTogglePublic(!dashboard.isPublic)}
             disabled={publishing}
+            aria-label={dashboard.isPublic ? 'Make private' : 'Make public'}
+            aria-pressed={dashboard.isPublic}
             className={`w-11 h-6 rounded-full relative transition-colors focus:outline-none disabled:opacity-50 ${dashboard.isPublic ? 'bg-accent' : 'bg-surface-3'}`}
           >
             <span
@@ -378,7 +380,7 @@ function ScheduleModal({
   const [dayOfWeek, setDayOfWeek] = useState(dashboard.schedule?.dayOfWeek ?? 1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Weekly email digest" onClick={onClose}>
       <div className="absolute inset-0 bg-surface-0/60 backdrop-blur-sm" />
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -390,7 +392,7 @@ function ScheduleModal({
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-lg font-semibold text-ink">Weekly Email Digest</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors">
+          <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors">
             <X size={15} />
           </button>
         </div>
@@ -411,6 +413,8 @@ function ScheduleModal({
           <button
             onClick={() => setEnabled(p => !p)}
             disabled={saving}
+            aria-label={enabled ? 'Disable digest' : 'Enable digest'}
+            aria-pressed={enabled}
             className={`w-11 h-6 rounded-full relative transition-colors focus:outline-none disabled:opacity-50 ${enabled ? 'bg-accent' : 'bg-surface-3'}`}
           >
             <span

@@ -36,6 +36,13 @@ export async function GET(request: NextRequest) {
   let processed = 0;
   let sent = 0;
 
+  // Batch-fetch all users for due dashboards in a single query
+  const dashboardUserIds = [...new Set(dueDashboards.map(d => d.userId))];
+  const dashboardUsers = dashboardUserIds.length
+    ? await UserModel.find({ clerkId: { $in: dashboardUserIds } }).select('clerkId email').lean()
+    : [];
+  const dashboardUserMap = new Map(dashboardUsers.map(u => [u.clerkId, u.email]));
+
   for (const dashboard of dueDashboards) {
     const lastSentAt = dashboard.schedule?.lastSentAt;
     if (lastSentAt && now.getTime() - new Date(lastSentAt as unknown as string).getTime() < LAST_SENT_COOLDOWN_MS) {
@@ -74,8 +81,8 @@ export async function GET(request: NextRequest) {
       }
 
       if (charts.length > 0) {
-        const user = await UserModel.findOne({ clerkId: dashboard.userId }).select('email');
-        if (user?.email) {
+        const email = dashboardUserMap.get(dashboard.userId);
+        if (email) {
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
           const dashboardUrl =
             dashboard.isPublic && dashboard.dashboardId
@@ -88,7 +95,7 @@ export async function GET(request: NextRequest) {
           await DashboardModel.updateOne({ _id: dashboard._id }, { $set: { 'schedule.lastSentAt': now } });
 
           await sendDashboardDigest({
-            to: user.email,
+            to: email,
             dashboardTitle: dashboard.title,
             dashboardUrl,
             charts,
@@ -110,6 +117,13 @@ export async function GET(request: NextRequest) {
     'schedule.dayOfWeek': todayUTC,
     'liveData.url': { $exists: true, $ne: null },
   });
+
+  // Batch-fetch all users for due visualizations in a single query
+  const vizUserIds = [...new Set(dueVisualizations.map(v => v.userId))];
+  const vizUsers = vizUserIds.length
+    ? await UserModel.find({ clerkId: { $in: vizUserIds } }).select('clerkId email').lean()
+    : [];
+  const vizUserMap = new Map(vizUsers.map(u => [u.clerkId, u.email]));
 
   for (const viz of dueVisualizations) {
     const lastSentAt = viz.schedule?.lastSentAt;
@@ -138,8 +152,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const user = await UserModel.findOne({ clerkId: viz.userId }).select('email');
-      if (user?.email) {
+      const email = vizUserMap.get(viz.userId);
+      if (email) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const chartUrl =
           viz.isPublic && viz.shareId
@@ -150,7 +164,7 @@ export async function GET(request: NextRequest) {
         await VisualizationModel.updateOne({ _id: viz._id }, { $set: { 'schedule.lastSentAt': now } });
 
         await sendVisualizationDigest({
-          to: user.email,
+          to: email,
           chartTitle: viz.title,
           chartUrl,
           summary,
