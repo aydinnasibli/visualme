@@ -13,19 +13,26 @@ const isPublicRoute = createRouteMatcher([
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
-export default clerkMiddleware(async (auth, request) => {
-  if (isAdminRoute(request)) {
-    const { sessionClaims, userId } = await auth();
-    if (!userId || sessionClaims?.metadata?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url));
+export default clerkMiddleware(
+  async (auth, request) => {
+    if (isAdminRoute(request)) {
+      const { sessionClaims, userId } = await auth();
+      if (!userId || sessionClaims?.metadata?.role !== 'admin') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+      return;
     }
-    return;
-  }
 
-  if (!isPublicRoute(request)) {
-    await auth.protect();
-  }
-});
+    if (!isPublicRoute(request)) {
+      await auth.protect();
+    }
+  },
+  {
+    frontendApiProxy: {
+      enabled: true,
+    },
+  },
+);
 
 export const config = {
   matcher: [
