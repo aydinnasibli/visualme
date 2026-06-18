@@ -1,14 +1,9 @@
 import { getAdminStats } from '@/lib/actions/admin'
 import Link from 'next/link'
 import { Users, BarChart2, TrendingUp, Activity } from 'lucide-react'
+import { PLAN_BADGE } from '@/lib/utils/admin-constants'
 
 export const dynamic = 'force-dynamic'
-
-const PLAN_BADGE: Record<string, string> = {
-  enterprise: 'bg-warning/15 text-warning',
-  pro: 'bg-accent/10 text-ink',
-  free: 'bg-surface-2 text-ink-faint',
-}
 
 function StatCard({
   title,

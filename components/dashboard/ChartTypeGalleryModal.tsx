@@ -141,6 +141,9 @@ export default function ChartTypeGalleryModal({ open, onClose, onSelect }: Chart
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ duration: 0.16 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Choose chart type"
             className="w-full max-w-2xl max-h-[82vh] rounded-2xl overflow-hidden flex flex-col surface-panel shadow-[0_24px_64px_rgba(0,0,0,0.35)]"
             onClick={e => e.stopPropagation()}
           >

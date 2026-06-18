@@ -738,7 +738,7 @@ function DashboardContent() {
 
   return (
     <div className="text-ink-muted flex flex-col h-screen w-full antialiased overflow-hidden bg-surface-0">
-      <Header user={user || null} />
+      <Header />
 
       <div className="flex-1 flex overflow-hidden min-h-0 pt-16 relative">
         {/* ── Mobile backdrop for the session drawer ── */}

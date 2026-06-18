@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="flex h-screen bg-surface">
+    <div className="flex h-screen bg-surface-0">
       {/* Left panel skeleton */}
       <div className="w-full lg:w-[420px] border-r border-edge p-6 space-y-4">
         <div className="h-8 w-48 bg-surface-2 rounded-lg animate-pulse" />

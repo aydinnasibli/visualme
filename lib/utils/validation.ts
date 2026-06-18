@@ -1,18 +1,6 @@
 import { Types } from 'mongoose';
-
-/**
- * Validation limits for security and resource management
- */
-export const VALIDATION_LIMITS = {
-  MAX_INPUT_LENGTH: 10000,          // ~10KB max input for AI generation
-  MAX_TITLE_LENGTH: 200,
-  MAX_DATA_SIZE: 1024 * 1024,       // 1MB max for DB storage
-  MAX_EDIT_DATA_SIZE: 100 * 1024,   // 100KB max data sent to AI for edits (~25K tokens input cap)
-  MAX_SAVED_VISUALIZATIONS_FREE: 50,
-  MAX_SAVED_VISUALIZATIONS_PRO: 1000,
-  MAX_EXISTING_NODES_ARRAY: 1000,
-  MAX_NODE_LABEL_LENGTH: 500,
-};
+export { VALIDATION_LIMITS } from './constants';
+import { VALIDATION_LIMITS } from './constants';
 
 /**
  * Token economy — gpt-5.4-mini, June 2026 pricing.

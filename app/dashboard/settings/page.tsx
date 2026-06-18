@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Header from '@/components/dashboard/Header';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useClerk } from '@clerk/nextjs';
 import { User, Mail, CheckCircle, Check, Zap, RotateCcw, CalendarDays, Bell } from 'lucide-react';
 import { getUserProfile, getUserLimits, updateNotificationPreferences, UserProfile } from '@/lib/actions/profile';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ type Limits = Awaited<ReturnType<typeof getUserLimits>>['data'];
 
 export default function SettingsPage() {
   const { user } = useUser();
+  const clerk = useClerk();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [limits, setLimits] = useState<Limits | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,7 +81,7 @@ export default function SettingsPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-surface-0 relative selection:bg-accent/20">
-      <Header user={user || null} label="Settings" />
+      <Header label="Settings" />
       <div className="max-w-4xl mx-auto p-6 pt-24">
         <h1 className="font-display text-3xl font-bold text-ink mb-8">Settings</h1>
 
@@ -115,8 +116,11 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="mt-4 flex justify-end">
-              <button className="px-4 py-2 surface-control text-ink-muted hover:text-ink rounded-lg transition-colors text-sm">
-                Manage Clerk Profile
+              <button
+                onClick={() => clerk.openUserProfile()}
+                className="px-4 py-2 surface-control text-ink-muted hover:text-ink rounded-lg transition-colors text-sm"
+              >
+                Manage Profile
               </button>
             </div>
           </section>
@@ -217,12 +221,13 @@ export default function SettingsPage() {
                   <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Basic Formats</li>
                 </ul>
                 <button
-                  disabled={profile?.plan === 'free' || !profile?.plan}
+                  disabled
                   className={`mt-auto w-full py-2 rounded-lg text-sm font-medium ${
                     profile?.plan === 'free' || !profile?.plan
                       ? 'bg-accent/15 text-accent cursor-default'
-                      : 'surface-control text-ink transition-colors'
+                      : 'surface-control text-ink opacity-50 cursor-not-allowed'
                   }`}
+                  title={profile?.plan === 'free' || !profile?.plan ? undefined : 'Coming soon'}
                 >
                   {profile?.plan === 'free' || !profile?.plan ? 'Current Plan' : 'Downgrade'}
                 </button>
@@ -238,19 +243,20 @@ export default function SettingsPage() {
                   <span className="font-semibold text-ink">Pro</span>
                   {profile?.plan === 'pro' && <CheckCircle className="text-accent w-5 h-5" />}
                 </div>
-                <div className="text-2xl font-bold text-ink">$9.99<span className="text-sm font-normal text-ink-muted">/mo</span></div>
+                <div className="text-2xl font-bold text-ink">$12<span className="text-sm font-normal text-ink-muted">/mo</span></div>
                 <ul className="space-y-2 text-sm text-ink-muted mb-2">
                   <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Unlimited Visualizations</li>
                   <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Advanced Formats</li>
                   <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Priority Support</li>
                 </ul>
                 <button
-                  disabled={profile?.plan === 'pro'}
+                  disabled
                   className={`mt-auto w-full py-2 rounded-lg text-sm font-medium transition-colors ${
                     profile?.plan === 'pro'
                       ? 'bg-accent/15 text-accent cursor-default'
-                      : 'surface-control text-ink'
+                      : 'surface-control text-ink opacity-50 cursor-not-allowed'
                   }`}
+                  title={profile?.plan === 'pro' ? undefined : 'Coming soon'}
                 >
                   {profile?.plan === 'pro' ? 'Current Plan' : 'Upgrade'}
                 </button>
@@ -273,12 +279,13 @@ export default function SettingsPage() {
                   <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Dedicated support</li>
                 </ul>
                 <button
-                  disabled={profile?.plan === 'enterprise'}
+                  disabled
                   className={`mt-auto w-full py-2 rounded-lg text-sm font-medium transition-colors ${
                     profile?.plan === 'enterprise'
                       ? 'bg-accent/15 text-accent cursor-default'
-                      : 'surface-control text-ink'
+                      : 'surface-control text-ink opacity-50 cursor-not-allowed'
                   }`}
+                  title={profile?.plan === 'enterprise' ? undefined : 'Coming soon'}
                 >
                   {profile?.plan === 'enterprise' ? 'Current Plan' : 'Contact us'}
                 </button>

@@ -1,8 +1,3 @@
-/**
- * File Parser Service
- * Handles parsing of uploaded files (CSV, JSON, TXT, PDF)
- */
-
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { validateFileSize, validateFileType } from '../utils/helpers';
@@ -42,7 +37,7 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
   if (!validateFileType(file.name)) {
     return {
       success: false,
-      error: 'Invalid file type. Allowed types: CSV, JSON, TXT, PDF',
+      error: 'Invalid file type. Allowed types: CSV, JSON, TXT, XLSX, PDF',
       fileInfo,
     };
   }
@@ -180,21 +175,26 @@ async function parseXLSX(file: File, fileInfo: ParsedFileResult['fileInfo']): Pr
   }
 }
 
-/**
- * Parse PDF file
- * Note: For actual PDF parsing, we'd use pdf-parse or similar library
- * For now, returning a placeholder that can be enhanced
- */
 async function parsePDF(file: File, fileInfo: ParsedFileResult['fileInfo']): Promise<ParsedFileResult> {
   try {
-    // Placeholder: In a real implementation, you would use pdf-parse
-    // const arrayBuffer = await file.arrayBuffer();
-    // const pdf = await pdfParse(Buffer.from(arrayBuffer));
-    // const text = pdf.text;
+    const { PDFParse } = await import('pdf-parse');
+    const arrayBuffer = await file.arrayBuffer();
+    const parser = new PDFParse({ data: new Uint8Array(arrayBuffer) });
+    const result = await parser.getText();
+    const text = result.text?.trim();
+    await parser.destroy();
+
+    if (!text) {
+      return {
+        success: false,
+        error: 'Could not extract text from this PDF. It may be image-based or empty.',
+        fileInfo,
+      };
+    }
 
     return {
       success: true,
-      text: 'PDF parsing requires server-side processing. Please use the API endpoint for PDF uploads.',
+      text,
       fileInfo,
     };
   } catch (error) {

@@ -4,7 +4,7 @@ import { parseFile } from '@/lib/services/file-parser';
 import { detectColumns } from '@/lib/services/statistics-service';
 import type { DatasetColumn } from '@/lib/types/statistics';
 
-type AttachmentExtension = 'csv' | 'json' | 'txt' | 'xlsx';
+type AttachmentExtension = 'csv' | 'json' | 'txt' | 'xlsx' | 'pdf';
 
 export interface FileAttachment {
   id: string;
@@ -24,11 +24,11 @@ export interface FileAttachment {
   datasetColumns?: DatasetColumn[];
 }
 
-const ACCEPTED_EXTENSIONS: AttachmentExtension[] = ['csv', 'json', 'txt', 'xlsx'];
-export const ATTACHMENT_ACCEPT = '.csv,.json,.txt,.xlsx,text/csv,application/json,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const ACCEPTED_EXTENSIONS: AttachmentExtension[] = ['csv', 'json', 'txt', 'xlsx', 'pdf'];
+export const ATTACHMENT_ACCEPT = '.csv,.json,.txt,.xlsx,.pdf,text/csv,application/json,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf';
 
-/** Keep embedded data well within VALIDATION_LIMITS.MAX_INPUT_LENGTH (10K chars). */
-const MAX_EMBED_CHARS = 6000;
+import { VALIDATION_LIMITS } from '@/lib/utils/constants';
+const MAX_EMBED_CHARS = VALIDATION_LIMITS.MAX_EMBED_CHARS;
 
 function truncate(text: string): string {
   if (text.length <= MAX_EMBED_CHARS) return text;

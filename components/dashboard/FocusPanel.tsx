@@ -23,17 +23,7 @@ import type { DatasetColumn } from '@/lib/types/statistics';
 import type { BrandTheme, Annotation } from '@/lib/types/echarts-spec';
 import { DEFAULT_SUNSET_THEME } from '@/lib/types/echarts-spec';
 import AnnotationPanel from '@/components/dashboard/AnnotationPanel';
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}
+import { relativeTime } from '@/lib/utils/helpers';
 
 /* ── Header action button ── */
 const ActionBtn = memo(function ActionBtn({

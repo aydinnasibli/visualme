@@ -8,7 +8,7 @@ import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/mo
 import { generateChartSpec } from '@/lib/services/spec-generator';
 import { generateNarrative } from '@/lib/services/narrative-generator';
 import { editChartSpec } from '@/lib/services/spec-editor';
-import { calculateCost, sanitizeVisualization } from '@/lib/utils/helpers';
+import { sanitizeVisualization } from '@/lib/utils/helpers';
 import { resolveVariant } from '@/lib/utils/chart-types';
 import { DEFAULT_SUNSET_THEME, type VisualizationSpec, type ChartStyleEffect } from '@/lib/types/echarts-spec';
 import { getDefaultBrandTheme } from '@/lib/actions/brand-kits';
@@ -182,7 +182,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
         generatedAt: new Date(),
         processingTime,
         aiModel: 'gpt-5.4-mini',
-        cost: calculateCost(input.length),
+        cost: 0,
         originalInput: input,
       },
     };
@@ -392,6 +392,11 @@ export async function saveVisualization(
       return { success: false, error: 'Authentication required' };
     }
 
+    const rl = await checkRateLimit(userId, 'save');
+    if (!rl.allowed) {
+      return { success: false, error: `Too many requests. Try again in ${rl.retryAfter ?? 60}s.` };
+    }
+
     // SECURITY: Validate title
     const titleValidation = validateTitle(title);
     if (!titleValidation.valid) {
@@ -457,7 +462,7 @@ export async function saveVisualization(
        visualization.metadata = metadata;
        visualization.isPublic = isPublic;
        if (history) {
-         visualization.history = history.map(h => ({
+         visualization.history = history.slice(-100).map(h => ({
            ...h,
            timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
          }));
@@ -478,7 +483,7 @@ export async function saveVisualization(
         existingVisualization.metadata = metadata;
         existingVisualization.isPublic = isPublic;
         if (history) {
-           existingVisualization.history = history.map(h => ({
+           existingVisualization.history = history.slice(-100).map(h => ({
              ...h,
              timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
            }));
@@ -784,15 +789,18 @@ export async function updateVisualizationSchedule(
   }
 }
 
-/**
- * Delete a visualization
- */
+/** Duplicate a visualization */
 export async function duplicateVisualization(
   visualizationId: string
 ): Promise<{ success: boolean; data?: SavedVisualization | null; error?: string }> {
   try {
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
+
+    const rl = await checkRateLimit(userId, 'duplicate');
+    if (!rl.allowed) {
+      return { success: false, error: `Too many requests. Try again in ${rl.retryAfter ?? 60}s.` };
+    }
 
     const idValidation = validateObjectId(visualizationId);
     if (!idValidation.valid) return { success: false, error: idValidation.error };
@@ -841,6 +849,11 @@ export async function deleteVisualization(visualizationId: string) {
 
     if (!userId) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    const rl = await checkRateLimit(userId, 'delete');
+    if (!rl.allowed) {
+      return { success: false, error: `Too many requests. Try again in ${rl.retryAfter ?? 60}s.` };
     }
 
     // SECURITY: Validate ObjectId format

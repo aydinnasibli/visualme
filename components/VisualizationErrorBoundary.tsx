@@ -29,12 +29,12 @@ export class VisualizationErrorBoundary extends React.Component<Props, State> {
       return (
         this.props.fallback ?? (
           <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center p-6 gap-3">
-            <p className="text-white/40 text-sm">
+            <p className="text-ink-faint text-sm">
               Failed to render this visualization.
             </p>
             <button
               onClick={() => this.setState({ hasError: false })}
-              className="text-xs text-indigo-400 hover:underline"
+              className="text-xs text-accent hover:underline"
             >
               Try again
             </button>

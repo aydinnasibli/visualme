@@ -29,8 +29,8 @@ export function detectLiveSheetColumns(rawCsv: string): DatasetColumn[] {
   return detectColumns(result.data);
 }
 
-/** Keep embedded data well within VALIDATION_LIMITS.MAX_INPUT_LENGTH (10K chars). */
-const MAX_EMBED_CHARS = 6000;
+import { VALIDATION_LIMITS } from '@/lib/utils/constants';
+const MAX_EMBED_CHARS = VALIDATION_LIMITS.MAX_EMBED_CHARS;
 
 /** Truncate to a whole number of lines so the AI never sees a cut-off row. */
 function truncate(text: string): string {

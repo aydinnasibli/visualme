@@ -2,11 +2,9 @@
 
 import React from 'react';
 import Header from '@/components/dashboard/Header';
-import { useUser } from '@clerk/nextjs';
-import { Rocket, Database, Activity, Wrench, ChevronRight, ChevronDown, Mail, MessageSquare } from 'lucide-react';
+import { Rocket, Database, Activity, Wrench, ChevronRight, ChevronDown, Mail } from 'lucide-react';
 
 export default function HelpPage() {
-  const { user } = useUser();
 
   const faqs = [
     {
@@ -23,7 +21,7 @@ export default function HelpPage() {
     },
     {
       question: "How does the token system work?",
-      answer: "Every AI generation consumes tokens. Free users get 100 tokens/month, while Pro users get 2000. Tokens reset on the 1st of each month."
+      answer: "Every AI generation consumes tokens based on complexity. Your monthly token balance resets on the 1st of each month. Check your Settings page for your current usage and limits."
     }
   ];
 
@@ -36,7 +34,7 @@ export default function HelpPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 relative selection:bg-accent/20">
-      <Header user={user || null} label="Help" />
+      <Header label="Help" />
       <div className="max-w-4xl mx-auto p-6 pt-24">
         <h1 className="font-display text-3xl font-bold text-ink mb-2">Help & Support</h1>
         <p className="text-ink-muted mb-8">Find answers to common questions and learn how to use VisualMe.</p>
@@ -75,14 +73,13 @@ export default function HelpPage() {
           <h2 className="text-2xl font-bold text-ink mb-2">Still need help?</h2>
           <p className="text-ink-muted mb-6">Our support team is available to assist you with any questions or issues.</p>
           <div className="flex items-center justify-center gap-4">
-            <button className="px-6 py-2.5 bg-accent text-surface-0 font-medium rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2">
+            <a
+              href="mailto:aydinnasibli7@gmail.com"
+              className="px-6 py-2.5 bg-accent text-surface-0 font-medium rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2"
+            >
               <Mail className="w-5 h-5" />
               Contact Support
-            </button>
-            <button className="px-6 py-2.5 surface-control text-ink font-medium rounded-lg transition-colors flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Join Community
-            </button>
+            </a>
           </div>
         </div>
       </div>

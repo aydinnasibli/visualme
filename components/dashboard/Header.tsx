@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { UserResource } from '@clerk/shared/types';
+import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Settings, FolderOpen, LayoutDashboard, Menu, X, Zap } from 'lucide-react';
 import ThemeToggle from '@/components/dashboard/ThemeToggle';
 import { getUserLimits } from '@/lib/actions/profile';
@@ -42,13 +41,11 @@ function TokenBadge() {
 }
 
 interface HeaderProps {
-  user: UserResource | null;
   label?: string;
-  /** Page-specific action(s) rendered before the theme toggle (e.g. a tool launcher button). */
   actions?: React.ReactNode;
 }
 
-const Header = ({ user, label = 'Playground', actions }: HeaderProps) => {
+const Header = ({ label = 'Playground', actions }: HeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -131,15 +128,13 @@ const Header = ({ user, label = 'Playground', actions }: HeaderProps) => {
           )}
         </div>
 
-        <div className="w-9 h-9 rounded-full bg-surface-2 overflow-hidden relative cursor-pointer ring-1 ring-edge hover:ring-accent/50 transition-all shrink-0">
-          {user?.imageUrl ? (
-            <Image alt="User Profile" fill sizes="36px" className="object-cover" src={user.imageUrl} />
-          ) : (
-            <div className="w-full h-full bg-surface-3 flex items-center justify-center text-ink-muted font-semibold text-sm">
-              {user?.firstName?.[0] || 'A'}
-            </div>
-          )}
-        </div>
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: 'w-9 h-9',
+            },
+          }}
+        />
       </div>
     </header>
   );

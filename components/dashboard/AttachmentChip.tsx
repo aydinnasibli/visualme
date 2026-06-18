@@ -1,6 +1,6 @@
 "use client";
 
-import { FileSpreadsheet, FileJson, FileText, X } from 'lucide-react';
+import { FileSpreadsheet, FileJson, FileText, FileType, X } from 'lucide-react';
 import { formatFileSize, type FileAttachment } from '@/lib/utils/file-attachment';
 
 const EXTENSION_ICONS: Record<FileAttachment['extension'], React.ElementType> = {
@@ -8,6 +8,7 @@ const EXTENSION_ICONS: Record<FileAttachment['extension'], React.ElementType> = 
   json: FileJson,
   txt: FileText,
   xlsx: FileSpreadsheet,
+  pdf: FileType,
 };
 
 interface AttachmentChipProps {

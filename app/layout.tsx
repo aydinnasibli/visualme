@@ -12,9 +12,21 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://visualme.app'),
   title: "VisualMe - Visualize Anything in Seconds",
   description: "Transform ideas, raw data, or unstructured notes into professional diagrams. A refined workspace where your words become visuals instantly.",
   keywords: "visualization, AI, data visualization, charts, graphs, mind maps, flowcharts, timelines, diagrams",
+  openGraph: {
+    title: "VisualMe - Visualize Anything in Seconds",
+    description: "Transform ideas, raw data, or unstructured notes into professional diagrams.",
+    type: "website",
+    siteName: "VisualMe",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VisualMe - Visualize Anything in Seconds",
+    description: "Transform ideas, raw data, or unstructured notes into professional diagrams.",
+  },
 };
 
 export default function RootLayout({

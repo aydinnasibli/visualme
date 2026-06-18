@@ -1,7 +1,7 @@
 import { verifyWebhook } from '@clerk/nextjs/webhooks';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
-import { UserModel, UserUsageModel, VisualizationModel } from '@/lib/database/models';
+import { UserModel, UserUsageModel, VisualizationModel, DashboardModel } from '@/lib/database/models';
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,11 +56,11 @@ export async function POST(req: NextRequest) {
       const { id } = evt.data;
       if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
 
-      // Delete all user data atomically in parallel
       await Promise.all([
         UserModel.deleteOne({ clerkId: id }),
         UserUsageModel.deleteOne({ userId: id }),
         VisualizationModel.deleteMany({ userId: id }),
+        DashboardModel.deleteMany({ userId: id }),
       ]);
     }
 

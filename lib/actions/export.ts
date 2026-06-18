@@ -10,7 +10,8 @@ import {
   exportAsHTML,
 } from '@/lib/services/export-service';
 import { validateObjectId, sanitizeError } from '@/lib/utils/validation';
-import { sanitizeVisualization } from '@/lib/utils/helpers';
+import { sanitizeVisualization, sanitizeForPublicShare } from '@/lib/utils/helpers';
+import { checkRateLimit } from '@/lib/utils/rate-limit';
 import type { ExportFormat, SavedVisualization } from '@/lib/types/visualization';
 
 /**
@@ -29,6 +30,11 @@ export async function exportVisualization(
 
     if (!userId) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    const rl = await checkRateLimit(userId, 'export');
+    if (!rl.allowed) {
+      return { success: false, error: `Too many requests. Try again in ${rl.retryAfter ?? 60}s.` };
     }
 
     // SECURITY: Validate ObjectId format
@@ -102,8 +108,6 @@ export async function exportVisualization(
 export async function createShareLink(
   visualizationId: string,
   options: {
-    expiresIn?: number;
-    password?: string;
     isPublic: boolean;
   }
 ) {
@@ -112,6 +116,11 @@ export async function createShareLink(
 
     if (!userId) {
       return { success: false, error: 'Authentication required' };
+    }
+
+    const rl = await checkRateLimit(userId, 'share');
+    if (!rl.allowed) {
+      return { success: false, error: `Too many requests. Try again in ${rl.retryAfter ?? 60}s.` };
     }
 
     // SECURITY: Validate ObjectId format
@@ -183,7 +192,8 @@ export async function getSharedVisualization(shareId: string) {
       return { success: false, error: 'Shared visualization not found or is private' };
     }
 
-    const data = sanitizeVisualization(visualization);
+    const sanitized = sanitizeVisualization(visualization);
+    const data = sanitized ? sanitizeForPublicShare(sanitized) : null;
 
     return { success: true, data: data as SavedVisualization };
   } catch (error) {

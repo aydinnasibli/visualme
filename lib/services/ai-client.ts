@@ -27,7 +27,7 @@ function getOpenAIClient() {
     if (!apiKey) {
       throw new Error('OpenAI API key is not configured');
     }
-    openai = new OpenAI({ apiKey });
+    openai = new OpenAI({ apiKey, maxRetries: 3 });
   }
   return openai;
 }

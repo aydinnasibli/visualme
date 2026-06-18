@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Show, UserButton } from '@clerk/nextjs';
-import { ArrowRight, Sun, Moon, Monitor } from 'lucide-react';
+import { ArrowRight, Sun, Moon, Monitor, Menu, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useMounted } from '@/lib/hooks/useMounted';
 
@@ -26,6 +26,7 @@ function ThemeToggle() {
 /* ── Landing page nav/header ── */
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);
@@ -36,7 +37,7 @@ export default function Header() {
   return (
     <nav className="sticky top-0 z-50 transition-all duration-300" style={{ height: 52, background: scrolled ? 'var(--color-surface-0)' : 'transparent', backdropFilter: scrolled ? 'blur(14px)' : 'none', borderBottom: `1px solid ${scrolled ? 'var(--color-edge)' : 'transparent'}` }}>
       <div className="mx-auto px-6 h-full flex items-center justify-between" style={{ maxWidth: 1120 }}>
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/" aria-label="VisualMe homepage" className="flex items-center gap-2.5">
           <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden>
             <rect x="1"  y="1"  width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.9" />
             <rect x="12" y="1"  width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.4" />
@@ -52,8 +53,16 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <button
+            className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center border border-edge hover:bg-surface-2 transition-colors"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X size={16} className="text-ink-muted" /> : <Menu size={16} className="text-ink-muted" />}
+          </button>
           <Show when="signed-out">
-            <Link href="/sign-in" className="text-sm text-ink-faint hover:text-ink transition-colors px-2">Sign in</Link>
+            <Link href="/sign-in" className="hidden sm:inline text-sm text-ink-faint hover:text-ink transition-colors px-2">Sign in</Link>
             <Link href="/sign-up" className="px-4 py-2 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors">Start free</Link>
           </Show>
           <Show when="signed-in">
@@ -62,6 +71,16 @@ export default function Header() {
           </Show>
         </div>
       </div>
+      {mobileOpen && (
+        <div className="md:hidden border-t border-edge bg-surface-0 px-6 py-4 flex flex-col gap-3">
+          {[['#how-it-works', 'How it works'], ['#features', 'Features'], ['#pricing', 'Pricing']].map(([href, label]) => (
+            <a key={href} href={href} onClick={() => setMobileOpen(false)} className="text-sm text-ink-faint hover:text-ink transition-colors py-1">{label}</a>
+          ))}
+          <Show when="signed-out">
+            <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="text-sm text-ink-faint hover:text-ink transition-colors py-1">Sign in</Link>
+          </Show>
+        </div>
+      )}
     </nav>
   );
 }

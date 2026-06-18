@@ -4,6 +4,14 @@
 
 import { Resend } from 'resend';
 
+let _resend: Resend | null = null;
+function getResendClient(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  if (!_resend) _resend = new Resend(apiKey);
+  return _resend;
+}
+
 export interface DigestChartSummary {
   title: string;
   refreshed: boolean;
@@ -73,14 +81,13 @@ function buildHtml({ title, url, urlLabel, footerNote, charts }: DigestHtmlParam
  * failed send must not abort the cron loop for other items.
  */
 async function sendDigestEmail(params: { to: string; subject: string; html: string }): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
+  const resend = getResendClient();
+  if (!resend) {
     console.error('[email-service] RESEND_API_KEY not configured — skipping digest send');
     return;
   }
 
   try {
-    const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || 'VisualMe <onboarding@resend.dev>',
       to: [params.to],

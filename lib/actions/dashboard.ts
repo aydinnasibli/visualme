@@ -5,7 +5,8 @@ import { nanoid } from 'nanoid';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { DashboardModel, VisualizationModel } from '@/lib/database/models';
 import { validateObjectId, sanitizeError } from '@/lib/utils/validation';
-import { sanitizeVisualization } from '@/lib/utils/helpers';
+import { sanitizeVisualization, sanitizeForPublicShare } from '@/lib/utils/helpers';
+import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { fetchAndParseSheet } from '@/lib/utils/sheet-fetch';
 import { refreshChartData } from '@/lib/utils/chart-data-refresh';
 import type { EChartsOption } from 'echarts';
@@ -103,6 +104,11 @@ export async function createDashboard(
   try {
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
+
+    const rl = await checkRateLimit(userId, 'dashboard');
+    if (!rl.allowed) {
+      return { success: false, error: `Too many requests. Try again in ${rl.retryAfter ?? 60}s.` };
+    }
 
     if (!title?.trim()) return { success: false, error: 'Title is required' };
     if (title.length > 200) return { success: false, error: 'Title too long' };
@@ -259,10 +265,13 @@ export async function getSharedDashboard(dashboardId: string): Promise<{ success
       userId: dashboard.userId,
     }).lean();
 
-    const vizMap = new Map(vizDocs.map(v => [v._id.toString(), sanitizeVisualization(v)]));
+    const vizMap = new Map(vizDocs.map(v => {
+      const sanitized = sanitizeVisualization(v);
+      return [v._id.toString(), sanitized ? sanitizeForPublicShare(sanitized) : null];
+    }));
     const vizzes = vizIds.map(id => vizMap.get(id) ?? null);
 
-    return { success: true, data: { ...dashboard, vizzes } };
+    return { success: true, data: { ...dashboard, userId: '', vizzes } };
   } catch (error) {
     console.error('getSharedDashboard error:', error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch shared dashboard') };
@@ -321,6 +330,11 @@ export async function deleteDashboard(id: string) {
   try {
     const { userId } = await auth();
     if (!userId) return { success: false, error: 'Authentication required' };
+
+    const rl = await checkRateLimit(userId, 'delete');
+    if (!rl.allowed) {
+      return { success: false, error: `Too many requests. Try again in ${rl.retryAfter ?? 60}s.` };
+    }
 
     const idValidation = validateObjectId(id);
     if (!idValidation.valid) return { success: false, error: idValidation.error };

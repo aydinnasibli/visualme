@@ -81,8 +81,8 @@ const VisualizationSchema = new Schema<SavedVisualization>(
   }
 );
 
-// Indexes for better query performance
 VisualizationSchema.index({ userId: 1, createdAt: -1 });
+VisualizationSchema.index({ userId: 1, isSaved: 1, updatedAt: -1 });
 VisualizationSchema.index({ shareId: 1 }, { unique: true, sparse: true });
 VisualizationSchema.index({ isPublic: 1, createdAt: -1 });
 VisualizationSchema.index({ 'metadata.generatedAt': -1 });

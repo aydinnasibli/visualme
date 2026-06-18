@@ -322,6 +322,9 @@ export default function WelcomeModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Welcome to VisualMe"
             className="w-full max-w-[480px] rounded-2xl border shadow-[0_40px_80px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col"
             style={{ background: 'var(--color-surface-1)', borderColor: 'var(--color-edge)' }}
           >

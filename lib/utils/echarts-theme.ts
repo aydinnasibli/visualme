@@ -411,7 +411,7 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
   const hasSubtext  = hasTitle && Boolean((original.title as Record<string, unknown>)?.subtext);
   const legendTopOffset = isTopLegend && hasTitle ? (hasSubtext ? 68 : 48) : 8;
 
-  const themed: Record<string, unknown> = JSON.parse(JSON.stringify(original));
+  const themed: Record<string, unknown> = structuredClone(original);
 
   themed.color = theme.palette;
   themed.backgroundColor = theme.background;

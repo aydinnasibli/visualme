@@ -4,14 +4,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, User } from 'lucide-react'
 import UpdatePlanForm from '@/components/admin/UpdatePlanForm'
+import { PLAN_BADGE } from '@/lib/utils/admin-constants'
 
 export const dynamic = 'force-dynamic'
-
-const PLAN_BADGE: Record<string, string> = {
-  enterprise: 'bg-warning/15 text-warning',
-  pro: 'bg-accent/10 text-ink',
-  free: 'bg-surface-2 text-ink-faint',
-}
 
 export default async function AdminUserDetailPage({
   params,

@@ -491,9 +491,9 @@ export default function LandingPage() {
             <span className="text-sm font-bold text-ink">VisualMe</span>
           </div>
           <div className="flex gap-6">
-            {['Privacy', 'Terms', 'Contact'].map(l => (
-              <a key={l} href="#" className="text-xs text-ink-faint hover:text-ink-muted transition-colors">{l}</a>
-            ))}
+            <span className="text-xs text-ink-faint opacity-50 cursor-not-allowed" title="Coming soon">Privacy</span>
+            <span className="text-xs text-ink-faint opacity-50 cursor-not-allowed" title="Coming soon">Terms</span>
+            <a href="mailto:aydinnasibli7@gmail.com" className="text-xs text-ink-faint hover:text-ink-muted transition-colors">Contact</a>
           </div>
           <p className="text-xs text-ink-faint">© {new Date().getFullYear()} VisualMe</p>
         </div>

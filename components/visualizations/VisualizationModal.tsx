@@ -177,6 +177,9 @@ export default function VisualizationModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visualization details"
           className="surface-panel rounded-2xl w-full max-w-7xl h-[90vh] overflow-hidden flex flex-col shadow-[0_24px_64px_rgba(0,0,0,0.35)]"
           onClick={(e) => e.stopPropagation()}
         >

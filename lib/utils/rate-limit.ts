@@ -1,20 +1,24 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { getRedis } from '@/lib/utils/redis';
 
-export type RateLimitOperation = 'generate' | 'edit' | 'live-data';
+export type RateLimitOperation =
+  | 'generate' | 'edit' | 'live-data'
+  | 'save' | 'delete' | 'duplicate' | 'export' | 'share' | 'dashboard';
 
-/**
- * Sliding-window limits per operation type.
- * These protect against burst abuse while being generous enough for real usage.
- * Token balance (monthly cap) is a separate, orthogonal concern.
- */
 const WINDOW_CONFIG: Record<RateLimitOperation, { requests: number; window: `${number} ${'s' | 'm' | 'h' | 'd'}` }> = {
-  generate:   { requests: 10, window: '10 m' }, // 10 generations per 10 minutes
-  edit:       { requests: 15, window: '10 m' }, // 15 edits per 10 minutes
-  'live-data': { requests: 30, window: '1 m' }, // 30 live-data refreshes per minute, per IP
+  generate:    { requests: 10, window: '10 m' },
+  edit:        { requests: 15, window: '10 m' },
+  'live-data': { requests: 30, window: '1 m' },
+  save:        { requests: 20, window: '1 m' },
+  delete:      { requests: 10, window: '1 m' },
+  duplicate:   { requests: 10, window: '1 m' },
+  export:      { requests: 15, window: '1 m' },
+  share:       { requests: 10, window: '1 m' },
+  dashboard:   { requests: 10, window: '1 m' },
 };
 
 const _limiters = new Map<RateLimitOperation, Ratelimit>();
+let _redisWarningLogged = false;
 
 function getLimiter(op: RateLimitOperation): Ratelimit | null {
   const redis = getRedis();
@@ -40,7 +44,10 @@ export async function checkRateLimit(
   const limiter = getLimiter(op);
 
   if (!limiter) {
-    console.error('[rate-limit] Redis not configured — rate limiting is DISABLED. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.');
+    if (!_redisWarningLogged) {
+      console.warn('[rate-limit] Redis not configured — rate limiting is DISABLED. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.');
+      _redisWarningLogged = true;
+    }
     return { allowed: true, remaining: -1 };
   }
 

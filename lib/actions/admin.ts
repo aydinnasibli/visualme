@@ -295,6 +295,15 @@ export async function adminUpdateUserPlan(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await requireAdmin()
+
+    if (!targetClerkId || typeof targetClerkId !== 'string') {
+      return { success: false, error: 'Invalid user ID' }
+    }
+    const validPlans = ['free', 'pro', 'enterprise'] as const;
+    if (!validPlans.includes(plan)) {
+      return { success: false, error: 'Invalid plan' }
+    }
+
     await connectToDatabase()
 
     await Promise.all([
