@@ -28,11 +28,8 @@ export default clerkMiddleware(
       await auth.protect();
     }
   },
-  {
-    frontendApiProxy: {
-      enabled: true,
-    },
-  },
+  // TODO: Re-enable frontendApiProxy once visualme.vercel.app is added as a
+  // production domain in Clerk Dashboard and pk_live_ keys are set in Vercel env vars.
 );
 
 export const config = {
