@@ -665,10 +665,12 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
     try {
       const res = await publishDashboard(activeDashboardId, pub);
       if (!res.success) throw new Error(res.error);
-      const updated = res.data!;
-      setDashboards(prev => prev.map(d => d._id === updated._id ? updated : d));
-      // Reflect new isPublic/dashboardId in the view
-      setActiveDashboardId(updated._id!);
+      if ('data' in res && res.data) {
+        const updated = res.data;
+        setDashboards(prev => prev.map(d => d._id === updated._id ? updated : d));
+        setActiveDashboardId(updated._id!);
+        if ('warning' in res && res.warning) toast(res.warning);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update share settings');
     } finally {
@@ -719,12 +721,12 @@ export default function DashboardBuilder({ initialVizzes, initialDashboards }: D
 
   // ── export ──────────────────────────────────────────────────────────────
 
-  const handleExportPDF = useCallback(() => {
+  const handleExportPDF = useCallback(async () => {
     if (!gridRef.current) return;
     setExportOpen(false);
     setExporting('pdf');
     try {
-      const ok = exportDashboardAsPDF(gridRef.current, title);
+      const ok = await exportDashboardAsPDF(gridRef.current, title);
       if (!ok) { toast.error('No charts to export'); return; }
       toast.success('Exported as PDF');
     } catch {

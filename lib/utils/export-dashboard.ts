@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf';
 import {
   compositeChartCanvas,
   resolveOpaqueBackground,
@@ -27,7 +26,8 @@ function delay(ms: number) {
  * width), under a header with the dashboard title — a print/share-ready
  * snapshot of the dashboard as laid out on screen.
  */
-export function exportDashboardAsPDF(gridEl: HTMLElement, title: string): boolean {
+export async function exportDashboardAsPDF(gridEl: HTMLElement, title: string): Promise<boolean> {
+  const { jsPDF } = await import('jspdf');
   const containerRect = gridEl.getBoundingClientRect();
   if (!containerRect.width || !containerRect.height) return false;
 
@@ -94,7 +94,8 @@ const PDF_CAPTION_HEIGHT = 64;
  * visualization. When `caption` is provided (a verified stat test result),
  * it's printed below the chart.
  */
-export function exportChartAsPDF(area: HTMLElement, title: string, caption?: string): boolean {
+export async function exportChartAsPDF(area: HTMLElement, title: string, caption?: string): Promise<boolean> {
+  const { jsPDF } = await import('jspdf');
   const canvas = compositeChartCanvas(area);
   if (!canvas) return false;
 

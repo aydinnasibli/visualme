@@ -27,7 +27,7 @@ function getOpenAIClient() {
     if (!apiKey) {
       throw new Error('OpenAI API key is not configured');
     }
-    openai = new OpenAI({ apiKey, maxRetries: 3 });
+    openai = new OpenAI({ apiKey, maxRetries: 3, timeout: 30_000 });
   }
   return openai;
 }
@@ -55,8 +55,13 @@ export async function callOpenAIJSON<T>(
       throw new Error('No response from OpenAI');
     }
 
+    const parsed = JSON.parse(responseContent);
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new Error('AI returned invalid response format');
+    }
+
     return {
-      data: JSON.parse(responseContent) as T,
+      data: parsed as T,
       promptTokens:     completion.usage?.prompt_tokens     ?? 0,
       completionTokens: completion.usage?.completion_tokens ?? 0,
     };

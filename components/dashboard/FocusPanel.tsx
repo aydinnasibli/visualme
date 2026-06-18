@@ -264,12 +264,12 @@ export default function FocusPanel({
     }
   }, [thread, statRun]);
 
-  const handleExportPDF = useCallback(() => {
+  const handleExportPDF = useCallback(async () => {
     if (!vizAreaRef.current || !thread) return;
     setExportOpen(false);
     try {
       const caption = statRun?.result ? formatStatResultSummary(statRun.result) : undefined;
-      const ok = exportChartAsPDF(vizAreaRef.current, thread.title, caption);
+      const ok = await exportChartAsPDF(vizAreaRef.current, thread.title, caption);
       if (!ok) { toast.error('No chart canvas found'); return; }
       toast.success('Exported as PDF');
     } catch {

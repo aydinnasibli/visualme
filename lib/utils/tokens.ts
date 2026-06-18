@@ -27,11 +27,22 @@ function getNextResetDate(): Date {
 async function refreshTokensIfNeeded(usage: HydratedDocument<UserUsage>): Promise<void> {
   const now = new Date();
   if (now >= new Date(usage.tokenResetDate)) {
-    const newLimit = getTokenLimitForTier(usage.tier);
-    usage.tokensUsed = 0;
-    usage.tokensLimit = newLimit;
-    usage.tokenResetDate = getNextResetDate();
-    await usage.save();
+    const result = await UserUsageModel.findOneAndUpdate(
+      { _id: usage._id, tokenResetDate: { $lte: now } },
+      {
+        $set: {
+          tokensUsed: 0,
+          tokensLimit: getTokenLimitForTier(usage.tier),
+          tokenResetDate: getNextResetDate(),
+        },
+      },
+      { new: true }
+    );
+    if (result) {
+      usage.tokensUsed = result.tokensUsed;
+      usage.tokensLimit = result.tokensLimit;
+      usage.tokenResetDate = result.tokenResetDate;
+    }
   }
 }
 

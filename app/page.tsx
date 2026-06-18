@@ -1,150 +1,40 @@
-'use client';
-
 import Link from 'next/link';
 import { Bricolage_Grotesque } from 'next/font/google';
 import {
   ArrowRight, ArrowUpRight, Check,
   Upload, MessageSquare, Palette, Code2, BarChart3, Share2,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import ReactECharts from 'echarts-for-react';
 import { CHART_TYPES } from '@/lib/utils/chart-types';
-import { useMounted } from '@/lib/hooks/useMounted';
 import Header from '@/components/layout/Header';
+import HeroBg from '@/components/landing/HeroBg';
+import HeroMockup from '@/components/landing/HeroMockup';
+import ChartShowcase from '@/components/landing/ChartShowcase';
+import type { Metadata } from 'next';
 
 const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
 });
 
-/* ── ECharts showcase ── */
-function buildOption(kind: string, isDark: boolean) {
-  const a = isDark ? '#5B8FFF' : '#1A5DD9';
-  const b = isDark ? '#3ECFB8' : '#0E9E82';
-  const c = isDark ? '#FFC144' : '#C87800';
-  const d = isDark ? '#E86452' : '#B83A28';
-  const e = isDark ? '#C47CF5' : '#8644E0';
-  const tx = isDark ? '#8899B4' : '#5C7090';
-  const gr = isDark ? '#1E2A3C' : '#D4DBE8';
-  const ax = { axisLabel: { color: tx, fontSize: 10 }, axisLine: { lineStyle: { color: gr } }, splitLine: { lineStyle: { color: gr, type: 'dashed' as const } }, axisTick: { show: false } };
-
-  switch (kind) {
-    case 'bar': return { backgroundColor: 'transparent', grid: { top: 14, right: 14, bottom: 28, left: 38 }, xAxis: { type: 'category', data: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], ...ax }, yAxis: { type: 'value', ...ax, axisLine: { show: false } }, series: [{ type: 'bar', data: [62, 80, 58, 92, 71], itemStyle: { color: a, borderRadius: [3, 3, 0, 0] }, barMaxWidth: 32 }] };
-    case 'line': return { backgroundColor: 'transparent', grid: { top: 14, right: 14, bottom: 28, left: 38 }, xAxis: { type: 'category', data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], ...ax }, yAxis: { type: 'value', ...ax, axisLine: { show: false } }, series: [{ type: 'line', smooth: true, data: [18, 36, 28, 58, 44, 72], itemStyle: { color: a }, lineStyle: { color: a, width: 2 }, areaStyle: { color: a, opacity: 0.12 }, symbolSize: 5 }, { type: 'line', smooth: true, data: [32, 22, 48, 30, 62, 42], itemStyle: { color: b }, lineStyle: { color: b, width: 2 }, areaStyle: { color: b, opacity: 0.12 }, symbolSize: 5 }] };
-    case 'graph': return { backgroundColor: 'transparent', series: [{ type: 'graph', layout: 'force', roam: false, animation: false, force: { repulsion: 80, gravity: 0.06, edgeLength: 55 }, data: [{ name: 'Core', symbolSize: 38, itemStyle: { color: a } }, { name: 'API', symbolSize: 22, itemStyle: { color: b } }, { name: 'DB', symbolSize: 22, itemStyle: { color: c } }, { name: 'Auth', symbolSize: 18, itemStyle: { color: d } }, { name: 'Cache', symbolSize: 18, itemStyle: { color: e } }, { name: 'Queue', symbolSize: 18, itemStyle: { color: b } }], links: [{ source: 'Core', target: 'API' }, { source: 'Core', target: 'DB' }, { source: 'Core', target: 'Auth' }, { source: 'Core', target: 'Cache' }, { source: 'Core', target: 'Queue' }, { source: 'API', target: 'Auth' }, { source: 'DB', target: 'Cache' }], label: { show: true, fontSize: 9, color: tx, position: 'inside' }, lineStyle: { color: gr, width: 1.2 }, emphasis: { focus: 'adjacency' } }] };
-    case 'pie': return { backgroundColor: 'transparent', color: [a, b, c, d, e], series: [{ type: 'pie', radius: ['38%', '66%'], center: ['50%', '50%'], data: [{ name: 'A', value: 38 }, { name: 'B', value: 26 }, { name: 'C', value: 20 }, { name: 'D', value: 16 }], label: { show: false }, itemStyle: { borderWidth: 2, borderColor: isDark ? '#111827' : '#F0F2F8' } }] };
-    case 'radar': return { backgroundColor: 'transparent', radar: { indicator: [{ name: 'Speed', max: 100 }, { name: 'Quality', max: 100 }, { name: 'Coverage', max: 100 }, { name: 'Cost', max: 100 }, { name: 'Scale', max: 100 }], axisName: { color: tx, fontSize: 9 }, splitLine: { lineStyle: { color: gr } }, splitArea: { show: false }, axisLine: { lineStyle: { color: gr } }, radius: '62%' }, series: [{ type: 'radar', data: [{ value: [78, 90, 65, 72, 88], lineStyle: { color: a }, itemStyle: { color: a }, areaStyle: { color: a, opacity: 0.18 } }, { value: [58, 70, 88, 50, 70], lineStyle: { color: b }, itemStyle: { color: b }, areaStyle: { color: b, opacity: 0.18 } }] }] };
-    case 'treemap': return { backgroundColor: 'transparent', series: [{ type: 'treemap', width: '98%', height: '92%', top: '4%', left: '1%', roam: false, nodeClick: false, breadcrumb: { show: false }, label: { fontSize: 11, color: '#fff', fontWeight: 600 }, itemStyle: { gapWidth: 2, borderRadius: 3 }, data: [{ name: 'Analytics', value: 42, itemStyle: { color: a } }, { name: 'Reports', value: 32, itemStyle: { color: b } }, { name: 'Dashboards', value: 24, itemStyle: { color: c } }, { name: 'Alerts', value: 18, itemStyle: { color: d } }, { name: 'Exports', value: 14, itemStyle: { color: e } }, { name: 'Settings', value: 10, itemStyle: { color: isDark ? '#4A7FC4' : '#3560A8' } }] }] };
-    default: return {};
-  }
-}
-
-const SHOWCASE = [
-  { kind: 'bar', label: 'Bar Chart' }, { kind: 'line', label: 'Line / Area' },
-  { kind: 'graph', label: 'Network Graph' }, { kind: 'pie', label: 'Donut / Pie' },
-  { kind: 'radar', label: 'Radar' }, { kind: 'treemap', label: 'Treemap' },
-] as const;
-
-function ShowcaseChart({ kind }: { kind: string }) {
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  if (!mounted) return <div className="w-full h-full rounded-lg bg-surface-1 animate-pulse" />;
-  return <ReactECharts option={buildOption(kind, resolvedTheme !== 'light')} notMerge opts={{ renderer: 'canvas' }} style={{ height: '100%', width: '100%', minHeight: 160 }} />;
-}
-
-/* ── Hero mockup — a convincing snapshot of the real product ── */
-function HeroMockup() {
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-  const isDark = mounted ? resolvedTheme !== 'light' : true;
-
-  const heroChartOption = buildOption('bar', isDark);
-
-  const thread = [
-    { label: 'Q1–Q4 revenue by region', type: 'Bar Chart', active: false },
-    { label: 'Compare PostgreSQL vs MySQL vs Mongo', type: 'Bar Chart', active: true },
-    { label: 'Microservices architecture map', type: 'Network Graph', active: false },
-  ];
-
-  const chatMessages = [
-    { role: 'user' as const, text: 'Make it horizontal and sort by value' },
-    { role: 'ai' as const,   text: 'Done — sorted descending, bars now horizontal.' },
-    { role: 'user' as const, text: 'Add a reference line at the average' },
-  ];
-
-  return (
-    <div className="w-full rounded-xl overflow-hidden border border-edge" style={{ background: 'var(--color-surface-0)' }}>
-      {/* Titlebar */}
-      <div className="flex items-center gap-2 px-4 h-9 border-b border-edge bg-surface-1">
-        <div className="flex gap-1.5">
-          {['oklch(56% 0.20 23/0.5)', 'oklch(64% 0.15 92/0.5)', 'oklch(60% 0.15 152/0.5)'].map((c, i) => (
-            <div key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />
-          ))}
-        </div>
-        <div className="flex-1 flex justify-center">
-          <span className="px-3 py-0.5 rounded text-[10px] text-ink-faint bg-surface-2 border border-edge">app.visualme.ai/dashboard</span>
-        </div>
-      </div>
-
-      {/* 3-panel body */}
-      <div className="flex" style={{ height: 320 }}>
-        {/* Thread sidebar */}
-        <div className="hidden md:flex shrink-0 flex-col border-r border-edge bg-surface-1" style={{ width: 170 }}>
-          <div className="px-3 h-8 flex items-center border-b border-edge">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-ink-faint">Thread</span>
-          </div>
-          <div className="flex-1 p-2 space-y-1.5 overflow-hidden">
-            {thread.map((item, i) => (
-              <div key={i} className="rounded-lg p-2 border transition-colors"
-                style={{ background: item.active ? 'oklch(72% 0.13 55 / 0.1)' : 'transparent', borderColor: item.active ? 'oklch(72% 0.13 55)' : 'var(--color-edge)', opacity: item.active ? 1 : 0.55 }}>
-                <p className="text-[9px] font-semibold truncate" style={{ color: item.active ? 'var(--color-accent)' : 'var(--color-ink-faint)', maxWidth: 128 }}>{item.label}</p>
-                <p className="text-[8px] text-ink-faint mt-0.5">{item.type}</p>
-              </div>
-            ))}
-          </div>
-          <div className="p-2 border-t border-edge">
-            <div className="rounded-lg px-2 py-1.5 text-[8px] text-ink-faint bg-surface-2 border border-edge">Describe what to visualize...</div>
-          </div>
-        </div>
-
-        {/* Chart canvas */}
-        <div className="flex-1 flex flex-col min-w-0 md:border-r border-edge">
-          <div className="h-8 px-3 flex items-center gap-2 border-b border-edge bg-surface-1">
-            <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-surface-3 border border-edge text-ink-muted">Bar Chart</span>
-            <span className="text-[9px] flex-1 truncate text-ink-muted">Compare PostgreSQL vs MySQL vs Mongo</span>
-            {['Save', 'Share', 'Export'].map(a => (
-              <span key={a} className="px-1.5 py-0.5 rounded text-[8px] text-ink-faint bg-surface-2 border border-edge">{a}</span>
-            ))}
-          </div>
-          <div className="flex-1 p-3">
-            {mounted ? (
-              <ReactECharts option={heroChartOption} notMerge opts={{ renderer: 'canvas' }} style={{ height: '100%', width: '100%' }} />
-            ) : (
-              <div className="w-full h-full bg-surface-1 rounded animate-pulse" />
-            )}
-          </div>
-        </div>
-
-        {/* Refinement chat */}
-        <div className="hidden md:flex shrink-0 flex-col" style={{ width: 180 }}>
-          <div className="h-8 px-3 flex items-center border-b border-edge bg-surface-1">
-            <span className="text-[9px] font-semibold text-ink-faint">Refine</span>
-          </div>
-          <div className="flex-1 p-2 space-y-2 overflow-hidden">
-            {chatMessages.map((msg, i) => (
-              <div key={i} className={`rounded-lg px-2 py-1.5 text-[8.5px] leading-relaxed ${msg.role === 'user' ? 'bg-surface-2 border border-edge text-ink-muted ml-2' : 'bg-accent/10 border border-edge text-ink-faint mr-2'}`}>
-                {msg.text}
-              </div>
-            ))}
-          </div>
-          <div className="p-2 border-t border-edge">
-            <div className="rounded-lg px-2 py-1.5 text-[8px] text-ink-faint bg-surface-2 border border-edge">Ask or adjust...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* ── SEO metadata ── */
+export const metadata: Metadata = {
+  title: 'VisualMe — AI-Powered Data Visualization',
+  description:
+    'Describe what you want to see. VisualMe picks the right chart, generates it in seconds, and refines it with you in plain English. Upload CSV, JSON, or connect Google Sheets. Free to use.',
+  openGraph: {
+    title: 'VisualMe — AI-Powered Data Visualization',
+    description:
+      'Describe it. Refine it. Done. AI-powered charts, dashboards, and statistical analysis from plain English.',
+    type: 'website',
+    url: 'https://visualme.ai',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'VisualMe — AI-Powered Data Visualization',
+    description:
+      'Describe it. Refine it. Done. AI-powered charts, dashboards, and statistical analysis from plain English.',
+  },
+};
 
 /* ── Refinement conversation demo ── */
 const REFINE_STEPS = [
@@ -256,19 +146,13 @@ const USE_CASES = [
 
 /* ── Landing page ── */
 export default function LandingPage() {
-  const { resolvedTheme } = useTheme();
-  const mounted = useMounted();
-
-  const isDark = mounted ? resolvedTheme !== 'light' : true;
-  const dotColor = isDark ? 'oklch(22% 0.010 252)' : 'oklch(84% 0.012 252)';
-
   return (
     <div className={`${bricolage.className} bg-surface-0 text-ink overflow-x-hidden`}>
 
       <Header />
 
       {/* ── Hero ── */}
-      <section className="relative" style={{ paddingTop: 80, paddingBottom: 96, backgroundImage: `radial-gradient(circle, ${dotColor} 1px, transparent 1px)`, backgroundSize: '24px 24px' }}>
+      <HeroBg>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-14">
             <div>
@@ -299,7 +183,7 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
+      </HeroBg>
 
       {/* ── How it works: the refinement loop ── */}
       <section id="how-it-works" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
@@ -376,16 +260,7 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-            {SHOWCASE.map(({ kind, label }) => (
-              <div key={kind} className="group relative rounded-xl overflow-hidden border border-edge bg-surface-0 hover:border-surface-3 transition-colors" style={{ aspectRatio: '4/3' }}>
-                <ShowcaseChart kind={kind} />
-                <div className="absolute bottom-0 left-0 right-0 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-1/90 border-t border-edge">
-                  <span className="text-xs font-semibold text-ink">{label}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <ChartShowcase />
           <div className="flex flex-wrap gap-2">
             {CHART_TYPES.map(t => (
               <span key={t.series} className="text-xs px-3 py-1.5 rounded-full bg-surface-0 border border-edge text-ink-faint">{t.label}</span>
@@ -434,7 +309,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {PLANS.map(plan => (
-              <div key={plan.name} className="rounded-2xl p-8 flex flex-col relative border" style={{ background: plan.highlight ? 'var(--color-accent)0D' : 'var(--color-surface-0)', borderColor: plan.highlight ? 'var(--color-accent)' : 'var(--color-edge)' }}>
+              <div key={plan.name} className="rounded-2xl p-8 flex flex-col relative border" style={{ background: plan.highlight ? 'oklch(72% 0.13 55 / 0.05)' : 'var(--color-surface-0)', borderColor: plan.highlight ? 'var(--color-accent)' : 'var(--color-edge)' }}>
                 {plan.highlight && <span className="absolute -top-3 left-6 px-3 py-0.5 rounded-full text-xs font-bold border border-edge text-ink-muted bg-surface-0">Most popular</span>}
                 <div className="mb-7">
                   <p className="text-sm font-semibold mb-1 text-ink-faint">{plan.name}</p>
@@ -462,7 +337,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="relative border-t border-b" style={{ paddingTop: 88, paddingBottom: 88, background: 'var(--color-accent)0D', borderColor: 'var(--color-accent)33' }}>
+      <section className="relative border-t border-b" style={{ paddingTop: 88, paddingBottom: 88, background: 'oklch(72% 0.13 55 / 0.05)', borderColor: 'oklch(72% 0.13 55 / 0.2)' }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <div style={{ maxWidth: '52ch' }}>
             <h2 className="font-bold tracking-tight mb-5 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
@@ -495,7 +370,7 @@ export default function LandingPage() {
             <span className="text-xs text-ink-faint opacity-50 cursor-not-allowed" title="Coming soon">Terms</span>
             <a href="mailto:aydinnasibli7@gmail.com" className="text-xs text-ink-faint hover:text-ink-muted transition-colors">Contact</a>
           </div>
-          <p className="text-xs text-ink-faint">© {new Date().getFullYear()} VisualMe</p>
+          <p className="text-xs text-ink-faint">&copy; {new Date().getFullYear()} VisualMe</p>
         </div>
       </footer>
 

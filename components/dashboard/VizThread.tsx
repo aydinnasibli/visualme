@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Sparkles, ArrowUp, CheckCircle2, Paperclip, Loader2, LayoutGrid, Sigma, Trash2,
@@ -74,7 +74,7 @@ export interface ThreadEntry {
 }
 
 /* ── Thread card ── */
-function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; active: boolean; onClick: () => void; onDelete: (id: string) => void }) {
+const ThreadCard = memo(function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; active: boolean; onClick: () => void; onDelete: (id: string) => void }) {
   const editCount = entry.chatHistory.filter(m => m.role === 'user').length;
   const isLive = Boolean(entry.liveData?.url);
   const { Icon: ChartIcon } = getChartTypeInfo(entry.spec.option);
@@ -144,7 +144,7 @@ function ThreadCard({ entry, active, onClick, onDelete }: { entry: ThreadEntry; 
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Loading card ── */
 function LoadingCard({ prompt }: { prompt: string }) {

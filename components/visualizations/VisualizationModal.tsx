@@ -60,7 +60,26 @@ export default function VisualizationModal({
     return () => document.removeEventListener('mousedown', close);
   }, [exportOpen]);
 
-  if (!currentVisualization) return null;
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!currentVisualization) return;
+    const el = modalRef.current;
+    if (!el) return;
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = el.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    window.addEventListener('keydown', handleTab);
+    return () => window.removeEventListener('keydown', handleTab);
+  }, [currentVisualization]);
 
   const handleExportData = async (format: 'json' | 'csv' | 'html') => {
     if (!currentVisualization?._id) return;
@@ -91,11 +110,11 @@ export default function VisualizationModal({
     } catch { toast.error('PNG export failed'); }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const area = document.querySelector('[data-viz-area]') as HTMLElement;
     if (!area) { toast.error('Could not capture visualization'); return; }
     try {
-      const ok = exportChartAsPDF(area, currentVisualization?.title || 'visualization');
+      const ok = await exportChartAsPDF(area, currentVisualization?.title || 'visualization');
       if (!ok) { toast.error('No chart canvas found'); return; }
       toast.success('Exported as PDF');
     } catch { toast.error('PDF export failed'); }
@@ -164,8 +183,11 @@ export default function VisualizationModal({
     setIsEditMode(!isEditMode);
   };
 
+  const viz = currentVisualization;
+
   return (
     <AnimatePresence>
+      {viz && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -174,6 +196,7 @@ export default function VisualizationModal({
         onClick={onClose}
       >
         <motion.div
+          ref={modalRef}
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -186,7 +209,7 @@ export default function VisualizationModal({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-edge">
             <div>
-              <h2 className="text-2xl font-bold text-ink mb-1">{currentVisualization.title}</h2>
+              <h2 className="text-2xl font-bold text-ink mb-1">{viz.title}</h2>
               <p className="text-sm text-ink-faint flex items-center gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5" /> Chart
               </p>
@@ -290,13 +313,14 @@ export default function VisualizationModal({
               {/* Visualization Content */}
               <div className="flex-1 overflow-hidden min-h-0 relative bg-surface-0" data-viz-area>
                 <VisualizationErrorBoundary>
-                  <EChartsRenderer spec={currentVisualization.spec} className="w-full h-full p-6" />
+                  <EChartsRenderer spec={viz.spec} className="w-full h-full p-6" />
                 </VisualizationErrorBoundary>
               </div>
             </div>
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 }

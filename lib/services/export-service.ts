@@ -208,7 +208,7 @@ export function exportAsHTML(visualization: SavedVisualization): string {
       color: rgba(255,255,255,0.3);
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
   <div id="chart"></div>

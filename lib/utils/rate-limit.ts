@@ -20,6 +20,50 @@ const WINDOW_CONFIG: Record<RateLimitOperation, { requests: number; window: `${n
 const _limiters = new Map<RateLimitOperation, Ratelimit>();
 let _redisWarningLogged = false;
 
+const _memoryStore = new Map<string, number[]>();
+let _memoryCleanupCounter = 0;
+
+function inMemoryRateLimit(
+  key: string,
+  op: RateLimitOperation
+): { allowed: boolean; remaining: number } {
+  const config = WINDOW_CONFIG[op];
+  const windowMs = parseWindowMs(config.window);
+  const now = Date.now();
+
+  const timestamps = _memoryStore.get(key) ?? [];
+  const valid = timestamps.filter(t => t > now - windowMs);
+  if (valid.length >= config.requests) {
+    _memoryStore.set(key, valid);
+    return { allowed: false, remaining: 0 };
+  }
+  valid.push(now);
+  _memoryStore.set(key, valid);
+
+  if (++_memoryCleanupCounter % 100 === 0) {
+    const cutoff = now - 600_000;
+    for (const [k, v] of _memoryStore) {
+      const fresh = v.filter(t => t > cutoff);
+      if (fresh.length === 0) _memoryStore.delete(k);
+      else _memoryStore.set(k, fresh);
+    }
+  }
+
+  return { allowed: true, remaining: config.requests - valid.length };
+}
+
+function parseWindowMs(window: string): number {
+  const [num, unit] = window.split(' ');
+  const n = parseInt(num, 10);
+  switch (unit) {
+    case 's': return n * 1000;
+    case 'm': return n * 60_000;
+    case 'h': return n * 3_600_000;
+    case 'd': return n * 86_400_000;
+    default: return n * 60_000;
+  }
+}
+
 function getLimiter(op: RateLimitOperation): Ratelimit | null {
   const redis = getRedis();
   if (!redis) return null;
@@ -45,10 +89,10 @@ export async function checkRateLimit(
 
   if (!limiter) {
     if (!_redisWarningLogged) {
-      console.warn('[rate-limit] Redis not configured — rate limiting is DISABLED. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.');
+      console.warn('[rate-limit] Redis not configured — using in-memory fallback. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.');
       _redisWarningLogged = true;
     }
-    return { allowed: true, remaining: -1 };
+    return inMemoryRateLimit(`${op}:${userId}`, op);
   }
 
   try {
@@ -66,7 +110,7 @@ export async function checkRateLimit(
   } catch (err) {
     // Redis unavailable — fail open rather than blocking legitimate users.
     // Token balance acts as the financial backstop.
-    console.error('[rate-limit] Redis unavailable, failing open:', err);
-    return { allowed: true, remaining: -1 };
+    console.error('[rate-limit] Redis unavailable, using in-memory fallback:', err);
+    return inMemoryRateLimit(`${op}:${userId}`, op);
   }
 }

@@ -1,7 +1,7 @@
 'use server';
 
 import { after } from 'next/server';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel, UserUsageModel, UserModel } from '@/lib/database/models';
@@ -125,37 +125,33 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
     const resolvedStyleEffect: ChartStyleEffect | undefined =
       styleEffect ?? detectedSelection?.variant?.styleEffect;
 
-    // ── Narrative summary — separate AI call grounded in the actual generated
-    // data (not the raw prompt), so the spec-composition prompt above stays
-    // focused purely on chart structure/quality. Best-effort: a failure here
-    // shouldn't block the chart itself.
-    let narrative: string | undefined;
-    let narrativePromptTokens = 0;
-    let narrativeCompletionTokens = 0;
-    try {
-      const narrativeResult = await generateNarrative(data.option, data.title);
-      narrative = narrativeResult.data.narrative;
-      narrativePromptTokens = narrativeResult.promptTokens;
-      narrativeCompletionTokens = narrativeResult.completionTokens;
-    } catch (error) {
-      console.error('Error generating narrative:', error);
-    }
-
-    // ── Store in cache after the response — `after()` keeps the Vercel function
-    // alive past the response boundary so the write is guaranteed to complete.
-    after(() => setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason, narrative }).catch(() => {}));
-
     // ── Deduct actual cost — if this fails (race condition) block the result ──
     // The atomic $expr condition prevents overdraft. If it fails, another
     // concurrent request already consumed the remaining balance between our
     // pre-check and this deduction. Return an error — never hand out the
     // result for free.
-    const actualCost = calcInternalTokens(promptTokens + narrativePromptTokens, completionTokens + narrativeCompletionTokens);
+    const actualCost = calcInternalTokens(promptTokens, completionTokens);
+
     const deduction = await deductTokens(userId, actualCost);
     if (!deduction.success) {
       console.error(`[billing] post-AI deduction failed userId=${userId} cost=${actualCost}: ${deduction.error}`);
       return fail('Your token balance was depleted by a concurrent request. Please try again.');
     }
+
+    // ── Narrative + cache — run after the response so the chart is delivered
+    // immediately. Narrative tokens are low-cost and best-effort.
+    // Registered after deduction succeeds to avoid burning API cost for rejected requests.
+    after(async () => {
+      try {
+        const narrativeResult = await generateNarrative(data.option, data.title);
+        const narrative = narrativeResult.data.narrative;
+        const narrativeCost = calcInternalTokens(narrativeResult.promptTokens, narrativeResult.completionTokens);
+        await deductTokens(userId, narrativeCost).catch(() => {});
+        await setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason, narrative }).catch(() => {});
+      } catch {
+        await setCachedVisualization(input, { title: data.title, option: data.option, reason: data.reason }).catch(() => {});
+      }
+    });
     await Promise.all([
       UserUsageModel.updateOne({ userId }, { $inc: { visualizationsCreated: 1 } }),
       UserModel.updateOne({ clerkId: userId }, { $inc: { usageCount: 1 } }),
@@ -168,7 +164,6 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       theme: defaultTheme,
       title: data.title,
       styleEffect: resolvedStyleEffect,
-      narrative,
     };
 
     return {
@@ -415,7 +410,8 @@ export async function saveVisualization(
     const userUsage = await UserUsageModel.findOne({ userId });
     const tier = userUsage?.tier || 'free';
 
-    let visualization;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let visualization: any;
 
     // Check if we are updating by ID
     if (id) {
@@ -450,25 +446,47 @@ export async function saveVisualization(
          visualization.isSaved = true;
          visualization.sessionExpiresAt = undefined;
 
+         visualization.title = title;
+         visualization.spec = spec;
+         visualization.metadata = metadata;
+         visualization.isPublic = isPublic;
+         if (history) {
+           visualization.history = history.slice(-100).map(h => ({
+             ...h,
+             timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
+           }));
+         }
+         visualization.updatedAt = new Date();
+
          const visualizationIdStr = visualization._id.toString();
          if (!user.savedVisualizations.some(vId => vId.toString() === visualizationIdStr)) {
            user.savedVisualizations.push(new Types.ObjectId(visualization._id));
-           await user.save();
+           const session = await mongoose.startSession();
+           try {
+             await session.withTransaction(async () => {
+               await visualization.save({ session });
+               await user.save({ session });
+             });
+           } finally {
+             session.endSession();
+           }
+         } else {
+           await visualization.save();
          }
+       } else {
+         visualization.title = title;
+         visualization.spec = spec;
+         visualization.metadata = metadata;
+         visualization.isPublic = isPublic;
+         if (history) {
+           visualization.history = history.slice(-100).map(h => ({
+             ...h,
+             timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
+           }));
+         }
+         visualization.updatedAt = new Date();
+         await visualization.save();
        }
-
-       visualization.title = title; // Update title if changed
-       visualization.spec = spec;
-       visualization.metadata = metadata;
-       visualization.isPublic = isPublic;
-       if (history) {
-         visualization.history = history.slice(-100).map(h => ({
-           ...h,
-           timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
-         }));
-       }
-       visualization.updatedAt = new Date();
-       await visualization.save();
     } else {
       // Check for existing visualization with same title (Legacy behavior)
       // Only do this if we didn't search by ID.
@@ -506,11 +524,21 @@ export async function saveVisualization(
           const visualizationIdStr = existingVisualization._id.toString();
           if (!user.savedVisualizations.some(vId => vId.toString() === visualizationIdStr)) {
             user.savedVisualizations.push(new Types.ObjectId(existingVisualization._id));
-            await user.save();
+            const session = await mongoose.startSession();
+            try {
+              await session.withTransaction(async () => {
+                await existingVisualization.save({ session });
+                await user.save({ session });
+              });
+            } finally {
+              session.endSession();
+            }
+          } else {
+            await existingVisualization.save();
           }
+        } else {
+          await existingVisualization.save();
         }
-
-        await existingVisualization.save();
 
         visualization = existingVisualization;
       } else {
@@ -528,8 +556,8 @@ export async function saveVisualization(
           };
         }
 
-        // Create new visualization
-        visualization = await VisualizationModel.create({
+        // Create new visualization + update user atomically
+        visualization = new VisualizationModel({
           userId,
           title,
           spec,
@@ -542,13 +570,15 @@ export async function saveVisualization(
            })) : [],
         });
 
-        // Update user's saved visualizations for new visualization only
-        const visualizationIdStr = visualization._id.toString();
-        const exists = user.savedVisualizations.some(id => id.toString() === visualizationIdStr);
-
-        if (!exists) {
-          user.savedVisualizations.push(new Types.ObjectId(visualization._id));
-          await user.save();
+        user.savedVisualizations.push(new Types.ObjectId(visualization._id));
+        const session = await mongoose.startSession();
+        try {
+          await session.withTransaction(async () => {
+            await visualization.save({ session });
+            await user.save({ session });
+          });
+        } finally {
+          session.endSession();
         }
       }
     }
@@ -579,7 +609,7 @@ export async function getUserVisualizations(limit?: number) {
     await connectToDatabase();
 
     const query = VisualizationModel.find({ userId, isSaved: { $ne: false } })
-      .select('_id userId title spec metadata isPublic createdAt updatedAt history liveData schedule')
+      .select('_id userId title spec metadata isPublic createdAt updatedAt liveData schedule shareId')
       .sort({ updatedAt: -1 });
 
     const visualizations = await (limit ? query.limit(limit) : query).lean();
@@ -833,9 +863,16 @@ export async function duplicateVisualization(
       isSaved: true,
       history: [],
     });
-    await copy.save();
     user.savedVisualizations.push(new Types.ObjectId(copy._id));
-    await user.save();
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await copy.save({ session });
+        await user.save({ session });
+      });
+    } finally {
+      session.endSession();
+    }
 
     return { success: true, data: sanitizeVisualization(copy) };
   } catch (error) {

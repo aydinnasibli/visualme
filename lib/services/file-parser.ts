@@ -1,5 +1,4 @@
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { validateFileSize, validateFileType } from '../utils/helpers';
 
 export interface ParsedFileResult {
@@ -157,6 +156,7 @@ async function parseTXT(file: File, fileInfo: ParsedFileResult['fileInfo']): Pro
  */
 async function parseXLSX(file: File, fileInfo: ParsedFileResult['fileInfo']): Promise<ParsedFileResult> {
   try {
+    const XLSX = await import('xlsx');
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer);
     const sheetName = workbook.SheetNames[0];

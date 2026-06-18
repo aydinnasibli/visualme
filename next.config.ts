@@ -35,6 +35,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    optimizePackageImports: ['echarts', 'echarts-for-react', 'framer-motion', 'lucide-react'],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "img.clerk.com" },
@@ -42,9 +45,21 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const shareHeaders = securityHeaders
+      .filter(h => h.key !== 'X-Frame-Options')
+      .map(h =>
+        h.key === 'Content-Security-Policy'
+          ? { ...h, value: h.value.replace("frame-ancestors 'none'", "frame-ancestors *") }
+          : h
+      );
+
     return [
       {
-        source: "/(.*)",
+        source: "/share/(.*)",
+        headers: shareHeaders,
+      },
+      {
+        source: "/((?!share/).*)",
         headers: securityHeaders,
       },
     ];

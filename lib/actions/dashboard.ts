@@ -191,7 +191,22 @@ export async function publishDashboard(id: string, isPublic: boolean) {
 
     await doc.save();
 
-    return { success: true, data: sanitizeDashboard(doc) };
+    let warning: string | undefined;
+    if (isPublic && doc.slots?.length) {
+      const vizIds = doc.slots.map((s: { vizId?: string }) => s.vizId).filter((id): id is string => Boolean(id));
+      if (vizIds.length > 0) {
+        const publicCount = await VisualizationModel.countDocuments({
+          _id: { $in: vizIds },
+          userId,
+          isPublic: true,
+        });
+        if (publicCount < vizIds.length) {
+          warning = 'Some visualizations in this dashboard are not individually public. They will be accessible via the dashboard link.';
+        }
+      }
+    }
+
+    return { success: true, data: sanitizeDashboard(doc), ...(warning ? { warning } : {}) };
   } catch (error) {
     console.error('publishDashboard error:', error);
     return { success: false, error: sanitizeError(error, 'Failed to publish dashboard') };

@@ -54,6 +54,7 @@ function isPrivateIPv4(ip: string): boolean {
   if (a === 172 && b >= 16 && b <= 31) return true;    // RFC 1918
   if (a === 192 && b === 168) return true;              // RFC 1918
   if (a === 169 && b === 254) return true;              // link-local
+  if (a === 100 && b >= 64 && b <= 127) return true;   // carrier-grade NAT (RFC 6598)
   if (a === 0) return true;                             // reserved
   return false;
 }
@@ -108,8 +109,10 @@ export function isBlockedSheetUrl(urlString: string): boolean {
   if (/^192\.168\./.test(h)) return true;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
   if (/^169\.254\./.test(h)) return true;
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(h)) return true;
   if (/^0\./.test(h)) return true;
   if (h === 'metadata.google.internal') return true;
+  if (parsed.username || parsed.password) return true;
   // IPv6 private/reserved. Node.js URL always includes brackets in .hostname
   // e.g. new URL('https://[::1]/').hostname === '[::1]'
   if (h === '[::1]') return true;

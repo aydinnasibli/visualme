@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, ArrowRight, ArrowLeft, Undo2, Sparkles } from 'lucide-react';
 
@@ -302,6 +302,28 @@ export default function WelcomeModal() {
     exit: (d: number) => ({ x: d * -32, opacity: 0 }),
   };
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const el = modalRef.current;
+    if (!el) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { dismiss(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = el.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   const { visual: Visual, title, body, cta } = SLIDES[step];
 
   return (
@@ -322,6 +344,7 @@ export default function WelcomeModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-label="Welcome to VisualMe"

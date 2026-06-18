@@ -23,6 +23,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const isVercelCron = request.headers.get('user-agent')?.includes('vercel-cron');
+  if (process.env.VERCEL && !isVercelCron) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   await connectToDatabase();
 
   const now = new Date();

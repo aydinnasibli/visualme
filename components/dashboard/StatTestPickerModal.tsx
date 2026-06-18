@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Sigma, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertTriangle, RotateCcw, Copy, Check,
@@ -118,6 +118,27 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const el = modalRef.current;
+    if (!el) return;
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = el.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    window.addEventListener('keydown', handleTab);
+    return () => window.removeEventListener('keydown', handleTab);
+  }, [open]);
+
   const numericColumns = useMemo(() => columns.filter(c => c.type === 'numeric'), [columns]);
   const categoricalColumns = useMemo(() => columns.filter(c => c.type === 'categorical'), [columns]);
 
@@ -171,7 +192,7 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
     return selectedColumns.length === (selectedTest.requiredColumns as { count: number }).count;
   }, [selectedTest, selectedColumns]);
 
-  const handleRun = () => {
+  const handleRun = async () => {
     if (!selectedTest || !canRun) return;
     setRunError(null);
     try {
@@ -179,7 +200,7 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
       const a = parseFloat(alpha);
       const resolvedAlpha = Number.isFinite(a) && a > 0 && a < 1 ? a : DEFAULT_ALPHA;
       const resolvedMean = selectedTest.id === 'one-sample-ttest' ? (parseFloat(hypothesizedMean) || 0) : undefined;
-      const computed = runStatTest({
+      const computed = await runStatTest({
         testId: selectedTest.id,
         columns: cols,
         hypothesizedMean: resolvedMean,
@@ -230,6 +251,7 @@ export default function StatTestPickerModal({ open, onClose, columns, rowCount, 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ duration: 0.16 }}
+            ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-label="Choose statistical test"

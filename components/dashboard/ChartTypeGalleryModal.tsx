@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Search, Sparkles, ChevronLeft, ChevronRight,
@@ -100,6 +100,27 @@ export default function ChartTypeGalleryModal({ open, onClose, onSelect }: Chart
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose, pendingType]);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const el = modalRef.current;
+    if (!el) return;
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = el.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    window.addEventListener('keydown', handleTab);
+    return () => window.removeEventListener('keydown', handleTab);
+  }, [open]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return CHART_TYPES;
@@ -141,6 +162,7 @@ export default function ChartTypeGalleryModal({ open, onClose, onSelect }: Chart
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ duration: 0.16 }}
+            ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-label="Choose chart type"

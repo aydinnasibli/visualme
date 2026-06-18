@@ -12,7 +12,6 @@
 // to the user. The AI is never involved in computing a statistic or p-value.
 // ============================================================================
 
-import { jStat } from 'jstat';
 import {
   DEFAULT_ALPHA,
   type DatasetColumn,
@@ -128,11 +127,12 @@ function significanceLine(pValue: number, alpha: number): string {
 
 // ── One-sample t-test ────────────────────────────────────────────────────────
 
-function runOneSampleTTest(
+async function runOneSampleTTest(
   column: DatasetColumn,
   hypothesizedMean: number,
   alpha: number = DEFAULT_ALPHA
-): StatTestResult {
+): Promise<StatTestResult> {
+  const { jStat } = await import('jstat');
   const values = asNumbers(column.values);
   const n = values.length;
   const mean = jStat.mean(values);
@@ -161,11 +161,12 @@ function runOneSampleTTest(
 
 // ── Independent samples t-test (Welch's — robust to unequal variances) ─────
 
-function runIndependentTTest(
+async function runIndependentTTest(
   valueColumn: DatasetColumn,
   groupColumn: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
-): StatTestResult {
+): Promise<StatTestResult> {
+  const { jStat } = await import('jstat');
   const groups = splitByGroup(valueColumn, groupColumn);
   if (groups.length !== 2) {
     throw new Error(
@@ -209,11 +210,12 @@ function runIndependentTTest(
 
 // ── Paired samples t-test ────────────────────────────────────────────────────
 
-function runPairedTTest(
+async function runPairedTTest(
   columnA: DatasetColumn,
   columnB: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
-): StatTestResult {
+): Promise<StatTestResult> {
+  const { jStat } = await import('jstat');
   const a = asNumbers(columnA.values);
   const b = asNumbers(columnB.values);
   const n = Math.min(a.length, b.length);
@@ -251,11 +253,12 @@ function runPairedTTest(
 
 // ── One-way ANOVA ────────────────────────────────────────────────────────────
 
-function runOneWayAnova(
+async function runOneWayAnova(
   valueColumn: DatasetColumn,
   groupColumn: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
-): StatTestResult {
+): Promise<StatTestResult> {
+  const { jStat } = await import('jstat');
   const groups = splitByGroup(valueColumn, groupColumn);
   if (groups.length < 3) {
     throw new Error(
@@ -299,11 +302,12 @@ function runOneWayAnova(
 
 // ── Chi-square test of independence ─────────────────────────────────────────
 
-function runChiSquareTest(
+async function runChiSquareTest(
   columnA: DatasetColumn,
   columnB: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
-): StatTestResult {
+): Promise<StatTestResult> {
+  const { jStat } = await import('jstat');
   const a = columnA.values.map(String);
   const b = columnB.values.map(String);
   const n = Math.min(a.length, b.length);
@@ -365,11 +369,12 @@ function runChiSquareTest(
 
 // ── Pearson correlation ──────────────────────────────────────────────────────
 
-function runPearsonCorrelation(
+async function runPearsonCorrelation(
   columnA: DatasetColumn,
   columnB: DatasetColumn,
   alpha: number = DEFAULT_ALPHA
-): StatTestResult {
+): Promise<StatTestResult> {
+  const { jStat } = await import('jstat');
   const a = asNumbers(columnA.values);
   const b = asNumbers(columnB.values);
   const n = Math.min(a.length, b.length);
@@ -421,20 +426,20 @@ export interface RunTestParams {
   alpha?: number;
 }
 
-export function runStatTest({ testId, columns, hypothesizedMean, alpha = DEFAULT_ALPHA }: RunTestParams): StatTestResult {
+export async function runStatTest({ testId, columns, hypothesizedMean, alpha = DEFAULT_ALPHA }: RunTestParams): Promise<StatTestResult> {
   switch (testId) {
     case 'one-sample-ttest':
-      return runOneSampleTTest(columns[0], hypothesizedMean ?? 0, alpha);
+      return await runOneSampleTTest(columns[0], hypothesizedMean ?? 0, alpha);
     case 'independent-ttest':
-      return runIndependentTTest(columns[0], columns[1], alpha);
+      return await runIndependentTTest(columns[0], columns[1], alpha);
     case 'paired-ttest':
-      return runPairedTTest(columns[0], columns[1], alpha);
+      return await runPairedTTest(columns[0], columns[1], alpha);
     case 'one-way-anova':
-      return runOneWayAnova(columns[0], columns[1], alpha);
+      return await runOneWayAnova(columns[0], columns[1], alpha);
     case 'chi-square':
-      return runChiSquareTest(columns[0], columns[1], alpha);
+      return await runChiSquareTest(columns[0], columns[1], alpha);
     case 'pearson-correlation':
-      return runPearsonCorrelation(columns[0], columns[1], alpha);
+      return await runPearsonCorrelation(columns[0], columns[1], alpha);
   }
 }
 

@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     description: "Transform ideas, raw data, or unstructured notes into professional diagrams.",
     type: "website",
     siteName: "VisualMe",
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'VisualMe - AI-Powered Data Visualization' }],
   },
   twitter: {
     card: "summary_large_image",

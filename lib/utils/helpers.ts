@@ -12,7 +12,7 @@ export function generateShareId(): string {
  * Generate a cache key from input string
  */
 export function generateCacheKey(input: string, type?: string): string {
-  const hash = createHash('md5').update(input).digest('hex').substring(0, 16);
+  const hash = createHash('sha256').update(input).digest('hex').substring(0, 32);
   return type ? `viz:${type}:${hash}` : `viz:${hash}`;
 }
 
