@@ -49,7 +49,7 @@ function ShowcaseChart({ kind }: { kind: string }) {
 
 export default function ChartShowcase() {
   return (
-    <div className="grid grid-cols-3 gap-3 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
       {SHOWCASE.map(({ kind, label, subtitle }) => (
         <div key={kind} className="group relative rounded-xl overflow-hidden border border-edge bg-surface-0 hover:border-surface-3 transition-colors" style={{ aspectRatio: '4/3' }}>
           <ShowcaseChart kind={kind} />

@@ -11,6 +11,7 @@ import HeroBg from '@/components/landing/HeroBg';
 import HeroMockup from '@/components/landing/HeroMockup';
 import ChartShowcase from '@/components/landing/ChartShowcase';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
+import FeatureShowcase from '@/components/landing/FeatureShowcase';
 import FadeIn from '@/components/landing/FadeIn';
 import type { Metadata } from 'next';
 
@@ -110,7 +111,6 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <HeroBg>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          {/* Text block — centered */}
           <div className="text-center mx-auto" style={{ maxWidth: '640px' }}>
             <p className="text-xs font-semibold uppercase tracking-widest mb-5 text-ink-muted">
               AI-powered data visualization
@@ -132,7 +132,6 @@ export default function LandingPage() {
             <p className="mt-4 text-xs text-ink-faint">Free forever. No credit card. Sign up in 10 seconds.</p>
           </div>
 
-          {/* Mockup — full width, prominent */}
           <div className="mt-14" style={{ maxWidth: 960, margin: '56px auto 0' }}>
             <HeroMockup />
           </div>
@@ -151,7 +150,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Chart types (visual centerpiece) ── */}
+      {/* ── Chart types ── */}
       <section className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <FadeIn>
@@ -168,23 +167,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Capabilities (compact strip) ── */}
-      <section id="features" className="bg-surface-1" style={{ paddingTop: 64, paddingBottom: 64 }}>
+      {/* ── Feature showcase ── */}
+      <section id="features" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <FadeIn>
-          <div className="flex flex-col lg:flex-row lg:items-center gap-10">
-            <h2 className="font-bold tracking-tight text-ink shrink-0" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2rem)' }}>
-              Everything you need,<br className="hidden lg:block" /> nothing you don&apos;t.
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 flex-1">
-              {CAPABILITIES.map(({ Icon, text }) => (
-                <div key={text} className="flex items-start gap-2.5">
-                  <Icon size={15} className="text-accent mt-0.5 shrink-0" strokeWidth={1.8} />
-                  <span className="text-sm text-ink-muted leading-snug">{text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <h2 className="font-bold tracking-tight mb-10 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
+            What&apos;s inside
+          </h2>
+          <FeatureShowcase />
           </FadeIn>
         </div>
       </section>
