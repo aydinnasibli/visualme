@@ -204,8 +204,23 @@ export default function LandingPage() {
         </div>
       </HeroBg>
 
+      {/* ── Interactive demo ── */}
+      <section id="try-it" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
+        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+          <div className="mb-10">
+            <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
+              Try it right here
+            </h2>
+            <p className="text-ink-muted" style={{ maxWidth: '52ch' }}>
+              Click a scenario, watch the conversation unfold, hover the chart for details. This is exactly how VisualMe works — just with your own data.
+            </p>
+          </div>
+          <InteractiveDemo />
+        </div>
+      </section>
+
       {/* ── How it works: the refinement loop ── */}
-      <section id="how-it-works" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
+      <section id="how-it-works" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
@@ -222,7 +237,6 @@ export default function LandingPage() {
             <div className="space-y-0">
               {REFINE_STEPS.map((step, i) => (
                 <div key={i} className="flex gap-4">
-                  {/* Step number + timeline */}
                   <div className="flex flex-col items-center shrink-0">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border" style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)', opacity: i === 0 ? 0.5 : 1 }}>
                       {step.step}
@@ -244,7 +258,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Power features ── */}
-      <section id="features" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
+      <section id="features" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <div className="mb-14">
             <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
@@ -256,25 +270,13 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-edge">
             {POWER_FEATURES.map(({ Icon, title, body }) => (
-              <div key={title} className="bg-surface-0 p-8">
+              <div key={title} className="bg-surface-1 p-8">
                 <Icon size={20} className="text-ink-muted mb-5" strokeWidth={1.5} />
                 <h3 className="font-bold mb-3 text-ink" style={{ fontSize: '1rem' }}>{title}</h3>
                 <p className="text-sm text-ink-muted leading-relaxed">{body}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── Mid-page CTA ── */}
-      <section className="bg-surface-1 border-y border-edge" style={{ paddingTop: 48, paddingBottom: 48 }}>
-        <div className="mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6" style={{ maxWidth: 1120 }}>
-          <p className="text-ink-muted text-sm text-center sm:text-left" style={{ maxWidth: '44ch' }}>
-            All of this is free. No credit card, no trial period, no feature gates. Just sign up and start.
-          </p>
-          <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors shrink-0">
-            Start visualizing free <ArrowRight size={14} />
-          </Link>
         </div>
       </section>
 
@@ -300,33 +302,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Chart showcase CTA ── */}
+      {/* ── Mid-page CTA ── */}
       <section className="bg-surface-1 border-y border-edge" style={{ paddingTop: 48, paddingBottom: 48 }}>
-        <div className="mx-auto px-6 text-center" style={{ maxWidth: 1120 }}>
-          <p className="text-ink-muted text-sm mb-4">Pick your chart type, or let the AI decide. Either way, it takes seconds.</p>
-          <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors">
-            Try it yourself <ArrowRight size={14} />
+        <div className="mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6" style={{ maxWidth: 1120 }}>
+          <p className="text-ink-muted text-sm text-center sm:text-left" style={{ maxWidth: '44ch' }}>
+            All of this is free. No credit card, no trial period, no feature gates. Just sign up and start.
+          </p>
+          <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors shrink-0">
+            Start visualizing free <ArrowRight size={14} />
           </Link>
         </div>
       </section>
 
-      {/* ── Interactive demo ── */}
-      <section id="try-it" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
-        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          <div className="mb-10">
-            <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
-              Try it right here
-            </h2>
-            <p className="text-ink-muted" style={{ maxWidth: '52ch' }}>
-              Click a scenario, watch the conversation unfold, hover the chart for details. This is exactly how VisualMe works — just with your own data.
-            </p>
-          </div>
-          <InteractiveDemo />
-        </div>
-      </section>
-
       {/* ── Pricing ── */}
-      <section id="pricing" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
+      <section id="pricing" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <div className="mb-10">
             <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>Simple, honest pricing</h2>
@@ -376,7 +365,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FAQ ── */}
-      <section className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
+      <section className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 720 }}>
           <h2 className="font-bold tracking-tight mb-10 text-ink text-center" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
             Common questions
