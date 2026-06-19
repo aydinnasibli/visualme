@@ -10,6 +10,7 @@ import HeroBg from '@/components/landing/HeroBg';
 import HeroMockup from '@/components/landing/HeroMockup';
 import ChartShowcase from '@/components/landing/ChartShowcase';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
+import FadeIn from '@/components/landing/FadeIn';
 import type { Metadata } from 'next';
 
 const bricolage = Bricolage_Grotesque({
@@ -207,21 +208,24 @@ export default function LandingPage() {
       {/* ── Interactive demo ── */}
       <section id="try-it" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          <div className="mb-10">
-            <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
-              Try it right here
-            </h2>
-            <p className="text-ink-muted" style={{ maxWidth: '52ch' }}>
-              Click a scenario, watch the conversation unfold, hover the chart for details. This is exactly how VisualMe works — just with your own data.
-            </p>
-          </div>
-          <InteractiveDemo />
+          <FadeIn>
+            <div className="mb-10">
+              <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
+                Try it right here
+              </h2>
+              <p className="text-ink-muted" style={{ maxWidth: '52ch' }}>
+                Click a scenario, watch the conversation unfold, hover the chart for details. This is exactly how VisualMe works — just with your own data.
+              </p>
+            </div>
+            <InteractiveDemo />
+          </FadeIn>
         </div>
       </section>
 
       {/* ── How it works: the refinement loop ── */}
       <section id="how-it-works" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+          <FadeIn>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
               <h2 className="font-bold tracking-tight mb-5 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
@@ -254,12 +258,14 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
+          </FadeIn>
         </div>
       </section>
 
       {/* ── Power features ── */}
       <section id="features" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+          <FadeIn>
           <div className="mb-14">
             <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
               More than a chart generator
@@ -270,19 +276,21 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-edge">
             {POWER_FEATURES.map(({ Icon, title, body }) => (
-              <div key={title} className="bg-surface-1 p-8">
-                <Icon size={20} className="text-ink-muted mb-5" strokeWidth={1.5} />
+              <div key={title} className="bg-surface-1 p-8 hover:bg-surface-2 transition-colors duration-200 group">
+                <Icon size={20} className="text-ink-muted mb-5 group-hover:text-accent transition-colors duration-200" strokeWidth={1.5} />
                 <h3 className="font-bold mb-3 text-ink" style={{ fontSize: '1rem' }}>{title}</h3>
                 <p className="text-sm text-ink-muted leading-relaxed">{body}</p>
               </div>
             ))}
           </div>
+          </FadeIn>
         </div>
       </section>
 
       {/* ── Chart types ── */}
       <section className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+          <FadeIn>
           <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
             <div>
               <h2 className="font-bold tracking-tight text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
@@ -299,6 +307,7 @@ export default function LandingPage() {
               <span key={t.series} className="text-xs px-3 py-1.5 rounded-full bg-surface-0 border border-edge text-ink-faint">{t.label}</span>
             ))}
           </div>
+          </FadeIn>
         </div>
       </section>
 
@@ -317,13 +326,13 @@ export default function LandingPage() {
       {/* ── Pricing ── */}
       <section id="pricing" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+          <FadeIn>
           <div className="mb-10">
             <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>Simple, honest pricing</h2>
             <p className="text-ink-muted">Every feature is available on every plan. You only pay for more capacity.</p>
           </div>
 
-          {/* All features list */}
-          <div className="rounded-xl border border-edge bg-surface-0 p-6 mb-8">
+          <div className="rounded-xl border border-edge bg-surface-1 p-6 mb-8">
             <p className="text-sm font-semibold text-ink mb-4">Included on all plans — including Free</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
               {ALL_FEATURES.map(f => (
@@ -337,8 +346,8 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {PLANS.map(plan => (
-              <div key={plan.name} className="rounded-2xl p-8 flex flex-col relative border" style={{ background: plan.highlight ? 'oklch(72% 0.13 55 / 0.05)' : 'var(--color-surface-0)', borderColor: plan.highlight ? 'var(--color-accent)' : 'var(--color-edge)' }}>
-                {plan.highlight && <span className="absolute -top-3 left-6 px-3 py-0.5 rounded-full text-xs font-bold border border-edge text-ink-muted bg-surface-0">Most popular</span>}
+              <div key={plan.name} className={`rounded-2xl p-8 flex flex-col relative border transition-all duration-200 ${plan.highlight ? 'hover:shadow-lg hover:shadow-accent/10 hover:-translate-y-1' : 'hover:border-surface-3 hover:-translate-y-0.5'}`} style={{ background: plan.highlight ? 'oklch(72% 0.13 55 / 0.05)' : 'var(--color-surface-1)', borderColor: plan.highlight ? 'var(--color-accent)' : 'var(--color-edge)' }}>
+                {plan.highlight && <span className="absolute -top-3 left-6 px-3 py-0.5 rounded-full text-xs font-bold border border-accent text-accent bg-surface-0">Most popular</span>}
                 <div className="mb-7">
                   <p className="text-sm font-semibold mb-1 text-ink-faint">{plan.name}</p>
                   <div className="flex items-end gap-1 mb-1.5">
@@ -361,21 +370,23 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          </FadeIn>
         </div>
       </section>
 
       {/* ── FAQ ── */}
       <section className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 720 }}>
+          <FadeIn>
           <h2 className="font-bold tracking-tight mb-10 text-ink text-center" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
             Common questions
           </h2>
-          <div className="space-y-6">
+          <div className="space-y-3">
             {FAQS.map(({ q, a }) => (
-              <details key={q} className="group rounded-xl border border-edge bg-surface-1 overflow-hidden">
+              <details key={q} className="group rounded-xl border border-edge bg-surface-0 overflow-hidden hover:border-surface-3 transition-colors">
                 <summary className="flex items-center justify-between cursor-pointer px-6 py-4 text-sm font-semibold text-ink select-none">
                   {q}
-                  <ArrowRight size={14} className="shrink-0 text-ink-faint transition-transform group-open:rotate-90" />
+                  <ArrowRight size={14} className="shrink-0 text-ink-faint transition-transform duration-200 group-open:rotate-90" />
                 </summary>
                 <div className="px-6 pb-5 text-sm text-ink-muted leading-relaxed -mt-1">
                   {a}
@@ -383,6 +394,7 @@ export default function LandingPage() {
               </details>
             ))}
           </div>
+          </FadeIn>
         </div>
       </section>
 
