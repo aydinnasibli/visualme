@@ -3,6 +3,7 @@ import { Bricolage_Grotesque } from 'next/font/google';
 import {
   ArrowRight, ArrowUpRight, Check,
   Upload, MessageSquare, Palette, Code2, BarChart3, Share2,
+  FlaskConical, RefreshCw,
 } from 'lucide-react';
 import { CHART_TYPES } from '@/lib/utils/chart-types';
 import Header from '@/components/layout/Header';
@@ -38,36 +39,16 @@ export const metadata: Metadata = {
   },
 };
 
-/* ── Refinement conversation demo ── */
-const REFINE_STEPS = [
-  {
-    step: '1',
-    prompt: 'Compare Q1–Q4 revenue across product lines',
-    reply: 'Grouped bar chart generated with realistic quarterly data across 4 product lines.',
-    change: null,
-    tag: 'Generate',
-  },
-  {
-    step: '2',
-    prompt: 'Make the bars horizontal and sort by Q4 performance',
-    reply: 'Switched to horizontal layout, reordered by Q4 value descending.',
-    change: 'Layout changed',
-    tag: 'Refine',
-  },
-  {
-    step: '3',
-    prompt: 'Add a target line at $2M and highlight anything below it',
-    reply: 'Added a $2M markLine. Three bars are now flagged in a muted red.',
-    change: 'Annotation added',
-    tag: 'Annotate',
-  },
-  {
-    step: '4',
-    prompt: 'Export this as SVG for the board deck',
-    reply: 'SVG ready to download — transparent background, 2x resolution.',
-    change: 'Exported',
-    tag: 'Export',
-  },
+/* ── Compact feature list ── */
+const CAPABILITIES = [
+  { Icon: MessageSquare, text: 'Refine charts in plain English' },
+  { Icon: Upload, text: 'Upload CSV, JSON, XLSX, or paste data' },
+  { Icon: FlaskConical, text: 'Built-in t-test, ANOVA, chi-square' },
+  { Icon: Palette, text: 'Brand themes applied instantly' },
+  { Icon: RefreshCw, text: 'Live data from Google Sheets' },
+  { Icon: Share2, text: 'Export PNG, SVG, HTML, JSON, CSV' },
+  { Icon: Code2, text: 'Dashboard builder' },
+  { Icon: BarChart3, text: 'Weekly email digests' },
 ];
 
 /* ── FAQ ── */
@@ -99,51 +80,6 @@ const FAQS = [
 ];
 
 /* ── Data ── */
-const POWER_FEATURES = [
-  {
-    Icon: MessageSquare,
-    title: 'Refine in plain English',
-    body: 'The chart doesn\'t have to be right on the first try. Ask it to change the type, add annotations, reorder, recolor. Each reply updates the chart in place with full context of the conversation.',
-  },
-  {
-    Icon: Upload,
-    title: 'Your real data, not demo data',
-    body: 'Upload CSV, JSON, or paste raw values. VisualMe parses the structure, understands column types, and generates a chart against your actual numbers — not invented placeholders.',
-  },
-  {
-    Icon: BarChart3,
-    title: 'Built-in statistical analysis',
-    body: 'Run t-tests, ANOVA, chi-square, and Pearson correlation directly on your dataset — no Python, no R, no AI hallucination. Deterministic, browser-only statistical testing that you can trust.',
-  },
-  {
-    Icon: Palette,
-    title: 'Theme the look, keep the data',
-    body: 'Palette, typography, and spacing are a separate layer from the chart structure. Change the visual without regenerating. Apply your brand colors to every chart in the session at once.',
-  },
-  {
-    Icon: Code2,
-    title: 'Live data from Google Sheets',
-    body: 'Connect a public Google Sheet and your chart refreshes automatically. Set an interval — hourly, every 6 hours, or daily — and get a weekly email digest summarizing what changed.',
-  },
-  {
-    Icon: Share2,
-    title: 'Share or export in any format',
-    body: 'PNG, SVG, HTML, JSON, CSV, or a shareable link. Public or private. Charts live in your dashboard, versioned with their full refinement history.',
-  },
-];
-
-const ALL_FEATURES = [
-  `${CHART_TYPES.length} chart types + variants`,
-  'PNG, SVG & HTML export',
-  'Refinement chat',
-  'File upload (CSV, JSON, XLSX)',
-  'Statistical analysis (t-test, ANOVA, chi-square)',
-  'Brand kit & theme editor',
-  'Live data from Google Sheets',
-  'Weekly email digests',
-  'Dashboard builder',
-  'Public & private sharing',
-];
 
 const PLANS = [
   {
@@ -174,33 +110,31 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <HeroBg>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-14">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest mb-5 text-ink-muted">
-                AI-powered data visualization
-              </p>
-              <h1 className="font-extrabold leading-none tracking-tight mb-6 text-ink" style={{ fontSize: 'clamp(2.75rem, 5.5vw, 4.5rem)', lineHeight: 1.02 }}>
-                Describe it.<br />Refine it.<br />Done.
-              </h1>
-              <p className="mb-4 leading-relaxed text-ink-muted" style={{ fontSize: '1.0625rem', maxWidth: '44ch' }}>
-                Write what you want to see. VisualMe picks the right chart, generates it in seconds, and refines it with you in plain English until it&apos;s exactly right.
-              </p>
-              <p className="mb-10 text-sm text-ink-faint" style={{ maxWidth: '44ch' }}>
-                Upload your data. Connect live Google Sheets. Run statistical tests. Build dashboards. Export as PNG, SVG, HTML, or JSON. Every feature free.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/sign-up" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20">
-                  Create your first chart free <ArrowRight size={14} />
-                </Link>
-                <a href="#try-it" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-medium text-ink-muted hover:text-ink border border-edge hover:border-surface-3 transition-colors">
-                  Try it live
-                </a>
-              </div>
-              <p className="mt-4 text-xs text-ink-faint">Free forever. No credit card. Sign up in 10 seconds.</p>
+          {/* Text block — centered */}
+          <div className="text-center mx-auto" style={{ maxWidth: '640px' }}>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-5 text-ink-muted">
+              AI-powered data visualization
+            </p>
+            <h1 className="font-extrabold leading-none tracking-tight mb-5 text-ink" style={{ fontSize: 'clamp(2.75rem, 5.5vw, 4.25rem)', lineHeight: 1.05 }}>
+              Describe it. Refine it. Done.
+            </h1>
+            <p className="mb-8 leading-relaxed text-ink-muted mx-auto" style={{ fontSize: '1.0625rem', maxWidth: '42ch' }}>
+              Type what you want to see. Upload your data. Refine until it&apos;s right. Export in any format.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href="/sign-up" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20">
+                Create your first chart free <ArrowRight size={14} />
+              </Link>
+              <a href="#try-it" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-medium text-ink-muted hover:text-ink border border-edge hover:border-surface-3 transition-colors">
+                Try it live
+              </a>
             </div>
-            <div>
-              <HeroMockup />
-            </div>
+            <p className="mt-4 text-xs text-ink-faint">Free forever. No credit card. Sign up in 10 seconds.</p>
+          </div>
+
+          {/* Mockup — full width, prominent */}
+          <div className="mt-14" style={{ maxWidth: 960, margin: '56px auto 0' }}>
+            <HeroMockup />
           </div>
         </div>
       </HeroBg>
@@ -209,98 +143,21 @@ export default function LandingPage() {
       <section id="try-it" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <FadeIn>
-            <div className="mb-10">
-              <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
-                Try it right here
-              </h2>
-              <p className="text-ink-muted" style={{ maxWidth: '52ch' }}>
-                Click a scenario, watch the conversation unfold, hover the chart for details. This is exactly how VisualMe works — just with your own data.
-              </p>
-            </div>
+            <h2 className="font-bold tracking-tight mb-8 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
+              See how it works
+            </h2>
             <InteractiveDemo />
           </FadeIn>
         </div>
       </section>
 
-      {/* ── How it works: the refinement loop ── */}
-      <section id="how-it-works" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
-        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          <FadeIn>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-            <div>
-              <h2 className="font-bold tracking-tight mb-5 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
-                Most tools give you one shot. VisualMe gives you a conversation.
-              </h2>
-              <p className="text-ink-muted mb-8 leading-relaxed" style={{ maxWidth: '44ch' }}>
-                The first chart is a starting point. Every follow-up message refines it in context: change the type, add annotations, reorder, filter, recolor. The chart updates in place. Your history is saved.
-              </p>
-              <Link href="/sign-up" className="inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-ink-muted transition-colors">
-                Try the refinement loop <ArrowRight size={14} />
-              </Link>
-            </div>
-            <div className="space-y-0">
-              {REFINE_STEPS.map((step, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="flex flex-col items-center shrink-0">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border" style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)', opacity: i === 0 ? 0.5 : 1 }}>
-                      {step.step}
-                    </div>
-                    {i < REFINE_STEPS.length - 1 && <div className="w-px flex-1 mt-1" style={{ background: 'var(--color-edge)' }} />}
-                  </div>
-                  <div className="pb-7">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-accent bg-accent/10">{step.tag}</span>
-                    </div>
-                    <p className="text-sm text-ink mb-1 font-medium">&ldquo;{step.prompt}&rdquo;</p>
-                    <p className="text-sm text-ink-faint leading-relaxed">{step.reply}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ── Power features ── */}
-      <section id="features" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
-        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          <FadeIn>
-          <div className="mb-14">
-            <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
-              More than a chart generator
-            </h2>
-            <p className="text-ink-muted" style={{ maxWidth: '52ch' }}>
-              A full visualization workspace: bring your data, analyze it, style it, and share it — all in one place.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-edge">
-            {POWER_FEATURES.map(({ Icon, title, body }) => (
-              <div key={title} className="bg-surface-1 p-8 hover:bg-surface-2 transition-colors duration-200 group">
-                <Icon size={20} className="text-ink-muted mb-5 group-hover:text-accent transition-colors duration-200" strokeWidth={1.5} />
-                <h3 className="font-bold mb-3 text-ink" style={{ fontSize: '1rem' }}>{title}</h3>
-                <p className="text-sm text-ink-muted leading-relaxed">{body}</p>
-              </div>
-            ))}
-          </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ── Chart types ── */}
+      {/* ── Chart types (visual centerpiece) ── */}
       <section className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <FadeIn>
-          <div className="mb-12 flex items-end justify-between flex-wrap gap-4">
-            <div>
-              <h2 className="font-bold tracking-tight text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
-                {CHART_TYPES.length} chart types, every variant
-              </h2>
-              <p className="mt-3 text-ink-muted" style={{ maxWidth: '50ch' }}>
-                AI picks the best type for your content, or you choose manually. Each type has multiple variants — stacked, grouped, radial, force-directed, filled, and more.
-              </p>
-            </div>
-          </div>
+          <h2 className="font-bold tracking-tight mb-10 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
+            {CHART_TYPES.length} chart types, every variant
+          </h2>
           <ChartShowcase />
           <div className="flex flex-wrap gap-2">
             {CHART_TYPES.map(t => (
@@ -311,15 +168,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Mid-page CTA ── */}
-      <section className="bg-surface-1 border-y border-edge" style={{ paddingTop: 48, paddingBottom: 48 }}>
-        <div className="mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6" style={{ maxWidth: 1120 }}>
-          <p className="text-ink-muted text-sm text-center sm:text-left" style={{ maxWidth: '44ch' }}>
-            All of this is free. No credit card, no trial period, no feature gates. Just sign up and start.
-          </p>
-          <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors shrink-0">
-            Start visualizing free <ArrowRight size={14} />
-          </Link>
+      {/* ── Capabilities (compact strip) ── */}
+      <section id="features" className="bg-surface-1" style={{ paddingTop: 64, paddingBottom: 64 }}>
+        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+          <FadeIn>
+          <div className="flex flex-col lg:flex-row lg:items-center gap-10">
+            <h2 className="font-bold tracking-tight text-ink shrink-0" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2rem)' }}>
+              Everything you need,<br className="hidden lg:block" /> nothing you don&apos;t.
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 flex-1">
+              {CAPABILITIES.map(({ Icon, text }) => (
+                <div key={text} className="flex items-start gap-2.5">
+                  <Icon size={15} className="text-accent mt-0.5 shrink-0" strokeWidth={1.8} />
+                  <span className="text-sm text-ink-muted leading-snug">{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          </FadeIn>
         </div>
       </section>
 
@@ -327,22 +193,7 @@ export default function LandingPage() {
       <section id="pricing" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
         <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
           <FadeIn>
-          <div className="mb-10">
-            <h2 className="font-bold tracking-tight mb-3 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>Simple, honest pricing</h2>
-            <p className="text-ink-muted">Every feature is available on every plan. You only pay for more capacity.</p>
-          </div>
-
-          <div className="rounded-xl border border-edge bg-surface-1 p-6 mb-8">
-            <p className="text-sm font-semibold text-ink mb-4">Included on all plans — including Free</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
-              {ALL_FEATURES.map(f => (
-                <div key={f} className="flex items-start gap-2.5">
-                  <Check size={13} strokeWidth={2.5} className="mt-0.5 shrink-0 text-accent" />
-                  <span className="text-sm text-ink-muted">{f}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <h2 className="font-bold tracking-tight mb-8 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>Simple pricing</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {PLANS.map(plan => (

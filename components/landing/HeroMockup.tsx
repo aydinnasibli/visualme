@@ -122,9 +122,9 @@ export default function HeroMockup() {
         </div>
 
         {/* 3-panel body */}
-        <div className="flex" style={{ height: 320 }}>
+        <div className="flex" style={{ height: 380 }}>
           {/* Thread sidebar */}
-          <div className="hidden md:flex shrink-0 flex-col border-r border-edge bg-surface-1" style={{ width: 170 }}>
+          <div className="hidden md:flex shrink-0 flex-col border-r border-edge bg-surface-1" style={{ width: 200 }}>
             <div className="px-3 h-8 flex items-center border-b border-edge">
               <span className="text-[9px] font-semibold uppercase tracking-widest text-ink-faint">Thread</span>
             </div>
@@ -137,8 +137,8 @@ export default function HeroMockup() {
                     opacity: item.active ? 1 : 0.55,
                     ...(item.active ? { animation: 'hero-thread-pulse 2.5s ease-in-out infinite' } : {}),
                   }}>
-                  <p className="text-[9px] font-semibold truncate" style={{ color: item.active ? 'var(--color-accent)' : 'var(--color-ink-faint)', maxWidth: 128 }}>{item.label}</p>
-                  <p className="text-[8px] text-ink-faint mt-0.5">{item.type}</p>
+                  <p className="text-[9px] font-semibold truncate" style={{ color: item.active ? 'var(--color-accent)' : 'var(--color-ink-faint)', maxWidth: 150 }}>{item.label}</p>
+                  <p className="text-[9px] text-ink-faint mt-0.5">{item.type}</p>
                 </div>
               ))}
             </div>
@@ -169,7 +169,7 @@ export default function HeroMockup() {
           </div>
 
           {/* Refinement chat */}
-          <div className="hidden md:flex shrink-0 flex-col" style={{ width: 180 }}>
+          <div className="hidden md:flex shrink-0 flex-col" style={{ width: 210 }}>
             <div className="h-8 px-3 flex items-center border-b border-edge bg-surface-1">
               <span className="text-[9px] font-semibold text-ink-faint">Refine</span>
             </div>
