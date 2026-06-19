@@ -27,9 +27,12 @@ function buildOption(kind: string, isDark: boolean) {
 }
 
 const SHOWCASE = [
-  { kind: 'bar', label: 'Bar Chart' }, { kind: 'line', label: 'Line / Area' },
-  { kind: 'graph', label: 'Network Graph' }, { kind: 'pie', label: 'Donut / Pie' },
-  { kind: 'radar', label: 'Radar' }, { kind: 'treemap', label: 'Treemap' },
+  { kind: 'bar', label: 'Quarterly Revenue', subtitle: 'Bar Chart' },
+  { kind: 'line', label: 'User Growth Trend', subtitle: 'Line / Area' },
+  { kind: 'graph', label: 'System Architecture', subtitle: 'Network Graph' },
+  { kind: 'pie', label: 'Market Share Split', subtitle: 'Donut / Pie' },
+  { kind: 'radar', label: 'Team Performance', subtitle: 'Radar' },
+  { kind: 'treemap', label: 'Budget Allocation', subtitle: 'Treemap' },
 ] as const;
 
 function ShowcaseChart({ kind }: { kind: string }) {
@@ -42,11 +45,12 @@ function ShowcaseChart({ kind }: { kind: string }) {
 export default function ChartShowcase() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-      {SHOWCASE.map(({ kind, label }) => (
+      {SHOWCASE.map(({ kind, label, subtitle }) => (
         <div key={kind} className="group relative rounded-xl overflow-hidden border border-edge bg-surface-0 hover:border-surface-3 transition-colors" style={{ aspectRatio: '4/3' }}>
           <ShowcaseChart kind={kind} />
-          <div className="absolute bottom-0 left-0 right-0 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-1/90 border-t border-edge">
-            <span className="text-xs font-semibold text-ink">{label}</span>
+          <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5 bg-linear-to-t from-surface-0/95 to-transparent">
+            <span className="text-xs font-semibold text-ink block">{label}</span>
+            <span className="text-[10px] text-ink-faint">{subtitle}</span>
           </div>
         </div>
       ))}
