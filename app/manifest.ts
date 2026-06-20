@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'VisualMe',
-    short_name: 'VisualMe',
+    name: 'Visuologia',
+    short_name: 'Visuologia',
     description: 'AI-Powered Universal Data Visualization',
     start_url: '/dashboard',
     display: 'standalone',

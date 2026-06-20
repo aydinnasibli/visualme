@@ -1,5 +1,6 @@
 'use server';
 
+import * as Sentry from '@sentry/nextjs';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { VisualizationModel } from '@/lib/database/models';
@@ -94,7 +95,8 @@ export async function exportVisualization(
       },
     };
   } catch (error) {
-    console.error('Export error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return {
       success: false,
       error: sanitizeError(error, 'Failed to export visualization'),
@@ -168,7 +170,8 @@ export async function createShareLink(
       },
     };
   } catch (error) {
-    console.error('Share link error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return {
       success: false,
       error: sanitizeError(error, 'Failed to create share link'),
@@ -197,7 +200,8 @@ export async function getSharedVisualization(shareId: string) {
 
     return { success: true, data: data as SavedVisualization };
   } catch (error) {
-    console.error('Get shared visualization error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return {
       success: false,
       error: sanitizeError(error, 'Failed to fetch shared visualization'),

@@ -37,14 +37,14 @@ export default function Header() {
   return (
     <nav className="sticky top-0 z-50 transition-all duration-300" style={{ height: 52, background: scrolled ? 'var(--color-surface-0)' : 'transparent', backdropFilter: scrolled ? 'blur(14px)' : 'none', borderBottom: `1px solid ${scrolled ? 'var(--color-edge)' : 'transparent'}` }}>
       <div className="mx-auto px-6 h-full flex items-center justify-between" style={{ maxWidth: 1120 }}>
-        <Link href="/" aria-label="VisualMe homepage" className="flex items-center gap-2.5">
+        <Link href="/" aria-label="Visuologia homepage" className="flex items-center gap-2.5">
           <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden>
             <rect x="1"  y="1"  width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.9" />
             <rect x="12" y="1"  width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.4" />
             <rect x="1"  y="12" width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.4" />
             <rect x="12" y="12" width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.7" />
           </svg>
-          <span className="text-sm font-bold tracking-tight text-ink">VisualMe</span>
+          <span className="text-sm font-bold tracking-tight text-ink">Visuologia</span>
         </Link>
         <div className="hidden md:flex items-center gap-8">
           {[['#how-it-works', 'How it works'], ['#features', 'Features'], ['#pricing', 'Pricing']].map(([href, label]) => (

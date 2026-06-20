@@ -10,9 +10,9 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { dashboardId } = await params;
   const res = await getSharedDashboard(dashboardId);
-  if (!res.success || !res.data) return { title: 'Dashboard — VisualMe' };
-  const title = `${res.data.title} — VisualMe`;
-  const description = `${res.data.slots.length} interactive charts shared via VisualMe`;
+  if (!res.success || !res.data) return { title: 'Dashboard — Visuologia' };
+  const title = `${res.data.title} — Visuologia`;
+  const description = `${res.data.slots.length} interactive charts shared via Visuologia`;
   return {
     title,
     description,

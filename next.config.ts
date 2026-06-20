@@ -7,16 +7,16 @@ const cspHeader = [
   "default-src 'self'",
   // Clerk requires unsafe-inline; Next.js hydration needs it too
   // Cloudflare Turnstile (Clerk CAPTCHA) scripts must also be allowed
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai https://challenges.cloudflare.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visuologia.com https://challenges.cloudflare.com`,
   // Clerk's bot-detection runs in a blob: web worker
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' blob: data: https://img.clerk.com https://images.clerk.dev",
   // Cloudflare Turnstile + Sentry tunnel (via /sentry-tunnel proxied through own domain)
-  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai https://challenges.cloudflare.com https://*.sentry.io",
+  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visuologia.com https://challenges.cloudflare.com https://*.sentry.io",
   // Clerk CAPTCHA and OAuth popups run in iframes
-  "frame-src https://challenges.cloudflare.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visualme.ai",
+  "frame-src https://challenges.cloudflare.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.visuologia.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

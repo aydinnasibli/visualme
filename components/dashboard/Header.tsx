@@ -53,7 +53,7 @@ const Header = ({ label = 'Playground', actions }: HeaderProps) => {
       <div className="flex items-center gap-3 min-w-0">
         <Link href="/dashboard" className="flex items-center gap-3 group shrink-0" title="Back to dashboard">
           <div className="w-8 h-8 rounded-lg bg-surface-2 border border-edge flex items-center justify-center text-accent font-display font-semibold group-hover:border-accent/40 transition-colors">V</div>
-          <h1 className="font-display text-ink text-xl font-semibold leading-normal tracking-tight group-hover:text-accent transition-colors">VisualMe</h1>
+          <h1 className="font-display text-ink text-xl font-semibold leading-normal tracking-tight group-hover:text-accent transition-colors">Visuologia</h1>
         </Link>
         <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-surface-1 text-ink-faint border border-edge ml-2 shrink-0">{label}</span>
       </div>

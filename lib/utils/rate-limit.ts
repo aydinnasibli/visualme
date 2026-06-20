@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { Ratelimit } from '@upstash/ratelimit';
 import { getRedis } from '@/lib/utils/redis';
 
@@ -110,7 +111,8 @@ export async function checkRateLimit(
   } catch (err) {
     // Redis unavailable — fail open rather than blocking legitimate users.
     // Token balance acts as the financial backstop.
-    console.error('[rate-limit] Redis unavailable, using in-memory fallback:', err);
+    console.error(err);
+    Sentry.captureException(err);
     return inMemoryRateLimit(`${op}:${userId}`, op);
   }
 }

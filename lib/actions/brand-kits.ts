@@ -1,5 +1,6 @@
 "use server";
 
+import * as Sentry from '@sentry/nextjs';
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/database/mongodb";
 import { UserModel } from "@/lib/database/models";
@@ -51,7 +52,8 @@ export async function getBrandKit(): Promise<{ success: boolean; data?: BrandKit
       },
     };
   } catch (error) {
-    console.error('Error fetching brand kit:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch brand kit') };
   }
 }
@@ -76,7 +78,8 @@ export async function saveBrandKit(theme: BrandTheme): Promise<{ success: boolea
 
     return { success: true, data: { theme, updatedAt: updatedAt.toISOString() } };
   } catch (error) {
-    console.error('Error saving brand kit:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to save brand kit') };
   }
 }
@@ -95,7 +98,8 @@ export async function deleteBrandKit(): Promise<{ success: boolean; error?: stri
 
     return { success: true };
   } catch (error) {
-    console.error('Error deleting brand kit:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to delete brand kit') };
   }
 }

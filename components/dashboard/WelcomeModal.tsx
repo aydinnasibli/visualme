@@ -44,7 +44,7 @@ function HeroVisual() {
             }}>
             <span className="font-display font-bold text-accent text-2xl leading-none">V</span>
           </div>
-          <span className="text-[11px] font-semibold text-ink-faint tracking-wide">VisualMe</span>
+          <span className="text-[11px] font-semibold text-ink-faint tracking-wide">Visuologia</span>
         </div>
 
         {/* Line chart mini */}
@@ -244,14 +244,14 @@ function TokenVisual() {
 const SLIDES = [
   {
     visual: HeroVisual,
-    title: 'Welcome to VisualMe',
+    title: 'Welcome to Visuologia',
     body: 'Turn any data description into a production-ready chart — no spreadsheet skills, no design tools. Just describe what you want.',
     cta: 'Show me around',
   },
   {
     visual: GenerateVisual,
     title: 'Describe it. Get a chart.',
-    body: 'Type what you want to visualize, paste a CSV, or pick one of the 8 built-in templates with sample data already loaded. VisualMe picks the right chart type automatically.',
+    body: 'Type what you want to visualize, paste a CSV, or pick one of the 8 built-in templates with sample data already loaded. Visuologia picks the right chart type automatically.',
     cta: 'Next',
   },
   {
@@ -271,9 +271,13 @@ const SLIDES = [
 /* ─── Main modal ──────────────────────────────────────────────────────────── */
 
 export default function WelcomeModal() {
-  const [open, setOpen] = useState(() => !hasSeenWelcome());
+  const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1); // 1 = forward, -1 = backward
+
+  useEffect(() => {
+    if (!hasSeenWelcome()) setOpen(true);
+  }, []);
 
   const total = SLIDES.length;
   const isLast = step === total - 1;
@@ -347,7 +351,7 @@ export default function WelcomeModal() {
             ref={modalRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Welcome to VisualMe"
+            aria-label="Welcome to Visuologia"
             className="w-full max-w-[480px] rounded-2xl border shadow-[0_40px_80px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col"
             style={{ background: 'var(--color-surface-1)', borderColor: 'var(--color-edge)' }}
           >

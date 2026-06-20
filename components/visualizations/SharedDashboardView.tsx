@@ -32,7 +32,7 @@ export default function SharedDashboardView({ dashboard }: Props) {
           <Link href="/" className="w-7 h-7 rounded-lg bg-surface-2 border border-edge flex items-center justify-center text-accent font-display font-semibold text-sm">
             V
           </Link>
-          <span className="text-ink-faint text-sm">VisualMe</span>
+          <span className="text-ink-faint text-sm">Visuologia</span>
           <span className="text-edge">/</span>
           <div className="flex items-center gap-1.5">
             <LayoutDashboard className="w-3.5 h-3.5 text-ink-faint" />
@@ -48,7 +48,7 @@ export default function SharedDashboardView({ dashboard }: Props) {
             href="/sign-up"
             className="px-3 py-1.5 rounded-lg bg-accent text-surface-0 text-xs font-medium hover:bg-accent-hover transition-colors"
           >
-            Try VisualMe free
+            Try Visuologia free
           </Link>
         </div>
       </header>
@@ -99,7 +99,7 @@ export default function SharedDashboardView({ dashboard }: Props) {
       <footer className="h-10 flex items-center justify-center border-t border-edge text-xs text-ink-faint shrink-0">
         Shared via{' '}
         <Link href="/" className="text-ink-faint hover:text-ink transition-colors ml-1">
-          VisualMe
+          Visuologia
         </Link>
       </footer>
     </div>

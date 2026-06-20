@@ -1,5 +1,6 @@
 "use server";
 
+import * as Sentry from '@sentry/nextjs';
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/database/mongodb";
 import { UserModel } from "@/lib/database/models";
@@ -73,7 +74,8 @@ export async function getUserProfile(): Promise<{ success: boolean; data?: UserP
 
     return { success: true, data: profile };
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch user profile') };
   }
 }
@@ -140,7 +142,8 @@ export async function getUserLimits(): Promise<{
       },
     };
   } catch (error) {
-    console.error('Error fetching user limits:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch user limits') };
   }
 }
@@ -170,7 +173,8 @@ export async function updateNotificationPreferences(
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating notification preferences:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to update preferences') };
   }
 }
@@ -217,7 +221,8 @@ export async function getUsageAlertStatus(): Promise<{
       },
     };
   } catch (error) {
-    console.error('Error checking usage alert status:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to check usage alert status') };
   }
 }

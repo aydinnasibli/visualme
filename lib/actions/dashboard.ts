@@ -1,5 +1,6 @@
 'use server';
 
+import * as Sentry from '@sentry/nextjs';
 import { auth } from '@clerk/nextjs/server';
 import { nanoid } from 'nanoid';
 import { connectToDatabase } from '@/lib/database/mongodb';
@@ -127,7 +128,8 @@ export async function createDashboard(
 
     return { success: true, data: sanitizeDashboard(doc) };
   } catch (error) {
-    console.error('createDashboard error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to create dashboard') };
   }
 }
@@ -165,7 +167,8 @@ export async function updateDashboard(
 
     return { success: true, data: sanitizeDashboard(doc) };
   } catch (error) {
-    console.error('updateDashboard error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to update dashboard') };
   }
 }
@@ -208,7 +211,8 @@ export async function publishDashboard(id: string, isPublic: boolean) {
 
     return { success: true, data: sanitizeDashboard(doc), ...(warning ? { warning } : {}) };
   } catch (error) {
-    console.error('publishDashboard error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to publish dashboard') };
   }
 }
@@ -237,7 +241,8 @@ export async function updateDashboardSchedule(id: string, schedule: { enabled: b
 
     return { success: true, data: sanitizeDashboard(doc) };
   } catch (error) {
-    console.error('updateDashboardSchedule error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to update dashboard schedule') };
   }
 }
@@ -257,7 +262,8 @@ export async function getUserDashboards() {
 
     return { success: true, data: docs.map(sanitizeDashboard) };
   } catch (error) {
-    console.error('getUserDashboards error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch dashboards'), data: [] };
   }
 }
@@ -288,7 +294,8 @@ export async function getSharedDashboard(dashboardId: string): Promise<{ success
 
     return { success: true, data: { ...dashboard, userId: '', vizzes } };
   } catch (error) {
-    console.error('getSharedDashboard error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch shared dashboard') };
   }
 }
@@ -335,7 +342,8 @@ export async function refreshDashboardVizLiveData(visualizationId: string) {
       data: { refreshed: true, option: result.option, lastRefreshed, summary: result.summary },
     };
   } catch (error) {
-    console.error('refreshDashboardVizLiveData error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to refresh live data') };
   }
 }
@@ -363,7 +371,8 @@ export async function deleteDashboard(id: string) {
 
     return { success: true };
   } catch (error) {
-    console.error('deleteDashboard error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to delete dashboard') };
   }
 }

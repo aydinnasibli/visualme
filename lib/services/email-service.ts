@@ -2,6 +2,7 @@
 // EMAIL SERVICE — sends scheduled digest emails via Resend.
 // ============================================================================
 
+import * as Sentry from '@sentry/nextjs';
 import { Resend } from 'resend';
 
 let _resend: Resend | null = null;
@@ -83,23 +84,25 @@ function buildHtml({ title, url, urlLabel, footerNote, charts }: DigestHtmlParam
 async function sendDigestEmail(params: { to: string; subject: string; html: string }): Promise<void> {
   const resend = getResendClient();
   if (!resend) {
-    console.error('[email-service] RESEND_API_KEY not configured — skipping digest send');
+    console.warn('[email-service] RESEND_API_KEY not configured — skipping digest send');
     return;
   }
 
   try {
     const { error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'VisualMe <onboarding@resend.dev>',
+      from: process.env.EMAIL_FROM || 'Visuologia <onboarding@resend.dev>',
       to: [params.to],
       subject: params.subject,
       html: params.html,
     });
 
     if (error) {
-      console.error('[email-service] Resend error:', error);
+      console.error(`[email-service] Resend error: ${JSON.stringify(error)}`);
+      Sentry.captureMessage(`[email-service] Resend error: ${JSON.stringify(error)}`, 'error');
     }
   } catch (err) {
-    console.error('[email-service] Failed to send digest:', err);
+    console.error(err);
+    Sentry.captureException(err);
   }
 }
 

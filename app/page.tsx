@@ -22,19 +22,19 @@ const bricolage = Bricolage_Grotesque({
 
 /* ── SEO metadata ── */
 export const metadata: Metadata = {
-  title: 'VisualMe — AI-Powered Data Visualization',
+  title: 'Visuologia — AI-Powered Data Visualization',
   description:
-    'Describe what you want to see. VisualMe picks the right chart, generates it in seconds, and refines it with you in plain English. Upload CSV, JSON, or connect Google Sheets. Free to use.',
+    'Describe what you want to see. Visuologia picks the right chart, generates it in seconds, and refines it with you in plain English. Upload CSV, JSON, or connect Google Sheets. Free to use.',
   openGraph: {
-    title: 'VisualMe — AI-Powered Data Visualization',
+    title: 'Visuologia — AI-Powered Data Visualization',
     description:
       'Describe it. Refine it. Done. AI-powered charts, dashboards, and statistical analysis from plain English.',
     type: 'website',
-    url: 'https://visualme.ai',
+    url: 'https://visuologia.com',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'VisualMe — AI-Powered Data Visualization',
+    title: 'Visuologia — AI-Powered Data Visualization',
     description:
       'Describe it. Refine it. Done. AI-powered charts, dashboards, and statistical analysis from plain English.',
   },
@@ -47,7 +47,7 @@ const CAPABILITIES = [
   { Icon: FlaskConical, text: 'Built-in t-test, ANOVA, chi-square' },
   { Icon: Palette, text: 'Brand themes applied instantly' },
   { Icon: RefreshCw, text: 'Live data from Google Sheets' },
-  { Icon: Share2, text: 'Export PNG, SVG, HTML, JSON, CSV' },
+  { Icon: Share2, text: 'Export PNG, SVG, PDF, HTML, JSON, CSV' },
   { Icon: Code2, text: 'Dashboard builder' },
   { Icon: BarChart3, text: 'Weekly email digests' },
 ];
@@ -60,7 +60,7 @@ const FAQS = [
   },
   {
     q: 'Can I use charts commercially?',
-    a: 'Yes. Everything you create with VisualMe is yours. Export as PNG, SVG, or HTML and use it in presentations, reports, publications, or dashboards — free and Pro plans alike.',
+    a: 'Yes. Everything you create with Visuologia is yours. Export as PNG, SVG, or HTML and use it in presentations, reports, publications, or dashboards — free and Pro plans alike.',
   },
   {
     q: 'What happens when I hit my token limit?',
@@ -76,7 +76,7 @@ const FAQS = [
   },
   {
     q: 'How is this different from ChatGPT + code interpreter?',
-    a: 'VisualMe is purpose-built for visualization. You get persistent sessions, iterative refinement, brand theming, export in 5 formats, live Google Sheets, statistical tests, and dashboards — in a dedicated workspace, not a chat window.',
+    a: 'Visuologia is purpose-built for visualization. You get persistent sessions, iterative refinement, brand theming, export in 5 formats, live Google Sheets, statistical tests, and dashboards — in a dedicated workspace, not a chat window.',
   },
 ];
 
@@ -266,14 +266,14 @@ export default function LandingPage() {
               <rect x="1"  y="12" width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.4" />
               <rect x="12" y="12" width="9" height="9" rx="2" fill="var(--color-accent)" opacity="0.7" />
             </svg>
-            <span className="text-sm font-bold text-ink">VisualMe</span>
+            <span className="text-sm font-bold text-ink">Visuologia</span>
           </div>
           <div className="flex gap-6">
             <span className="text-xs text-ink-faint opacity-50 cursor-not-allowed" title="Coming soon">Privacy</span>
             <span className="text-xs text-ink-faint opacity-50 cursor-not-allowed" title="Coming soon">Terms</span>
             <a href="mailto:aydinnasibli7@gmail.com" className="text-xs text-ink-faint hover:text-ink-muted transition-colors">Contact</a>
           </div>
-          <p className="text-xs text-ink-faint">&copy; {new Date().getFullYear()} VisualMe</p>
+          <p className="text-xs text-ink-faint">&copy; {new Date().getFullYear()} Visuologia</p>
         </div>
       </footer>
 

@@ -33,7 +33,7 @@ export default function SharedVisualizationView({ visualization }: { visualizati
       <header className="h-14 shrink-0 flex items-center justify-between px-6 border-b border-edge">
         <div className="flex items-center gap-3 min-w-0">
           <Link href="/" className="w-7 h-7 rounded-lg bg-surface-2 border border-edge flex items-center justify-center text-accent font-display font-semibold text-sm shrink-0">V</Link>
-          <span className="text-ink-faint text-sm shrink-0">VisualMe</span>
+          <span className="text-ink-faint text-sm shrink-0">Visuologia</span>
           <span className="text-edge shrink-0">/</span>
           <span className="text-ink text-sm font-medium truncate">{visualization.title}</span>
         </div>
@@ -69,7 +69,7 @@ export default function SharedVisualizationView({ visualization }: { visualizati
             href="/sign-up"
             className="px-3 py-1.5 rounded-lg bg-accent text-surface-0 text-xs font-semibold hover:bg-accent-hover transition-colors"
           >
-            Try VisualMe free
+            Try Visuologia free
           </Link>
         </div>
       </header>
@@ -93,7 +93,7 @@ export default function SharedVisualizationView({ visualization }: { visualizati
       {/* Footer */}
       <footer className="h-10 shrink-0 flex items-center justify-center border-t border-edge text-xs text-ink-faint">
         Shared via{' '}
-        <Link href="/" className="text-ink-faint hover:text-ink transition-colors ml-1">VisualMe</Link>
+        <Link href="/" className="text-ink-faint hover:text-ink transition-colors ml-1">Visuologia</Link>
       </footer>
     </div>
   );

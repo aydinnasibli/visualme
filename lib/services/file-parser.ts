@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import Papa from 'papaparse';
 import { validateFileSize, validateFileType } from '../utils/helpers';
 
@@ -63,7 +64,8 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
         };
     }
   } catch (error) {
-    console.error('File parsing error:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to parse file',
@@ -156,15 +158,34 @@ async function parseTXT(file: File, fileInfo: ParsedFileResult['fileInfo']): Pro
  */
 async function parseXLSX(file: File, fileInfo: ParsedFileResult['fileInfo']): Promise<ParsedFileResult> {
   try {
-    const XLSX = await import('xlsx');
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer);
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) {
+    await workbook.xlsx.load(buffer);
+
+    const sheet = workbook.worksheets[0];
+    if (!sheet || sheet.rowCount === 0) {
       return { success: false, error: 'No sheets found in the workbook', fileInfo };
     }
-    const sheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
+
+    const headers: string[] = [];
+    sheet.getRow(1).eachCell((cell, colNumber) => {
+      headers[colNumber - 1] = String(cell.value ?? `Column${colNumber}`);
+    });
+
+    const data: Record<string, unknown>[] = [];
+    for (let r = 2; r <= sheet.rowCount; r++) {
+      const row = sheet.getRow(r);
+      if (row.values === undefined || (Array.isArray(row.values) && row.values.length <= 1)) continue;
+      const obj: Record<string, unknown> = {};
+      for (const h of headers) obj[h] = null;
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const key = headers[colNumber - 1] ?? `Column${colNumber}`;
+        obj[key] = cell.value ?? null;
+      });
+      if (Object.values(obj).some(v => v !== null)) data.push(obj);
+    }
+
     return { success: true, data, fileInfo };
   } catch (error) {
     return {

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 
 export const metadata: Metadata = {
-  title: 'Admin — VisualMe',
+  title: 'Admin — Visuologia',
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

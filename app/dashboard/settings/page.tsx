@@ -217,8 +217,8 @@ export default function SettingsPage() {
                 </div>
                 <div className="text-2xl font-bold text-ink">$0<span className="text-sm font-normal text-ink-muted">/mo</span></div>
                 <ul className="space-y-2 text-sm text-ink-muted mb-2">
-                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> 10 Visualizations/mo</li>
-                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Basic Formats</li>
+                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> ~18 AI generations / month</li>
+                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Up to 50 saved visualizations</li>
                 </ul>
                 <button
                   disabled
@@ -245,9 +245,9 @@ export default function SettingsPage() {
                 </div>
                 <div className="text-2xl font-bold text-ink">$12<span className="text-sm font-normal text-ink-muted">/mo</span></div>
                 <ul className="space-y-2 text-sm text-ink-muted mb-2">
-                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Unlimited Visualizations</li>
-                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Advanced Formats</li>
-                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Priority Support</li>
+                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> ~490 AI generations / month</li>
+                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> Up to 1,000 saved visualizations</li>
+                  <li className="flex items-center gap-2"><Check className="text-accent w-4 h-4" /> All features — no restrictions</li>
                 </ul>
                 <button
                   disabled

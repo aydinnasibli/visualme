@@ -5,10 +5,10 @@ import { useEffect } from 'react';
 
 export default function GlobalError({
   error,
-  retry,
+  unstable_retry,
 }: {
   error: Error & { digest?: string };
-  retry: () => void;
+  unstable_retry: () => void;
 }) {
   useEffect(() => {
     Sentry.captureException(error);
@@ -21,7 +21,7 @@ export default function GlobalError({
           <h1 style={{ fontSize: '2rem', fontWeight: 700 }}>Something went wrong</h1>
           <p style={{ marginTop: '0.5rem', color: '#999' }}>A critical error occurred.</p>
           <button
-            onClick={retry}
+            onClick={unstable_retry}
             style={{ marginTop: '1.5rem', padding: '0.5rem 1.25rem', borderRadius: '8px', background: '#fff', color: '#111', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
           >
             Try again

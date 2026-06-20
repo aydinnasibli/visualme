@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { verifyWebhook } from '@clerk/nextjs/webhooks';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
@@ -66,7 +67,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (err) {
-    console.error('Clerk webhook error:', err);
+    console.error(err);
+    Sentry.captureException(err);
     return NextResponse.json({ error: 'Webhook verification failed' }, { status: 400 });
   }
 }

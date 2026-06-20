@@ -1,5 +1,6 @@
 'use server';
 
+import * as Sentry from '@sentry/nextjs';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { UserUsageModel } from '@/lib/database/models';
 import { TOKEN_LIMITS } from '@/lib/utils/validation';
@@ -201,7 +202,8 @@ export async function updateUserTier(
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating user tier:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: 'Failed to update user tier' };
   }
 }

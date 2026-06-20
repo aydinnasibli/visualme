@@ -177,23 +177,10 @@ body {
   animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Graph Container Fixes */
-.react-flow__renderer {
-  background: transparent !important;
-}
-
-.react-flow__node {
-  border: none !important;
-}
-
-.react-flow__controls {
-  display: none;
-}
-
 /* ─── React-Grid-Layout dark overrides ─── */
 .react-grid-item.react-grid-placeholder {
-  background: oklch(72% 0.13 55 / 0.08) !important;
-  border: 1px dashed oklch(72% 0.13 55 / 0.35) !important;
+  background: color-mix(in oklch, var(--color-accent) 8%, transparent) !important;
+  border: 1px dashed color-mix(in oklch, var(--color-accent) 35%, transparent) !important;
   border-radius: 16px !important;
   opacity: 1 !important;
 }
@@ -213,7 +200,7 @@ body {
 
 .react-resizable-handle::after {
   content: "" !important;
-  border-color: oklch(72% 0.13 55 / 0.6) !important;
+  border-color: color-mix(in oklch, var(--color-accent) 60%, transparent) !important;
   border-width: 0 2px 2px 0 !important;
   width: 8px !important;
   height: 8px !important;

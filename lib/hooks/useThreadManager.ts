@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { SavedVisualization } from '@/lib/types/visualization';
 import type { BrandTheme, Annotation } from '@/lib/types/echarts-spec';
@@ -558,10 +559,12 @@ export function useThreadManager({ searchParams, isSignedIn }: UseThreadManagerO
         if (res.success && res.id) {
           setThreads(p => p.map(t => t.id === entry.id ? { ...t, vizId: res.id! } : t));
         } else if (!res.success) {
-          console.error('Failed to persist session:', res.error);
+          console.error(`Failed to persist session: ${res.error}`);
+          Sentry.captureMessage(`Failed to persist session: ${res.error}`, 'error');
         }
       }).catch(err => {
-        console.error('Session creation failed:', err);
+        console.error(err);
+        Sentry.captureException(err);
       });
     } catch {
       toast.error('An unexpected error occurred.');

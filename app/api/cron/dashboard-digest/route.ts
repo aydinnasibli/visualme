@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { type NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/database/mongodb';
 import { DashboardModel, VisualizationModel, UserModel } from '@/lib/database/models';
@@ -112,7 +113,8 @@ export async function GET(request: NextRequest) {
       // Dashboards with no live-data slots produce charts.length === 0 and
       // are intentionally left un-stamped so their schedule isn't silently consumed.
     } catch (err) {
-      console.error(`[cron/dashboard-digest] Failed for dashboard ${dashboard._id}:`, err);
+      console.error(err);
+      Sentry.captureException(err);
     }
   }
 
@@ -177,7 +179,8 @@ export async function GET(request: NextRequest) {
         sent++;
       }
     } catch (err) {
-      console.error(`[cron/dashboard-digest] Failed for visualization ${viz._id}:`, err);
+      console.error(err);
+      Sentry.captureException(err);
     }
   }
 

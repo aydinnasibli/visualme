@@ -191,7 +191,7 @@ export default function InteractiveDemo() {
                     <div className="max-w-[88%] bg-surface-1 border border-edge rounded-2xl rounded-bl-md px-3.5 py-2">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <Sparkles size={10} className="text-accent" />
-                        <span className="text-[9px] font-semibold text-accent uppercase tracking-wider">VisualMe</span>
+                        <span className="text-[9px] font-semibold text-accent uppercase tracking-wider">Visuologia</span>
                       </div>
                       <p className="text-sm text-ink-muted leading-relaxed">{msg.content}</p>
                     </div>

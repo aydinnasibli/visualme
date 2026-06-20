@@ -117,7 +117,7 @@ export default function HeroMockup() {
             ))}
           </div>
           <div className="flex-1 flex justify-center">
-            <span className="px-3 py-0.5 rounded text-[10px] text-ink-faint bg-surface-2 border border-edge">app.visualme.ai/dashboard</span>
+            <span className="px-3 py-0.5 rounded text-[10px] text-ink-faint bg-surface-2 border border-edge">app.visuologia.com/dashboard</span>
           </div>
         </div>
 

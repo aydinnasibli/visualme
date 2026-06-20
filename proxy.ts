@@ -28,7 +28,7 @@ export default clerkMiddleware(
       await auth.protect();
     }
   },
-  // TODO: Re-enable frontendApiProxy once visualme.vercel.app is added as a
+  // TODO: Re-enable frontendApiProxy once visuologia.vercel.app is added as a
   // production domain in Clerk Dashboard and pk_live_ keys are set in Vercel env vars.
 );
 

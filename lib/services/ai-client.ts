@@ -5,6 +5,7 @@
 // back with real token usage" pattern used by every generation/edit service.
 // ============================================================================
 
+import * as Sentry from '@sentry/nextjs';
 import OpenAI from 'openai';
 
 export const MODELS = {
@@ -66,7 +67,8 @@ export async function callOpenAIJSON<T>(
       completionTokens: completion.usage?.completion_tokens ?? 0,
     };
   } catch (error) {
-    console.error('Error in OpenAI call:', error);
+    console.error(error);
+    Sentry.captureException(error);
     throw new Error(`Failed to generate visualization data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

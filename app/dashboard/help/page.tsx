@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Header from '@/components/dashboard/Header';
-import { Rocket, Database, Activity, Wrench, ChevronRight, ChevronDown, Mail } from 'lucide-react';
+import { ChevronDown, Mail } from 'lucide-react';
 
 export default function HelpPage() {
 
@@ -25,34 +25,12 @@ export default function HelpPage() {
     }
   ];
 
-  const cards = [
-    { icon: Rocket, title: 'Getting Started', desc: 'Learn the basics of creating your first visualization in seconds.', cta: 'Read Guide' },
-    { icon: Database, title: 'Data Formatting', desc: 'Best practices for structuring your prompts and data for best results.', cta: 'View Examples' },
-    { icon: Activity, title: 'Tips & Tricks', desc: 'Advanced techniques to get the most out of the AI engine.', cta: 'Learn More' },
-    { icon: Wrench, title: 'Troubleshooting', desc: 'Solutions for common issues and error messages.', cta: 'Get Help' },
-  ];
-
   return (
     <div className="min-h-screen bg-surface-0 relative selection:bg-accent/20">
       <Header label="Help" />
       <div className="max-w-4xl mx-auto p-6 pt-24">
         <h1 className="font-display text-3xl font-bold text-ink mb-2">Help & Support</h1>
-        <p className="text-ink-muted mb-8">Find answers to common questions and learn how to use VisualMe.</p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          {cards.map(({ icon: Icon, title, desc, cta }) => (
-            <div key={title} className="surface-panel rounded-xl p-6 hover:border-accent/30 transition-colors group cursor-pointer">
-              <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-4 group-hover:bg-accent group-hover:text-surface-0 transition-colors">
-                <Icon className="w-7 h-7" />
-              </div>
-              <h3 className="text-lg font-semibold text-ink mb-2">{title}</h3>
-              <p className="text-ink-muted text-sm">{desc}</p>
-              <div className="mt-4 flex items-center gap-1 text-accent text-sm font-medium">
-                {cta} <ChevronRight className="w-4 h-4 text-ink-faint" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="text-ink-muted mb-8">Find answers to common questions and learn how to use Visuologia.</p>
 
         <h2 className="text-2xl font-bold text-ink mb-6">Frequently Asked Questions</h2>
         <div className="space-y-4 mb-12">

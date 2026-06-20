@@ -10,13 +10,13 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { shareId } = await params;
   const res = await getSharedVisualization(shareId);
-  if (!res.success || !res.data) return { title: 'Visualization — VisualMe' };
+  if (!res.success || !res.data) return { title: 'Visualization — Visuologia' };
   return {
-    title: `${res.data.title} — VisualMe`,
-    description: `Interactive visualization shared via VisualMe`,
+    title: `${res.data.title} — Visuologia`,
+    description: `Interactive visualization shared via Visuologia`,
     openGraph: {
-      title: `${res.data.title} — VisualMe`,
-      description: `Interactive visualization shared via VisualMe`,
+      title: `${res.data.title} — Visuologia`,
+      description: `Interactive visualization shared via Visuologia`,
       type: 'website',
     },
   };

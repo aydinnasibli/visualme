@@ -56,7 +56,7 @@ export default function AdminSidebar() {
             </div>
             <div>
               <p className="text-sm font-semibold text-ink leading-tight">Admin</p>
-              <p className="text-[11px] text-ink-faint">VisualMe</p>
+              <p className="text-[11px] text-ink-faint">Visuologia</p>
             </div>
           </div>
           <button

@@ -1,5 +1,6 @@
 'use server';
 
+import * as Sentry from '@sentry/nextjs';
 import { after } from 'next/server';
 import mongoose, { Types } from 'mongoose';
 import { auth } from '@clerk/nextjs/server';
@@ -135,6 +136,7 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
     const deduction = await deductTokens(userId, actualCost);
     if (!deduction.success) {
       console.error(`[billing] post-AI deduction failed userId=${userId} cost=${actualCost}: ${deduction.error}`);
+      Sentry.captureMessage(`[billing] post-AI deduction failed userId=${userId} cost=${actualCost}: ${deduction.error}`, 'error');
       return fail('Your token balance was depleted by a concurrent request. Please try again.');
     }
 
@@ -182,7 +184,8 @@ export async function generateVisualization(input: string, styleEffect?: ChartSt
       },
     };
   } catch (error) {
-    console.error('Error generating visualization:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return fail(sanitizeError(error, 'Failed to generate visualization'));
   }
 }
@@ -236,7 +239,8 @@ export async function createSession(
 
     return { success: true, id: visualization._id.toString() };
   } catch (error) {
-    console.error('Error creating session:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to create session') };
   }
 }
@@ -286,7 +290,7 @@ export async function editVisualizationAction(
     }
 
     const AI_CONTEXT_WINDOW = 20; // messages sent to the AI — keeps prompts lean
-    const DB_HISTORY_CAP = 100;  // messages stored per doc — prevents extreme abuse
+    const { DB_HISTORY_CAP } = VALIDATION_LIMITS;
     const contextHistory = messages
       ? messages.slice(-AI_CONTEXT_WINDOW).map(m => ({ role: m.role, content: m.content }))
       : [];
@@ -307,7 +311,8 @@ export async function editVisualizationAction(
         narrativePromptTokens = narrativeResult.promptTokens;
         narrativeCompletionTokens = narrativeResult.completionTokens;
       } catch (error) {
-        console.error('Error generating narrative on edit:', error);
+        console.error(error);
+        Sentry.captureException(error);
       }
     }
 
@@ -316,6 +321,7 @@ export async function editVisualizationAction(
     const deduction = await deductTokens(userId, actualCost);
     if (!deduction.success) {
       console.error(`[billing] edit deduction failed userId=${userId} cost=${actualCost}: ${deduction.error}`);
+      Sentry.captureMessage(`[billing] edit deduction failed userId=${userId} cost=${actualCost}: ${deduction.error}`, 'error');
       return { success: false, error: 'Your token balance was depleted by a concurrent request. Please try again.' };
     }
 
@@ -364,7 +370,8 @@ export async function editVisualizationAction(
     };
 
   } catch (error) {
-    console.error('Error editing visualization:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to edit visualization') };
   }
 }
@@ -432,9 +439,11 @@ export async function saveVisualization(
        // First explicit save of an auto-persisted session — enforce the saved-visualizations limit
        if (visualization.isSaved === false) {
          const user = await UserModel.findOrCreate(userId);
-         const maxAllowed = tier === 'free'
-           ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
-           : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
+         const maxAllowed = tier === 'enterprise'
+           ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_ENTERPRISE
+           : tier === 'pro'
+             ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO
+             : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE;
 
          if (user.savedVisualizations.length >= maxAllowed) {
            return {
@@ -451,7 +460,7 @@ export async function saveVisualization(
          visualization.metadata = metadata;
          visualization.isPublic = isPublic;
          if (history) {
-           visualization.history = history.slice(-100).map(h => ({
+           visualization.history = history.slice(-VALIDATION_LIMITS.DB_HISTORY_CAP).map(h => ({
              ...h,
              timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
            }));
@@ -479,7 +488,7 @@ export async function saveVisualization(
          visualization.metadata = metadata;
          visualization.isPublic = isPublic;
          if (history) {
-           visualization.history = history.slice(-100).map(h => ({
+           visualization.history = history.slice(-VALIDATION_LIMITS.DB_HISTORY_CAP).map(h => ({
              ...h,
              timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
            }));
@@ -501,7 +510,7 @@ export async function saveVisualization(
         existingVisualization.metadata = metadata;
         existingVisualization.isPublic = isPublic;
         if (history) {
-           existingVisualization.history = history.slice(-100).map(h => ({
+           existingVisualization.history = history.slice(-VALIDATION_LIMITS.DB_HISTORY_CAP).map(h => ({
              ...h,
              timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp) : h.timestamp
            }));
@@ -510,9 +519,11 @@ export async function saveVisualization(
 
         if (existingVisualization.isSaved === false) {
           const user = await UserModel.findOrCreate(userId);
-          const maxAllowed = tier === 'free'
-            ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE
-            : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO;
+          const maxAllowed = tier === 'enterprise'
+            ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_ENTERPRISE
+            : tier === 'pro'
+              ? VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_PRO
+              : VALIDATION_LIMITS.MAX_SAVED_VISUALIZATIONS_FREE;
           if (user.savedVisualizations.length >= maxAllowed) {
             return {
               success: false,
@@ -587,7 +598,8 @@ export async function saveVisualization(
 
     return { success: true, id: visualization._id.toString(), data: sanitizedData };
   } catch (error) {
-    console.error('Error saving visualization:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return {
       success: false,
       error: sanitizeError(error, 'Failed to save visualization'),
@@ -619,7 +631,8 @@ export async function getUserVisualizations(limit?: number) {
       data: visualizations.map(v => sanitizeVisualization(v)).filter((v): v is SavedVisualization => v !== null),
     };
   } catch (error) {
-    console.error('Error fetching visualizations:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch visualizations'), data: [] as SavedVisualization[] };
   }
 }
@@ -657,7 +670,8 @@ export async function getUserSessions(limit: number = 50) {
       data: visualizations.map(v => sanitizeVisualization(v)).filter((v): v is SavedVisualization => v !== null),
     };
   } catch (error) {
-    console.error('Error fetching sessions:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch sessions'), data: [] as SavedVisualization[] };
   }
 }
@@ -692,7 +706,8 @@ export async function updateVisualizationTitle(
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating visualization title:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to update title') };
   }
 }
@@ -727,7 +742,8 @@ export async function getVisualizationById(id: string) {
       data: sanitizeVisualization(visualization),
     };
   } catch (error) {
-    console.error('Error fetching visualization by ID:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to fetch visualization'), data: null };
   }
 }
@@ -777,7 +793,8 @@ export async function saveLiveDataConfig(
 
     return { success: true };
   } catch (error) {
-    console.error('Error saving live data config:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to save live data config') };
   }
 }
@@ -814,7 +831,8 @@ export async function updateVisualizationSchedule(
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating visualization schedule:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to update schedule') };
   }
 }
@@ -919,7 +937,8 @@ export async function deleteVisualization(visualizationId: string) {
 
     return { success: true };
   } catch (error) {
-    console.error('Error deleting visualization:', error);
+    console.error(error);
+    Sentry.captureException(error);
     return {
       success: false,
       error: sanitizeError(error, 'Failed to delete visualization'),

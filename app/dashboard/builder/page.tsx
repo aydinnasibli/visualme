@@ -6,7 +6,7 @@ import DashboardBuilder from '@/components/dashboard/DashboardBuilder';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Dashboard Builder — VisualMe',
+  title: 'Dashboard Builder — Visuologia',
 };
 
 export default async function DashboardBuilderPage() {

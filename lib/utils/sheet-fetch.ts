@@ -4,6 +4,7 @@
 // scheduled dashboard digest cron job (server-initiated, no HTTP round trip).
 // ============================================================================
 
+import * as Sentry from '@sentry/nextjs';
 import { promises as dnsPromises } from 'dns';
 import Papa from 'papaparse';
 import { type ColumnSchema, inferSchema } from '@/lib/utils/csv-schema';
@@ -274,7 +275,8 @@ export async function fetchAndParseSheet(rawUrl: string): Promise<FetchedSheet |
     if (err instanceof Error && err.name === 'AbortError') {
       return { ok: false, error: 'Request timed out', status: 504 };
     }
-    console.error('[sheet-fetch] fetch error:', err);
+    console.error(err);
+    Sentry.captureException(err);
     return { ok: false, error: 'Failed to fetch data source', status: 502 };
   } finally {
     clearTimeout(timeoutId);

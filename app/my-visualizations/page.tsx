@@ -2,7 +2,6 @@
 
 import { getUserVisualizations, deleteVisualization, duplicateVisualization } from '@/lib/actions/visualize';
 import Header from '@/components/dashboard/Header';
-import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { useState, useEffect, useRef } from 'react';
 import type { SavedVisualization } from '@/lib/types/visualization';
@@ -552,7 +551,6 @@ function VisualizationsContent() {
 }
 
 export default function MyVisualizationsPage() {
-  const { user } = useUser();
   return (
     <div className="min-h-screen bg-surface-0 relative selection:bg-accent/20">
       <Header label="Library" />

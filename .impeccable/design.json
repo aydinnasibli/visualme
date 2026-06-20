@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-06-07T12:31:16Z",
-  "title": "Design System: VisualMe",
+  "title": "Design System: Visuologia",
   "extensions": {
     "colorMeta": {
       "surface-base": { "role": "neutral", "displayName": "Slate Base", "canonical": "oklch(21% 0.04 265)", "tonalRamp": ["oklch(15% 0.02 265)", "oklch(21% 0.04 265)", "oklch(28% 0.04 265)", "oklch(38% 0.035 265)", "oklch(50% 0.03 265)", "oklch(64% 0.025 265)", "oklch(80% 0.015 265)", "oklch(95% 0.005 265)"] },
@@ -82,7 +82,7 @@
   ],
   "narrative": {
     "northStar": "The Default Dark",
-    "overview": "This document captures the system as it exists today, a snapshot of \"before,\" not a spec to extend. It is the out-of-the-box dark SaaS template look applied without a unifying point of view: a slate-900 base, an indigo accent borrowed from the Tailwind palette, glass-panel blur on every elevated surface, and Space Grotesk dropped onto headings because it reads as \"modern.\" None of these were wrong choices in isolation. The problem is that no one decision was made in relation to the others, so the system never cohered into something that looks like VisualMe rather than any other AI-tool starter. The clearest symptom is the gray scale: slate and zinc are both in active use across the same screens, sometimes on adjacent elements, alongside three different purples (indigo-500, violet-500, purple-500) that aren't differentiated by role. Buttons, cards, and panels are templated and interchangeable: the same glass-card-with-blur treatment appears regardless of what it contains or what the user is trying to do there, so nothing on screen is purpose-built.",
+    "overview": "This document captures the system as it exists today, a snapshot of \"before,\" not a spec to extend. It is the out-of-the-box dark SaaS template look applied without a unifying point of view: a slate-900 base, an indigo accent borrowed from the Tailwind palette, glass-panel blur on every elevated surface, and Space Grotesk dropped onto headings because it reads as \"modern.\" None of these were wrong choices in isolation. The problem is that no one decision was made in relation to the others, so the system never cohered into something that looks like Visuologia rather than any other AI-tool starter. The clearest symptom is the gray scale: slate and zinc are both in active use across the same screens, sometimes on adjacent elements, alongside three different purples (indigo-500, violet-500, purple-500) that aren't differentiated by role. Buttons, cards, and panels are templated and interchangeable: the same glass-card-with-blur treatment appears regardless of what it contains or what the user is trying to do there, so nothing on screen is purpose-built.",
     "keyCharacteristics": [
       "Two competing neutral scales (slate and zinc) used interchangeably with no rule for which applies where",
       "Three accent purples (indigo-500, violet-500, purple-500) doing the same job in different places",
