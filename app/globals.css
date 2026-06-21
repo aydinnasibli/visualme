@@ -73,6 +73,11 @@
   --color-warning: oklch(80% 0.13 92);
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 52px;
+}
+
 body {
   color: var(--color-ink);
   background: var(--color-surface-0);

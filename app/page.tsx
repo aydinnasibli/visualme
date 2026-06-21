@@ -3,7 +3,7 @@ import { Bricolage_Grotesque } from 'next/font/google';
 import {
   ArrowRight, ArrowUpRight, Check,
   Upload, MessageSquare, Palette, Code2, BarChart3, Share2,
-  FlaskConical, RefreshCw,
+  FlaskConical, RefreshCw, Sparkles,
 } from 'lucide-react';
 import { CHART_TYPES } from '@/lib/utils/chart-types';
 import Header from '@/components/layout/Header';
@@ -12,6 +12,7 @@ import HeroMockup from '@/components/landing/HeroMockup';
 import ChartShowcase from '@/components/landing/ChartShowcase';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import FeatureShowcase from '@/components/landing/FeatureShowcase';
+import HowItWorks from '@/components/landing/HowItWorks';
 import FadeIn from '@/components/landing/FadeIn';
 import type { Metadata } from 'next';
 
@@ -110,7 +111,7 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <HeroBg>
-        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+        <div className="mx-auto px-6 pt-[52px]" style={{ maxWidth: 1120 }}>
           <div className="text-center mx-auto" style={{ maxWidth: '640px' }}>
             <p className="text-xs font-semibold uppercase tracking-widest mb-5 text-ink-muted">
               AI-powered data visualization
@@ -137,6 +138,34 @@ export default function LandingPage() {
           </div>
         </div>
       </HeroBg>
+
+      {/* ── Capabilities strip ── */}
+      <section className="border-y border-edge bg-surface-1">
+        <div className="mx-auto px-6 py-6" style={{ maxWidth: 1120 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
+            {CAPABILITIES.map(({ Icon, text }) => (
+              <div key={text} className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-surface-2 border border-edge flex items-center justify-center shrink-0">
+                  <Icon size={14} className="text-ink-muted" />
+                </div>
+                <span className="text-xs font-medium text-ink-muted">{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
+      <section id="how-it-works" className="bg-surface-0" style={{ paddingTop: 88, paddingBottom: 88 }}>
+        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
+          <FadeIn>
+            <h2 className="font-bold tracking-tight mb-12 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
+              Three steps. Any chart.
+            </h2>
+            <HowItWorks />
+          </FadeIn>
+        </div>
+      </section>
 
       {/* ── Interactive demo ── */}
       <section id="try-it" className="bg-surface-1" style={{ paddingTop: 88, paddingBottom: 88 }}>
@@ -240,18 +269,28 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="relative border-t border-b" style={{ paddingTop: 88, paddingBottom: 88, background: 'oklch(72% 0.13 55 / 0.05)', borderColor: 'oklch(72% 0.13 55 / 0.2)' }}>
-        <div className="mx-auto px-6" style={{ maxWidth: 1120 }}>
-          <div style={{ maxWidth: '52ch' }}>
-            <h2 className="font-bold tracking-tight mb-5 text-ink" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}>
-              Stop fighting chart tools.
-            </h2>
-            <p className="mb-8 leading-relaxed text-ink-muted">
-              Every feature is free. No credit card, no setup. Just type what you want to see.
-            </p>
-            <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors">
+      <section className="relative overflow-hidden" style={{ paddingTop: 96, paddingBottom: 96 }}>
+        <div className="absolute inset-0 bg-surface-0" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, oklch(from var(--color-accent) l c h / 0.06) 0%, transparent 70%)' }} />
+        <div className="absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(to right, transparent, var(--color-edge), transparent)' }} />
+        <div className="absolute inset-x-0 bottom-0 h-px" style={{ background: 'linear-gradient(to right, transparent, var(--color-edge), transparent)' }} />
+        <div className="relative mx-auto px-6 text-center" style={{ maxWidth: 640 }}>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-edge bg-surface-1 mb-6">
+            <Sparkles size={12} className="text-ink-muted" />
+            <span className="text-xs font-medium text-ink-muted">Free forever</span>
+          </div>
+          <h2 className="font-bold tracking-tight mb-5 text-ink" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}>
+            Stop fighting chart tools.
+          </h2>
+          <p className="mb-8 leading-relaxed text-ink-muted mx-auto" style={{ maxWidth: '44ch' }}>
+            Every feature is free. No credit card, no setup. Just type what you want to see.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link href="/sign-up" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg text-sm font-semibold text-surface-0 bg-accent hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20">
               Get started free <ArrowUpRight size={14} />
             </Link>
+            <a href="#try-it" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-medium text-ink-muted hover:text-ink border border-edge hover:border-surface-3 transition-colors">
+              See it in action
+            </a>
           </div>
         </div>
       </section>
