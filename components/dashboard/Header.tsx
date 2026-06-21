@@ -10,13 +10,20 @@ import { getUserLimits } from '@/lib/actions/profile';
 function TokenBadge() {
   const [data, setData] = useState<{ remaining: number; limit: number; pct: number } | null>(null);
 
-  useEffect(() => {
+  const refresh = () => {
     getUserLimits().then(res => {
       if (res.success && res.data) {
         const { remaining, limit, percentageUsed } = res.data.tokens;
         setData({ remaining, limit, pct: percentageUsed });
       }
     });
+  };
+
+  useEffect(() => {
+    refresh();
+    const handler = () => refresh();
+    window.addEventListener('tokens-changed', handler);
+    return () => window.removeEventListener('tokens-changed', handler);
   }, []);
 
   if (!data) return null;

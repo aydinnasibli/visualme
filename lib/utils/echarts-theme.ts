@@ -295,10 +295,10 @@ function themeSeries(series: EChartsOption['series'], theme: BrandTheme, styleEf
       applyStyleEffect(themed, type, styleEffect, theme.palette[index % theme.palette.length]);
     }
 
-    if (type === 'bar' && theme.borderRadius) {
+    if (type === 'bar' && theme.borderRadius != null) {
       themed.itemStyle = {
-        borderRadius: theme.borderRadius,
         ...(seriesEntry.itemStyle as object),
+        borderRadius: theme.borderRadius,
       };
     }
 
@@ -513,7 +513,8 @@ export function applyBrandTheme(option: EChartsOption, theme: BrandTheme, styleE
     const effectiveGridLeft  = grid.left  + (theme.legendPosition === 'left'  ? verticalLegendW : 0);
     const effectiveGridRight = grid.right + (theme.legendPosition === 'right' ? verticalLegendW : 0);
 
-    themed.grid = { ...grid, top: effectiveGridTop, left: effectiveGridLeft, right: effectiveGridRight, containLabel: true, ...(original.grid as object) };
+    const aiGrid = (original.grid ?? {}) as Record<string, unknown>;
+    themed.grid = { ...aiGrid, top: effectiveGridTop, bottom: grid.bottom, left: effectiveGridLeft, right: effectiveGridRight, containLabel: true };
   }
 
   // Radar axis-name overflow — indicator names are often long phrases; truncate

@@ -190,7 +190,6 @@ export function useThreadManager({ searchParams, isSignedIn }: UseThreadManagerO
           if (entries.length === 0) {
             const demo = createDemoThread();
             setThreads([demo]);
-            setActiveId(demo.id);
           } else {
             setThreads(entries);
           }
@@ -258,6 +257,7 @@ export function useThreadManager({ searchParams, isSignedIn }: UseThreadManagerO
         newHist,
       );
       if (!res.success) throw new Error(res.error || 'Edit failed');
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('tokens-changed'));
       const finalHist: ThreadEntry['chatHistory'] = [
         ...newHist,
         { role: 'assistant', content: res.message || 'Done.', timestamp: new Date() },
@@ -518,6 +518,7 @@ export function useThreadManager({ searchParams, isSignedIn }: UseThreadManagerO
         return;
       }
 
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('tokens-changed'));
       setLoadingStep('finalizing');
       await new Promise(r => setTimeout(r, 300));
 
@@ -548,24 +549,25 @@ export function useThreadManager({ searchParams, isSignedIn }: UseThreadManagerO
       setThreads(p => [...p.filter(t => !t.isDemoThread), entry]);
       setActiveId(entry.id);
 
-      // Auto-persist as a session — patch vizId once the doc is created
-      createSession(
-        entry.title,
-        entry.spec,
-        data.metadata ?? { generatedAt: new Date(), originalInput: aiInput },
-        [],
-        liveDataForEntry ?? null,
-      ).then(res => {
-        if (res.success && res.id) {
-          setThreads(p => p.map(t => t.id === entry.id ? { ...t, vizId: res.id! } : t));
-        } else if (!res.success) {
-          console.error(`Failed to persist session: ${res.error}`);
-          Sentry.captureMessage(`Failed to persist session: ${res.error}`, 'error');
+      // Auto-persist as a session — await so vizId is set before any edit
+      try {
+        const sessionRes = await createSession(
+          entry.title,
+          entry.spec,
+          data.metadata ?? { generatedAt: new Date(), originalInput: aiInput },
+          [],
+          liveDataForEntry ?? null,
+        );
+        if (sessionRes.success && sessionRes.id) {
+          setThreads(p => p.map(t => t.id === entry.id ? { ...t, vizId: sessionRes.id! } : t));
+        } else if (!sessionRes.success) {
+          console.error(`Failed to persist session: ${sessionRes.error}`);
+          Sentry.captureMessage(`Failed to persist session: ${sessionRes.error}`, 'error');
         }
-      }).catch(err => {
+      } catch (err) {
         console.error(err);
         Sentry.captureException(err);
-      });
+      }
     } catch {
       toast.error('An unexpected error occurred.');
       restoreComposer();
