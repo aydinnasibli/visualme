@@ -1,15 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, ArrowRight, ArrowLeft, Undo2, Sparkles } from 'lucide-react';
-
-const STORAGE_KEY = 'visualme_welcomed_v2';
-
-function hasSeenWelcome(): boolean {
-  if (typeof window === 'undefined') return true;
-  return Boolean(localStorage.getItem(STORAGE_KEY));
-}
+import { getUserProfile, completeOnboarding } from '@/lib/actions/profile';
 
 /* ─── Step visuals ────────────────────────────────────────────────────────── */
 
@@ -274,9 +268,15 @@ export default function WelcomeModal() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1); // 1 = forward, -1 = backward
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!hasSeenWelcome()) setOpen(true);
+    startTransition(async () => {
+      const res = await getUserProfile();
+      if (res.success && res.data && !res.data.onboardingCompleted) {
+        setOpen(true);
+      }
+    });
   }, []);
 
   const total = SLIDES.length;
@@ -284,8 +284,8 @@ export default function WelcomeModal() {
   const isFirst = step === 0;
 
   const dismiss = () => {
-    localStorage.setItem(STORAGE_KEY, '1');
     setOpen(false);
+    completeOnboarding();
   };
 
   const goNext = () => {

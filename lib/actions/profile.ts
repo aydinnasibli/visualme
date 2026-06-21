@@ -17,6 +17,7 @@ export interface UserProfile {
   plan: 'free' | 'pro' | 'enterprise';
   usageCount: number;
   totalSavedVisualizations: number;
+  onboardingCompleted: boolean;
   createdAt: string;
   notificationPreferences: {
     usageAlerts: boolean;
@@ -66,6 +67,7 @@ export async function getUserProfile(): Promise<{ success: boolean; data?: UserP
       plan: user.plan || 'free',
       usageCount: user.usageCount || 0,
       totalSavedVisualizations: user.savedVisualizations.length,
+      onboardingCompleted: user.onboardingCompleted ?? false,
       createdAt: user.createdAt.toISOString(),
       notificationPreferences: {
         usageAlerts: user.notificationPreferences?.usageAlerts ?? true,
@@ -176,6 +178,31 @@ export async function updateNotificationPreferences(
     console.error(error);
     Sentry.captureException(error);
     return { success: false, error: sanitizeError(error, 'Failed to update preferences') };
+  }
+}
+
+/**
+ * Mark onboarding as completed for the current user
+ */
+export async function completeOnboarding(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    await connectToDatabase();
+
+    await UserModel.findOneAndUpdate(
+      { clerkId: userId },
+      { $set: { onboardingCompleted: true } }
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    Sentry.captureException(error);
+    return { success: false, error: sanitizeError(error, 'Failed to complete onboarding') };
   }
 }
 

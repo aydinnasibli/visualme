@@ -21,6 +21,8 @@ interface IUser extends Document {
   usageCount: number;
   lastResetDate: Date;
 
+  onboardingCompleted: boolean;
+
   notificationPreferences: {
     usageAlerts: boolean;
   };
@@ -80,6 +82,10 @@ const UserSchema = new Schema<IUser>(
     lastResetDate: {
       type: Date,
       default: Date.now,
+    },
+    onboardingCompleted: {
+      type: Boolean,
+      default: false,
     },
     notificationPreferences: {
       usageAlerts: {
